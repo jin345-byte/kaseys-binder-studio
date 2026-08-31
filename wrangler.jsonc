@@ -6,5 +6,12 @@
     "directory": "./public",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application"
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "kaseys-binder-studio-db",
+      "database_id": "ea5aaa71-88e3-4bff-b997-7aa9bff3c24d"
+    }
+  ]
 }
