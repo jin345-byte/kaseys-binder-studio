@@ -141,3 +141,9 @@ function initKBSGuidedTour(){
   document.addEventListener('keydown',e=>{if(!demo.hidden&&e.key==='Escape')reset()});
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initKBSGuidedTour,{once:true});else initKBSGuidedTour();
+
+/* Cloud account bootstrap */
+(()=>{
+  if(!document.querySelector('link[data-kbs-cloud]')){const l=document.createElement('link');l.rel='stylesheet';l.href='features/cloud-sync.css';l.dataset.kbsCloud='1';document.head.appendChild(l)}
+  if(!document.querySelector('script[data-kbs-cloud]')){const s=document.createElement('script');s.src='features/cloud-sync.js';s.dataset.kbsCloud='1';document.body.appendChild(s)}
+})();
