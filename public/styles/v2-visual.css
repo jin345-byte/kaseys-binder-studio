@@ -1,0 +1,876 @@
+
+/* Kasey's Binder Studio v2 visual system
+   Loaded after legacy styles as the authoritative visual layer. */
+
+:root{
+  --v2-radius:22px;
+  --v2-gap:12px;
+  --v2-shadow:0 18px 48px rgba(15,23,42,.12);
+  --v2-soft:color-mix(in srgb,var(--surface) 88%,transparent);
+}
+
+/* ---------- Global composition ---------- */
+.app{max-width:1600px;padding:16px 18px 24px}
+.top{margin-bottom:12px}
+.workspace{gap:16px}
+.panel{overflow:clip}
+.command-deck{
+  grid-template-columns:minmax(300px,1.6fr) minmax(165px,.58fr) repeat(4,auto)!important;
+  padding:12px!important;
+  border-radius:var(--v2-radius)!important;
+  box-shadow:var(--v2-shadow)!important;
+}
+.command-deck>label,.command-deck>.print-control,.command-deck>.btn{
+  position:relative;
+  z-index:1;
+}
+.command-deck label>span{
+  font-size:10px!important;
+  letter-spacing:.09em;
+}
+
+/* ---------- Large hero surfaces ---------- */
+.library,.canvas{
+  border-radius:26px!important;
+  box-shadow:0 22px 58px color-mix(in srgb,var(--text) 11%,transparent)!important;
+}
+.browser-pane{
+  border-radius:20px!important;
+  padding:11px!important;
+}
+.variant-pane{position:relative}
+.variant-pane::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  border-radius:inherit;
+  box-shadow:inset 0 1px rgba(255,255,255,.18);
+}
+.sectionhead,.arthead{
+  min-height:48px;
+}
+.sectionhead h2,.arthead h2,.canvashead h2{
+  letter-spacing:-.025em;
+}
+
+/* ---------- Card browser centerpiece ---------- */
+.cards{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:10px!important;
+}
+#cards .card-item{
+  height:220px!important;
+  min-height:220px!important;
+  padding:6px!important;
+  overflow:hidden!important;
+  animation:cardArrival .40s cubic-bezier(.2,.8,.25,1) both;
+  animation-delay:calc(min(var(--card-index),18) * 18ms);
+}
+@keyframes cardArrival{
+  from{opacity:0;transform:translateY(9px) scale(.975)}
+  to{opacity:1;transform:none}
+}
+#cards .card-item .pick{
+  display:grid!important;
+  grid-template-rows:minmax(0,154px) auto!important;
+  gap:7px!important;
+  height:100%!important;
+  padding:0!important;
+}
+.card-image-wrap{
+  position:relative;
+  display:block;
+  min-height:0;
+  overflow:hidden;
+  border-radius:12px;
+}
+#cards .card-item .card-image-wrap img{
+  width:100%!important;
+  height:154px!important;
+  min-height:154px!important;
+  max-height:154px!important;
+  object-fit:contain!important;
+  transition:transform .2s ease,filter .2s ease;
+}
+#cards .card-item:hover .card-image-wrap img{transform:scale(1.025)}
+.set-chip{
+  position:absolute;
+  left:6px;
+  right:6px;
+  bottom:6px;
+  z-index:2;
+  display:block;
+  padding:5px 7px;
+  border:1px solid color-mix(in srgb,var(--accent) 28%,var(--line));
+  border-radius:8px;
+  background:color-mix(in srgb,var(--surface) 86%,transparent);
+  color:var(--text);
+  backdrop-filter:blur(10px);
+  box-shadow:0 3px 10px rgba(0,0,0,.12);
+  font:800 9.5px/1.15 ui-sans-serif,system-ui,sans-serif;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+#cards .item-copy{
+  display:grid!important;
+  gap:4px!important;
+  min-width:0;
+}
+#cards .item-copy>strong{
+  display:block;
+  font-size:11px!important;
+  line-height:1.15!important;
+  white-space:nowrap!important;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.card-detail-row{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  min-width:0;
+}
+.card-number{
+  flex:0 0 auto;
+  padding:2px 5px;
+  border-radius:6px;
+  background:color-mix(in srgb,var(--accent) 10%,var(--surface2));
+  color:var(--text)!important;
+  font-weight:850!important;
+}
+.card-artist{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap!important;
+  font-weight:650!important;
+}
+.cards-viewport.results-arrived{
+  animation:resultsGlow .48s ease-out;
+}
+@keyframes resultsGlow{
+  0%{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 0%,transparent)}
+  35%{box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--accent) 34%,transparent)}
+  100%{box-shadow:none}
+}
+
+/* keep at least ~2 full card rows visible */
+.variant-pane .cards-viewport{
+  min-height:470px!important;
+}
+.library{
+  grid-template-rows:minmax(0,1.5fr) minmax(0,.5fr)!important;
+}
+.artwork-pane #arts{min-height:130px!important}
+
+/* ---------- Bento toolbar ---------- */
+.canvas-side-controls{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:9px!important;
+  padding:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  border-radius:0!important;
+}
+.control-module{
+  position:relative;
+  padding:10px!important;
+  border:1px solid color-mix(in srgb,var(--line) 88%,transparent)!important;
+  border-radius:16px!important;
+  background:color-mix(in srgb,var(--surface) 82%,transparent)!important;
+  box-shadow:0 8px 22px color-mix(in srgb,var(--text) 6%,transparent);
+  overflow:hidden;
+}
+.control-module::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:linear-gradient(120deg,rgba(255,255,255,.14),transparent 36%);
+}
+.binder-heading-module{
+  display:grid!important;
+  gap:8px;
+}
+.binder-heading-module .canvashead{
+  display:grid!important;
+  gap:4px;
+}
+.binder-heading-module .canvashead .status{
+  max-width:none!important;
+  text-align:left!important;
+  font-size:9px!important;
+}
+.binder-heading-module .editor-page-nav{
+  margin:0!important;
+}
+.library-module{
+  padding:9px!important;
+}
+.selected-module{
+  min-height:56px!important;
+}
+.selected-module.active{
+  box-shadow:0 10px 28px color-mix(in srgb,var(--accent) 15%,transparent)!important;
+}
+.appearance-module{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:7px!important;
+}
+.appearance-module .color-control{
+  width:100%;
+  justify-content:flex-start!important;
+  margin:0!important;
+}
+
+/* ---------- Binder microinteraction ---------- */
+.pocket.just-placed{
+  animation:pocketSnap .40s cubic-bezier(.18,.88,.28,1.25);
+}
+@keyframes pocketSnap{
+  0%{transform:scale(.92);filter:brightness(1.2)}
+  55%{transform:scale(1.035)}
+  100%{transform:none;filter:none}
+}
+.pocket.filled{
+  transition:transform .16s ease,box-shadow .16s ease;
+}
+.pocket.filled:hover{
+  transform:translateY(-2px);
+  box-shadow:inset 0 0 0 1px #ffffff22,0 8px 20px rgba(0,0,0,.18);
+}
+
+/* ---------- Modal/library polish ---------- */
+.binder-shell,.viewer-shell{
+  border-radius:26px!important;
+}
+.binder-chip,.page-card{
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;
+}
+.binder-chip:hover,.page-card:hover{
+  transform:translateY(-3px);
+  box-shadow:0 12px 28px color-mix(in srgb,var(--text) 10%,transparent);
+}
+.page-card.active{
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 26%,transparent);
+}
+
+/* ---------- Responsive ---------- */
+@media(max-width:1250px){
+  #cards .card-item{height:210px!important;min-height:210px!important}
+  #cards .card-item .pick{grid-template-rows:minmax(0,145px) auto!important}
+  #cards .card-item .card-image-wrap img{height:145px!important;min-height:145px!important;max-height:145px!important}
+  .variant-pane .cards-viewport{min-height:440px!important}
+}
+@media(max-width:900px){
+  .library{grid-template-rows:auto auto!important}
+  .variant-pane .cards-viewport{min-height:410px!important;height:58vh!important}
+  .command-deck{grid-template-columns:1fr!important}
+}
+@media(max-width:600px){
+  .cards{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  #cards .card-item{height:208px!important;min-height:208px!important}
+}
+
+/* Accessibility */
+@media(prefers-reduced-motion:reduce){
+  #cards .card-item,.pocket.just-placed,.cards-viewport.results-arrived{animation:none!important}
+}
+
+/* =========================================================
+   v2.1.0 Eeveelution Theme System — authoritative final layer
+   ========================================================= */
+
+/* Global themed controls — fixes static checkbox/toggle issue */
+body[data-theme] button,
+body[data-theme] .btn,
+body[data-theme] input,
+body[data-theme] select,
+body[data-theme] textarea,
+body[data-theme] .page-arrow,
+body[data-theme] .page-number,
+body[data-theme] .color-control,
+body[data-theme] .library-build-cta,
+body[data-theme] .mini,
+body[data-theme] .remove-art,
+body[data-theme] .binder-chip,
+body[data-theme] .page-card{
+  color:var(--text)!important;
+  border-color:var(--line)!important;
+}
+
+body[data-theme] input[type="checkbox"]{
+  appearance:none;
+  -webkit-appearance:none;
+  width:20px!important;
+  height:20px!important;
+  min-width:20px!important;
+  border:2px solid var(--line)!important;
+  border-radius:6px!important;
+  background:var(--surface)!important;
+  display:inline-grid!important;
+  place-content:center!important;
+  cursor:pointer;
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--surface2) 55%,transparent);
+}
+body[data-theme] input[type="checkbox"]::before{
+  content:"";
+  width:10px;
+  height:10px;
+  transform:scale(0);
+  transition:transform .14s ease;
+  background:var(--accent);
+  border-radius:3px;
+  box-shadow:0 0 10px color-mix(in srgb,var(--accent) 45%,transparent);
+}
+body[data-theme] input[type="checkbox"]:checked::before{transform:scale(1)}
+body[data-theme] input[type="checkbox"]:hover{
+  border-color:var(--accent)!important;
+  transform:translateY(-1px);
+}
+body[data-theme] .print-control{
+  color:var(--text)!important;
+  background:color-mix(in srgb,var(--surface2) 86%,transparent)!important;
+  border-color:var(--line)!important;
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 5%,transparent);
+}
+
+/* Art Tray reaches binder bottom on desktop */
+@media(min-width:901px){
+  .library{
+    display:grid!important;
+    grid-template-rows:minmax(0,1.5fr) minmax(260px,.72fr)!important;
+    height:calc(100vh - 166px)!important;
+    min-height:680px!important;
+  }
+  .artwork-pane{
+    min-height:0!important;
+    height:100%!important;
+  }
+  .artwork-pane #arts{
+    min-height:0!important;
+    height:100%!important;
+    max-height:none!important;
+  }
+}
+
+/* Version / build info */
+.version-link{
+  appearance:none;
+  border:1px solid color-mix(in srgb,var(--line) 88%,transparent);
+  background:color-mix(in srgb,var(--surface) 78%,transparent);
+  color:var(--muted)!important;
+  padding:6px 9px;
+  border-radius:999px;
+  font:800 9px/1 ui-sans-serif,system-ui,sans-serif;
+  letter-spacing:.05em;
+  cursor:pointer;
+  text-decoration:underline;
+  text-underline-offset:2px;
+  transition:transform .15s ease,color .15s ease,background .15s ease;
+}
+.version-link:hover{transform:translateY(-1px);color:var(--accent)!important}
+.build-info-modal{
+  position:fixed;
+  inset:0;
+  z-index:10000;
+  display:grid;
+  place-items:center;
+  padding:18px;
+  background:rgba(3,8,14,.52);
+  backdrop-filter:blur(8px);
+  opacity:0;
+  transition:opacity .16s ease;
+}
+.build-info-modal[hidden]{display:none!important}
+.build-info-modal.open{opacity:1}
+.build-info-shell{
+  width:min(620px,96vw);
+  max-height:82vh;
+  overflow:auto;
+  padding:18px;
+  border:1px solid var(--line);
+  border-radius:24px;
+  background:color-mix(in srgb,var(--surface) 94%,transparent);
+  color:var(--text);
+  box-shadow:0 28px 80px rgba(0,0,0,.30);
+}
+.build-info-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}
+.build-info-head h2{margin:2px 0 0}
+.build-info-close{width:38px;height:38px;padding:0!important}
+.build-info-content{display:grid;gap:9px}
+.build-info-content section{
+  padding:12px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:color-mix(in srgb,var(--surface2) 84%,transparent);
+}
+.build-info-content strong{display:block;margin-bottom:4px}
+.build-info-content p{margin:0;color:var(--muted);font:600 12px/1.5 ui-sans-serif,system-ui,sans-serif}
+
+/* Subtle continuous environmental movement */
+body[data-theme]::before{animation:eeveeEnvironment 22s ease-in-out infinite alternate}
+body[data-theme] .theme-scene{animation:eeveeScene 28s ease-in-out infinite alternate}
+@keyframes eeveeEnvironment{
+  from{transform:translate3d(-5px,-3px,0) scale(1.01)}
+  to{transform:translate3d(7px,5px,0) scale(1.025)}
+}
+@keyframes eeveeScene{
+  from{transform:translate3d(-4px,0,0)}
+  to{transform:translate3d(6px,-4px,0)}
+}
+
+/* ---------------- EEVEE · Cozy Studio ---------------- */
+
+/* ---------------- VAPOREON · Tidal Glass ---------------- */
+
+/* ---------------- JOLTEON · Voltage Lab ---------------- */
+body[data-theme="jolteon"]{
+  --bg:#0c1218;--surface:#111922;--surface2:#18232c;--line:#394650;
+  --text:#f7f9ee;--muted:#a5b0b5;--accent:#f5d52f;--accent2:#63d4e5;
+  font-family:"Arial Narrow",Arial,sans-serif;
+  background:
+    linear-gradient(rgba(245,213,47,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(99,212,229,.03) 1px,transparent 1px),
+    #090f14!important;
+  background-size:26px 26px,26px 26px,auto!important;
+}
+body[data-theme="jolteon"] .orb-a{width:190px;height:190px;left:-40px;top:10%;background:#f5d52f;clip-path:polygon(42% 0,100% 0,62% 42%,92% 42%,25% 100%,45% 58%,8% 58%);opacity:.10}
+body[data-theme="jolteon"] .panel{background:rgba(12,18,24,.96)!important;box-shadow:0 22px 58px rgba(0,0,0,.58)!important}
+body[data-theme="jolteon"] .btn{border-radius:3px!important;background:#121d25!important;box-shadow:inset 4px 0 0 var(--accent)!important;text-transform:uppercase}
+body[data-theme="jolteon"] .control-module{border-radius:4px!important;background:#0d151c!important;box-shadow:inset 3px 0 0 var(--accent)!important}
+body[data-theme="jolteon"] input[type="checkbox"]{border-radius:2px!important}
+body[data-theme="jolteon"] input[type="checkbox"]::before{border-radius:0!important}
+
+/* ---------------- FLAREON · Ember Lounge ---------------- */
+
+/* ---------------- ESPEON · Psychic Bloom ---------------- */
+
+/* ---------------- UMBREON · Lunar Observatory ---------------- */
+/* strengthens existing Umbreon */
+
+/* ---------------- LEAFEON · Botanical Atelier ---------------- */
+
+/* ---------------- GLACEON · Crystal Gallery ---------------- */
+
+/* ---------------- SYLVEON · Ribbon Dreamhouse ---------------- */
+
+/* Theme-specific general controls */
+body[data-theme] select,
+body[data-theme] input[type="text"],
+body[data-theme] input[type="url"]{
+  background:color-mix(in srgb,var(--surface) 92%,transparent)!important;
+  color:var(--text)!important;
+  border:1px solid var(--line)!important;
+  box-shadow:inset 0 1px color-mix(in srgb,#fff 28%,transparent);
+}
+body[data-theme="jolteon"] select,
+body[data-theme="jolteon"] input[type="text"],
+
+/* Ensure modal itself follows each theme */
+body[data-theme] .build-info-shell{font-family:inherit}
+
+/* animation personalities */
+body[data-theme="jolteon"]::before{animation-duration:4.5s;animation-timing-function:steps(3,end)}
+
+@media(prefers-reduced-motion:reduce){
+  body[data-theme]::before,body[data-theme] .theme-scene{animation:none!important}
+}
+
+/* =========================================================
+   v2.1.1 Unified rounded theme controls
+   Every visible interactive element follows active theme.
+   ========================================================= */
+
+:root{
+  --control-radius:14px;
+  --control-radius-lg:18px;
+  --control-radius-pill:999px;
+}
+
+/* Normalize all common controls */
+body[data-theme] button,
+body[data-theme] .btn,
+body[data-theme] select,
+body[data-theme] input,
+body[data-theme] textarea,
+body[data-theme] .page-arrow,
+body[data-theme] .page-number,
+body[data-theme] .editor-page-nav button,
+body[data-theme] .color-control,
+body[data-theme] .library-build-cta,
+body[data-theme] .mini,
+body[data-theme] .remove-art,
+body[data-theme] .binder-chip,
+body[data-theme] .page-card,
+body[data-theme] .version-link,
+body[data-theme] .build-info-close,
+body[data-theme] .artlink,
+body[data-theme] .print-control{
+  border-radius:var(--control-radius)!important;
+}
+
+/* Print controls should behave like actual buttons */
+body[data-theme] .print-control{
+  min-height:36px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:8px!important;
+  padding:7px 11px!important;
+  background:linear-gradient(
+    180deg,
+    color-mix(in srgb,var(--surface) 96%,#fff 4%),
+    color-mix(in srgb,var(--surface2) 90%,var(--accent) 10%)
+  )!important;
+  border:1px solid color-mix(in srgb,var(--line) 82%,var(--accent) 18%)!important;
+  color:var(--text)!important;
+  box-shadow:
+    0 4px 12px color-mix(in srgb,var(--text) 7%,transparent),
+    inset 0 1px rgba(255,255,255,.18)!important;
+  font:800 10px/1 ui-sans-serif,system-ui,sans-serif!important;
+  transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease,background .16s ease!important;
+}
+body[data-theme] .print-control:hover{
+  transform:translateY(-2px)!important;
+  border-color:var(--accent)!important;
+  box-shadow:0 8px 20px color-mix(in srgb,var(--accent) 14%,transparent)!important;
+}
+
+/* Make checkbox visually part of the button, not a browser-default control */
+body[data-theme] .print-control input[type="checkbox"]{
+  width:18px!important;
+  height:18px!important;
+  min-width:18px!important;
+  margin:0!important;
+  border-radius:6px!important;
+  border:2px solid color-mix(in srgb,var(--line) 70%,var(--accent) 30%)!important;
+  background:color-mix(in srgb,var(--surface) 92%,var(--surface2) 8%)!important;
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--surface2) 55%,transparent)!important;
+}
+body[data-theme] .print-control input[type="checkbox"]::before{
+  width:9px!important;
+  height:9px!important;
+  border-radius:4px!important;
+  background:var(--accent)!important;
+}
+
+/* Live Binder page navigation = same visual language as other buttons */
+body[data-theme] .editor-page-nav{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:7px!important;
+}
+body[data-theme] .editor-page-nav button,
+body[data-theme] .page-arrow,
+body[data-theme] .page-number{
+  min-width:34px!important;
+  min-height:34px!important;
+  padding:6px 10px!important;
+  background:linear-gradient(
+    180deg,
+    color-mix(in srgb,var(--surface) 94%,#fff 6%),
+    color-mix(in srgb,var(--surface2) 90%,var(--accent) 10%)
+  )!important;
+  border:1px solid color-mix(in srgb,var(--line) 82%,var(--accent) 18%)!important;
+  color:var(--text)!important;
+  box-shadow:0 4px 12px color-mix(in srgb,var(--text) 7%,transparent)!important;
+  font-weight:850!important;
+}
+body[data-theme] .editor-page-nav button:hover,
+body[data-theme] .page-arrow:hover,
+body[data-theme] .page-number:hover{
+  transform:translateY(-2px)!important;
+  border-color:var(--accent)!important;
+  box-shadow:0 8px 18px color-mix(in srgb,var(--accent) 15%,transparent)!important;
+}
+
+/* Inputs/dropdowns: rounded universally */
+body[data-theme] select,
+body[data-theme] input[type="text"],
+body[data-theme] input[type="url"],
+body[data-theme] input[type="search"],
+body[data-theme] textarea{
+  border-radius:var(--control-radius)!important;
+  min-height:36px!important;
+  padding:7px 10px!important;
+}
+
+/* Cards/art elements and panels also stay rounded */
+body[data-theme] .panel,
+body[data-theme] .browser-pane,
+body[data-theme] .control-module,
+body[data-theme] .item,
+body[data-theme] .card-image-wrap,
+body[data-theme] .set-chip,
+body[data-theme] .selectedbar,
+body[data-theme] .library-setup-card,
+body[data-theme] .library-setup-progress,
+body[data-theme] .binder-shell,
+body[data-theme] .viewer-shell,
+body[data-theme] .build-info-shell,
+body[data-theme] .build-info-content section,
+body[data-theme] .canvas-side-controls{
+  border-radius:var(--control-radius-lg)!important;
+}
+
+/* Keep round color swatches, but their outer control stays rounded rectangle */
+body[data-theme] input[type="color"]{
+  border-radius:10px!important;
+  overflow:hidden!important;
+}
+
+/* Remove all square / skewed theme exceptions */
+body[data-theme="jolteon"] .btn,
+body[data-theme="jolteon"] .control-module,
+body[data-theme="jolteon"] .set-chip,
+body[data-theme="jolteon"] input[type="checkbox"],
+
+/* Art tray buttons/toggles */
+body[data-theme] .artactions .btn,
+body[data-theme] .artadd .btn,
+body[data-theme] .artadd select,
+body[data-theme] .artadd input{
+  border-radius:var(--control-radius)!important;
+}
+
+/* Modal and library actions */
+body[data-theme] .binder-actions button,
+body[data-theme] .viewer-actions button,
+body[data-theme] .modal button{
+  border-radius:var(--control-radius)!important;
+}
+
+/* Ensure hover doesn't reintroduce skew/rotation */
+body[data-theme] button:hover,
+body[data-theme] .btn:hover,
+body[data-theme] .editor-page-nav button:hover{
+  rotate:0deg!important;
+  skew:0deg!important;
+}
+
+/* Mobile keeps same rounded system */
+@media(max-width:900px){
+  body[data-theme] button,
+  body[data-theme] .btn,
+  body[data-theme] select,
+  body[data-theme] input,
+  body[data-theme] .control-module{
+    border-radius:var(--control-radius)!important;
+  }
+}
+
+/* =========================================================
+   v2.1.2 STRUCTURAL FIX
+   Fixes the actual Include Cards label and synchronizes
+   Outside Artwork to the Live Binder's rendered bottom edge.
+   ========================================================= */
+
+/* Print group is only a layout wrapper — never style it as a button. */
+body[data-theme] .print-control{
+  display:flex!important;
+  align-items:stretch!important;
+  gap:7px!important;
+  padding:0!important;
+  min-height:0!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  color:inherit!important;
+  transform:none!important;
+}
+
+/* Both children are independent, matching toolbar buttons. */
+body[data-theme] .print-control > .btn,
+body[data-theme] .print-control > .include-cards{
+  min-height:42px!important;
+  height:42px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:7px!important;
+  padding:9px 13px!important;
+  border:1px solid var(--line)!important;
+  border-radius:16px!important;
+  background:linear-gradient(
+    180deg,
+    color-mix(in srgb,var(--surface) 96%,#fff 4%),
+    color-mix(in srgb,var(--surface2) 91%,var(--accent) 9%)
+  )!important;
+  color:var(--text)!important;
+  box-shadow:0 4px 12px color-mix(in srgb,var(--text) 7%,transparent)!important;
+  font:800 10px/1 ui-sans-serif,system-ui,sans-serif!important;
+  cursor:pointer!important;
+  user-select:none!important;
+  transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease,background .16s ease!important;
+}
+body[data-theme] .print-control > .btn:hover,
+body[data-theme] .print-control > .include-cards:hover{
+  transform:translateY(-2px)!important;
+  border-color:var(--accent)!important;
+  box-shadow:0 8px 20px color-mix(in srgb,var(--accent) 15%,transparent)!important;
+}
+
+/* The checkbox is now a small state icon inside a normal themed button. */
+body[data-theme] .include-cards input[type="checkbox"]{
+  appearance:none!important;
+  -webkit-appearance:none!important;
+  width:16px!important;
+  height:16px!important;
+  min-width:16px!important;
+  margin:0!important;
+  display:grid!important;
+  place-content:center!important;
+  border:1.5px solid color-mix(in srgb,var(--line) 58%,var(--accent) 42%)!important;
+  border-radius:5px!important;
+  background:color-mix(in srgb,var(--surface) 94%,var(--surface2) 6%)!important;
+  transform:none!important;
+  box-shadow:none!important;
+}
+body[data-theme] .include-cards input[type="checkbox"]::before{
+  content:""!important;
+  width:8px!important;
+  height:8px!important;
+  border-radius:3px!important;
+  background:var(--accent)!important;
+  transform:scale(0)!important;
+  transition:transform .13s ease!important;
+  box-shadow:0 0 8px color-mix(in srgb,var(--accent) 35%,transparent)!important;
+}
+body[data-theme] .include-cards input[type="checkbox"]::after{
+  content:none!important;
+  display:none!important;
+}
+body[data-theme] .include-cards input[type="checkbox"]:checked{
+  border-color:var(--accent)!important;
+  background:color-mix(in srgb,var(--surface) 84%,var(--accent) 16%)!important;
+}
+body[data-theme] .include-cards input[type="checkbox"]:checked::before{
+  transform:scale(1)!important;
+}
+
+/* Checked label itself gets the same active treatment as themed buttons. */
+body[data-theme] .include-cards:has(input:checked){
+  border-color:color-mix(in srgb,var(--accent) 68%,var(--line))!important;
+  background:linear-gradient(
+    180deg,
+    color-mix(in srgb,var(--surface) 86%,var(--accent) 14%),
+    color-mix(in srgb,var(--surface2) 78%,var(--accent) 22%)
+  )!important;
+  box-shadow:0 6px 18px color-mix(in srgb,var(--accent) 18%,transparent)!important;
+}
+
+/* Theme personalities apply to BOTH print actions equally. */
+body[data-theme="jolteon"] .print-control > *{
+  border-radius:14px!important;
+  box-shadow:inset 4px 0 0 var(--accent),0 4px 12px rgba(0,0,0,.28)!important;
+}
+
+/* Structural browser-column fix */
+@media(min-width:901px){
+  .workspace{
+    align-items:start!important;
+  }
+  .library{
+    height:var(--live-binder-height,auto)!important;
+    min-height:680px!important;
+    max-height:none!important;
+    display:grid!important;
+    grid-template-rows:minmax(420px,1.35fr) minmax(250px,.85fr)!important;
+    gap:12px!important;
+    overflow:hidden!important;
+    align-self:start!important;
+  }
+  .variant-pane,
+  .artwork-pane{
+    min-height:0!important;
+    height:100%!important;
+    overflow:hidden!important;
+  }
+  .variant-pane{
+    display:grid!important;
+    grid-template-rows:auto auto minmax(0,1fr)!important;
+  }
+  .artwork-pane{
+    display:grid!important;
+    grid-template-rows:auto auto minmax(0,1fr)!important;
+  }
+  .variant-pane .cards-viewport,
+  .artwork-pane #arts{
+    min-height:0!important;
+    height:100%!important;
+    max-height:none!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+  }
+}
+
+/* Avoid sync behavior on mobile/tablet stack. */
+@media(max-width:900px){
+  .library{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+  }
+}
+
+/* All visible controls remain rounded */
+body[data-theme] .include-cards,
+body[data-theme] .include-cards input,
+body[data-theme] .page-arrow,
+body[data-theme] .page-number,
+body[data-theme] select,
+body[data-theme] input,
+body[data-theme] button{
+  clip-path:none!important;
+}
+
+/* v2.1.3 retained top-bar theme selector base after legacy CSS cleanup */
+.top-actions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+  min-width:0;
+}
+.theme-control{
+  display:grid;
+  grid-template-columns:auto minmax(165px,220px);
+  align-items:center;
+  gap:7px;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.theme-control select{
+  width:100%;
+  min-height:36px;
+  padding:7px 30px 7px 10px;
+  font-size:11px;
+  font-weight:800;
+}
+body,.panel,.browser-pane,.btn,input,select,.item,.pocket,.library-build-cta,
+.color-control,.selectedbar,.library-setup-progress{
+  transition:background-color .18s ease,border-color .18s ease,color .18s ease,
+             box-shadow .18s ease,transform .18s ease;
+}
+
+/* =========================================================
+   v2.1.4 Umbreon typography
+   Niconne by Vernon Adams for Umbreon display typography.
+   ========================================================= */
+
+/* Use Niconne where it is visually appropriate and large enough to read. */
+
+/* Make the script font clearly visible rather than tiny. */
+
+/* UI controls stay legible. */
+
+/* Small decorative labels can use Niconne without affecting controls. */

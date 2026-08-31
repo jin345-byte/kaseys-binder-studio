@@ -1,0 +1,36 @@
+Kasey's Binder Studio v2.6.0 QA
+
+- PASS: JS syntax app.js
+- PASS: JS syntax background.js
+- PASS: JS syntax features/binder-lab.js
+- PASS: JS syntax features/cards-lab.js
+- PASS: JS syntax features/catalog-lab.js
+- PASS: JS syntax features/help-lab.js
+- PASS: Guided button
+- PASS: Help removed
+- PASS: Theme UI removed
+- PASS: Jolteon fixed
+- PASS: Reset search
+- PASS: Reset pockets
+- PASS: Reset art
+- PASS: Reset selected
+- PASS: Reset cards
+- PASS: No recording
+- PASS: No old help logic
+- PASS: Exact Gardevoir
+- PASS: Exact artworks
+- PASS: Glow
+- PASS: Jiggle
+- PASS: No auto print
+- PASS: English
+- PASS: Pocket
+- PASS: No Japanese
+- PASS: No history file
+- PASS: No themes file
+- PASS: Binder unique
+- PASS: Binder before init
+- PASS: No dup IDs
+- PASS: CSS style.css
+- PASS: CSS v2-visual.css
+- PASS: CSS feature-lab.css
+- PASS: Manifest version
