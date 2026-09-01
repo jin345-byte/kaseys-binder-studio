@@ -13,5 +13,8 @@
       "database_name": "kaseys-binder-studio-db",
       "database_id": "ea5aaa71-88e3-4bff-b997-7aa9bff3c24d"
     }
-  ]
+  ],
+  "vars": {
+    "GOOGLE_CLIENT_ID": "666882296502-0jg87086n0vr39cd5guef38pg66toter.apps.googleusercontent.com"
+  }
 }
