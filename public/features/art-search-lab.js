@@ -1,4 +1,4 @@
-/* Kasey's Binder Studio v2.7.8 — tabbed card/art browser + same-origin fan-art cache */
+/* Kasey's Binder Studio v2.8.0 — tabbed card/art browser + same-origin fan-art cache */
 (function(){
   const subject=document.querySelector('#subject');
   const searchBtn=document.querySelector('#searchBtn');
@@ -30,6 +30,16 @@
   function sizeOptions(selected='1x1'){return SIZE_OPTIONS.map(([v,l])=>`<option value="${v}" ${v===selected?'selected':''}>${l}</option>`).join('');}
   function dedupe(rows){const seen=new Set();return rows.filter(x=>{const k=x.url||x.image;if(!k||seen.has(k))return false;seen.add(k);return true;});}
 
+  function wakeArtworkImages(){
+    requestAnimationFrame(()=>{
+      grid.querySelectorAll('img[data-art-img]').forEach(img=>{
+        if(img.dataset.woken==='1')return;
+        img.dataset.woken='1';
+        img.loading='eager';
+      });
+    });
+  }
+
   function setTab(name,{syncMobile=true}={}){
     activeTab=name==='artwork'?'artwork':'cards';
     library.dataset.libraryTab=activeTab;
@@ -37,6 +47,7 @@
     artworkTab?.classList.toggle('active',activeTab==='artwork');
     cardsTab?.setAttribute('aria-selected',activeTab==='cards'?'true':'false');
     artworkTab?.setAttribute('aria-selected',activeTab==='artwork'?'true':'false');
+    if(activeTab==='artwork')wakeArtworkImages();
     if(syncMobile&&document.body.classList.contains('mobile-lab-enabled')){
       const mobileName=activeTab==='artwork'?'art':'cards';
       document.querySelectorAll('[data-mobile-lab]').forEach(b=>b.classList.toggle('active',b.dataset.mobileLab===mobileName));
@@ -85,8 +96,9 @@
     const total=rows.length;count.textContent=String(total);tabCount.textContent=String(total);
     status.textContent=total?`${total} results for ${cleanName(raw)} · choose a slot size, then add to Art Tray`:`No artwork found for ${cleanName(raw)}.`;
     if(!total){grid.innerHTML='<div class="auto-art-empty">No matching artwork returned.</div>';return;}
-    grid.innerHTML=rows.map((a,i)=>`<article class="auto-art-card" data-auto-art="${i}"><button class="auto-art-pick" type="button" title="Add this artwork using the selected slot size"><span class="auto-art-image"><img src="${html(a.thumb||a.url)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" alt="${html(a.title)}"><span class="auto-art-source">${html(a.source)}</span></span></button><strong>${html(a.title)}</strong><small>${html(a.artist||a.source)}</small><label class="auto-art-size"><span>Slot</span><select data-art-size aria-label="Artwork slot size">${sizeOptions(a.fit||'1x1')}</select></label><button class="btn auto-art-add" type="button">Add</button></article>`).join('');
+    grid.innerHTML=rows.map((a,i)=>`<article class="auto-art-card" data-auto-art="${i}"><button class="auto-art-pick" type="button" title="Add this artwork using the selected slot size"><span class="auto-art-image"><img data-art-img src="${html(a.thumb||a.url)}" loading="eager" decoding="async" referrerpolicy="no-referrer" alt="${html(a.title)}"><span class="auto-art-source">${html(a.source)}</span></span></button><strong>${html(a.title)}</strong><small>${html(a.artist||a.source)}</small><label class="auto-art-size"><span>Slot</span><select data-art-size aria-label="Artwork slot size">${sizeOptions(a.fit||'1x1')}</select></label><button class="btn auto-art-add" type="button">Add</button></article>`).join('');
     grid._rows=rows;
+    if(activeTab==='artwork')wakeArtworkImages();
   }
 
   function addResult(article){
