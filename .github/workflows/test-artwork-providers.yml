@@ -1,0 +1,100 @@
+name: Test Artwork Providers
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test fan-art providers
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Test provider APIs and parser
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, urllib.parse, urllib.request, urllib.error
+
+          UA='Kaseys-Binder-Studio-Art-Test/1.0'
+
+          def get_json(url):
+              req=urllib.request.Request(url,headers={'User-Agent':UA,'Accept':'application/json'})
+              try:
+                  with urllib.request.urlopen(req,timeout=25) as r:
+                      body=r.read()
+                      ct=r.headers.get('content-type','')
+                      print(f'GET {url}')
+                      print('STATUS',r.status,'CONTENT-TYPE',ct,'BYTES',len(body))
+                      text=body.decode('utf-8','replace')
+                      try:
+                          return json.loads(text)
+                      except Exception:
+                          print('NON-JSON PREFIX:',repr(text[:300]))
+                          return None
+              except urllib.error.HTTPError as e:
+                  body=e.read().decode('utf-8','replace')
+                  print(f'GET {url}')
+                  print('HTTP ERROR',e.code,'CONTENT-TYPE',e.headers.get('content-type',''),'PREFIX',repr(body[:300]))
+                  return None
+              except Exception as e:
+                  print(f'GET {url}')
+                  print('ERROR',repr(e))
+                  return None
+
+          def valid_image_url(v):
+              if not isinstance(v,str) or not v.startswith('https://'):
+                  return False
+              try:
+                  p=urllib.parse.urlparse(v)
+              except Exception:
+                  return False
+              host=p.hostname or ''
+              allowed=(host=='safebooru.org' or host.endswith('.safebooru.org') or host=='donmai.us' or host.endswith('.donmai.us'))
+              ext=p.path.lower().rsplit('.',1)[-1] if '.' in p.path else ''
+              return allowed and ext in {'jpg','jpeg','png','webp','gif'}
+
+          tags=['eevee','pikachu','gardevoir']
+          overall_ok=False
+
+          for tag in tags:
+              print('\n===',tag.upper(),'===')
+
+              safe_url='https://safebooru.org/index.php?'+urllib.parse.urlencode({
+                  'page':'dapi','s':'post','q':'index','json':'1','limit':'20','pid':'0','tags':tag
+              })
+              safe=get_json(safe_url)
+              safe_rows=safe if isinstance(safe,list) else (safe.get('post',[]) if isinstance(safe,dict) and isinstance(safe.get('post'),list) else [])
+              safe_valid=[]
+              for p in safe_rows:
+                  u=p.get('file_url') or p.get('sample_url') or p.get('preview_url')
+                  if valid_image_url(u): safe_valid.append(u)
+              print('SAFEBOORU POSTS',len(safe_rows),'VALID IMAGE URLS',len(safe_valid))
+              if safe_valid: print('SAFEBOORU SAMPLE',safe_valid[0])
+
+              dan_url='https://safebooru.donmai.us/posts.json?'+urllib.parse.urlencode({
+                  'limit':'20','page':'1','tags':f'{tag} rating:g'
+              })
+              dan=get_json(dan_url)
+              dan_rows=dan if isinstance(dan,list) else []
+              dan_valid=[]
+              for p in dan_rows:
+                  u=p.get('large_file_url') or p.get('file_url') or p.get('preview_file_url')
+                  if valid_image_url(u): dan_valid.append(u)
+              print('DONMAI SAFE POSTS',len(dan_rows),'VALID IMAGE URLS',len(dan_valid))
+              if dan_valid: print('DONMAI SAMPLE',dan_valid[0])
+
+              if len(safe_valid)+len(dan_valid)>=5:
+                  overall_ok=True
+
+          print('\n=== RESULT ===')
+          if not overall_ok:
+              raise SystemExit('FAIL: Could not prove at least one provider returns a useful fan-art batch.')
+          print('PASS: fan-art providers return usable image batches from a clean GitHub runner.')
+          PY
