@@ -52,7 +52,7 @@ async function handleArtworkSearch(request) {
     json: '1',
     limit: '60',
     pid: String(page),
-    tags: `${tag} pokemon`
+    tags: tag
   });
 
   try {
@@ -102,7 +102,7 @@ async function handleArtworkSearch(request) {
       });
     }
 
-    return Response.json({ results, page, tag }, {
+    return Response.json({ results, page, tag, upstreamCount: posts.length }, {
       headers: {
         'cache-control': 'public, max-age=120',
         'x-kbs-art-source': 'safebooru-proxy'
