@@ -41,20 +41,19 @@ jobs:
           ids=re.findall(r'\bid=["\']([^"\']+)["\']',html)
           dup=sorted({x for x in ids if ids.count(x)>1})
           assert not dup, f'duplicate ids: {dup}'
-          assert 'id="catalogFilter"' not in html, 'Catalog selector still exists'
+          assert 'id="catalogFilter"' not in html
           assert 'id="setFilter"' in html and 'id="artistFilter"' in html
-          assert 'serviceWorker.register' not in html, 'Staging still registers a service worker'
-          assert 'art-search-proxy.js' not in html, 'Obsolete artwork proxy still referenced'
+          assert 'serviceWorker.register' not in html
+          assert 'art-search-proxy.js' not in html
           assert 'App notice' in html
           worker=pathlib.Path('src/staging-worker.js').read_text(encoding='utf-8')
-          assert '/api/art-search' not in worker, 'Obsolete artwork API still exists'
-          assert "url.pathname === '/art-image'" in worker, 'Artwork image endpoint missing'
+          assert '/api/art-search' not in worker
+          assert "url.pathname === '/art-image'" in worker
           cat=pathlib.Path('public/features/catalog-lab.js').read_text(encoding='utf-8')
           for needle in ['TCG Pocket ·','pocket-source-badge','mergePocketIntoMaster','setId:`pocket:${rawSet}`']:
               assert needle in cat, f'missing unified-library feature: {needle}'
           art=pathlib.Path('public/features/art-search-lab.js').read_text(encoding='utf-8')
-          assert 'loading="eager"' in art
-          assert "'/art-image?src='" in art
+          assert 'loading="eager"' in art and "'/art-image?src='" in art
           print('STATIC PASS',len(ids),'unique ids')
           PY
 
@@ -87,17 +86,9 @@ jobs:
 
             await page.goto(URL,{waitUntil:'networkidle',timeout:60000});
             await page.waitForTimeout(1500);
-            const shell=await page.evaluate(async()=>({
-              catalog:!!document.querySelector('#catalogFilter'),
-              set:!!document.querySelector('#setFilter'),artist:!!document.querySelector('#artistFilter'),
-              swControlled:!!navigator.serviceWorker.controller,
-              swRegistration:!!(await navigator.serviceWorker.getRegistration()),
-              cloud:!!document.querySelector('.cloud-account')
-            }));
-            console.log('SHELL',shell);
-            if(shell.catalog||!shell.set||!shell.artist)throw new Error('Unified filter shell is incorrect');
-            if(shell.swControlled||shell.swRegistration)throw new Error('Staging service worker is still active');
-            if(!shell.cloud)throw new Error('Cloud account UI did not mount');
+            if(await page.locator('#catalogFilter').count())throw new Error('Catalog selector still exists');
+            for(const s of ['#setFilter','#artistFilter','#libraryCardsTab','#libraryArtworkTab','.cloud-account'])if(await page.locator(s).count()!==1)throw new Error('Missing shell UI '+s);
+            if(ctx.serviceWorkers().length)throw new Error('Staging service worker still active');
 
             await page.click('#openBinders');await page.waitForTimeout(300);
             if(await page.locator('#binderModal').getAttribute('aria-hidden')!=='false')throw new Error('Binder modal did not open');
@@ -107,39 +98,45 @@ jobs:
             await page.click('#searchBtn');
             await page.click('#libraryArtworkTab');
             await page.waitForTimeout(10000);
-            const art=await page.evaluate(()=>{
-              const imgs=[...document.querySelectorAll('#autoArtworkResults img')];
-              return {cards:document.querySelectorAll('#autoArtworkResults .auto-art-card').length,loaded:imgs.filter(i=>i.complete&&i.naturalWidth>0).length,broken:imgs.filter(i=>i.complete&&i.naturalWidth===0).length,status:document.querySelector('#autoArtworkStatus')?.textContent||'',sample:imgs.slice(0,5).map(i=>({src:i.currentSrc||i.src,w:i.naturalWidth,h:i.naturalHeight,complete:i.complete}))};
-            });
-            console.log('ARTWORK',JSON.stringify(art,null,2));
+            const cards=await page.locator('#autoArtworkResults .auto-art-card').count();
+            const imgs=page.locator('#autoArtworkResults img');
+            const imgCount=await imgs.count();
+            let loaded=0,broken=0;const sample=[];
+            for(let i=0;i<imgCount;i++){
+              const info=await imgs.nth(i).evaluate(el=>({w:el.naturalWidth,h:el.naturalHeight,complete:el.complete,src:el.currentSrc||el.src}));
+              if(info.complete&&info.w>0)loaded++; else if(info.complete&&info.w===0)broken++;
+              if(i<5)sample.push(info);
+            }
+            console.log('ARTWORK',{cards,imgCount,loaded,broken,sample});
             console.log('ART_IMAGE_RESPONSES',JSON.stringify(artResponses.slice(0,20),null,2));
-            if(art.cards<10)throw new Error('Expected >=10 artwork cards, got '+art.cards);
-            if(art.loaded<10)throw new Error(`Artwork pixels failed: loaded=${art.loaded}, broken=${art.broken}`);
+            if(cards<10)throw new Error('Expected >=10 artwork cards, got '+cards);
+            if(loaded<10)throw new Error(`Artwork pixels failed: loaded=${loaded}, broken=${broken}`);
             const goodProxy=artResponses.filter(x=>x.status===200&&String(x.ct).startsWith('image/')).length;
-            if(goodProxy<8)throw new Error('Same-origin artwork image endpoint did not return enough valid images: '+goodProxy);
+            if(goodProxy<8)throw new Error('Artwork image endpoint returned only '+goodProxy+' valid images');
 
-            const trayBefore=await page.locator('#arts').locator(':scope > *').count();
+            const trayBefore=await page.locator('#arts > *').count();
             await page.locator('#autoArtworkResults .auto-art-add').nth(2).click();await page.waitForTimeout(500);
-            const trayAfter=await page.locator('#arts').locator(':scope > *').count();
-            console.log('ART_TRAY',trayBefore,'->',trayAfter);
-            if(trayAfter<=trayBefore)throw new Error('Artwork did not add to Art Tray');
+            const trayAfter=await page.locator('#arts > *').count();
+            console.log('ART_TRAY',trayBefore,'->',trayAfter);if(trayAfter<=trayBefore)throw new Error('Artwork add failed');
 
-            const before=art.cards;
-            if(!(await page.isDisabled('#autoArtworkLoadMore'))){await page.click('#autoArtworkLoadMore');await page.waitForTimeout(1500);const after=await page.locator('#autoArtworkResults .auto-art-card').count();console.log('MORE',before,'->',after);if(after<=before)throw new Error('More artwork did not append');}
+            if(!(await page.isDisabled('#autoArtworkLoadMore'))){const before=cards;await page.click('#autoArtworkLoadMore');await page.waitForTimeout(1200);const after=await page.locator('#autoArtworkResults .auto-art-card').count();console.log('MORE',before,'->',after);if(after<=before)throw new Error('More artwork failed');}
 
             await page.click('#libraryCardsTab');
-            await page.evaluate(()=>document.querySelector('#syncMasterLibrary')?.click());
+            await page.locator('#syncMasterLibrary').dispatchEvent('click');
             await page.waitForTimeout(20000);
-            const lib=await page.evaluate(()=>({hidden:document.querySelector('#runtimeErrorBanner')?.hidden,text:document.querySelector('#runtimeErrorText')?.textContent||'',status:document.querySelector('#masterLibraryStatus')?.textContent||'',progress:document.querySelector('#libraryProgressText')?.textContent||''}));
-            console.log('LIBRARY',lib);
-            if(lib.hidden===false)throw new Error('Unexpected app notice during English build: '+lib.text);
-            if(!/Building|Library|catalog/i.test(lib.status+' '+lib.progress))throw new Error('Library did not start/progress');
+            const bannerVisible=await page.locator('#runtimeErrorBanner').isVisible();
+            const bannerText=(await page.locator('#runtimeErrorText').textContent())||'';
+            const libStatus=((await page.locator('#masterLibraryStatus').textContent())||'')+' '+((await page.locator('#libraryProgressText').textContent())||'');
+            console.log('LIBRARY',{bannerVisible,bannerText,libStatus});
+            if(bannerVisible)throw new Error('Unexpected app notice during English library build: '+bannerText);
+            if(!/Building|Library|catalog/i.test(libStatus))throw new Error('Library did not start/progress');
 
             await page.click('#mobilePreviewToggle');await page.waitForTimeout(300);
-            const mobile=await page.evaluate(()=>({enabled:document.body.classList.contains('mobile-lab-enabled'),nav:!!document.querySelector('#mobileLabBottomNav')}));
-            console.log('MOBILE',mobile);if(!mobile.enabled||!mobile.nav)throw new Error('Mobile preview failed');
+            const bodyClass=(await page.locator('body').getAttribute('class'))||'';
+            if(!bodyClass.includes('mobile-lab-enabled')||await page.locator('#mobileLabBottomNav').count()!==1)throw new Error('Mobile preview failed');
 
-            const cfg=await page.request.get(URL+'/api/config');console.log('AUTH_CONFIG',cfg.status());if(!cfg.ok())throw new Error('/api/config failed');
+            const cfg=await page.request.get(URL+'/api/config');if(!cfg.ok())throw new Error('/api/config failed');
+            console.log('AUTH_CONFIG',cfg.status());
             console.log('FAILED',JSON.stringify(failed.filter(x=>/art-image|raw\.githubusercontent\.com/.test(x.url)).slice(0,30),null,2));
             console.log('CONSOLE_ERRORS',JSON.stringify(errors.slice(0,30),null,2));
             await browser.close();
