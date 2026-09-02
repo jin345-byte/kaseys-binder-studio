@@ -1,0 +1,83 @@
+name: Test Artwork Image Proxy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  proxy-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Create isolated test Worker
+        shell: bash
+        run: |
+          cat > art-proxy-test.js <<'JS'
+          const ALLOWED = new Set(['cdn.donmai.us','raw.githubusercontent.com']);
+          async function proxyImage(request){
+            const u=new URL(request.url);
+            const target=u.searchParams.get('url')||'';
+            let t;
+            try{ t=new URL(target); }catch{ return new Response('bad url',{status:400}); }
+            if(t.protocol!=='https:' || !ALLOWED.has(t.hostname)) return new Response('blocked',{status:403});
+            const r=await fetch(t.href,{headers:{Accept:'image/avif,image/webp,image/apng,image/*,*/*;q=0.8','User-Agent':'Kaseys-Binder-Studio/2.7 image-proxy-test'},cf:{cacheEverything:true,cacheTtl:3600}});
+            if(!r.ok) return new Response('upstream '+r.status,{status:502});
+            const ct=r.headers.get('content-type')||'';
+            if(!ct.startsWith('image/')) return new Response('not image '+ct,{status:502});
+            const h=new Headers();
+            h.set('content-type',ct);
+            h.set('cache-control','public,max-age=3600');
+            h.set('access-control-allow-origin','*');
+            return new Response(r.body,{status:200,headers:h});
+          }
+          export default {async fetch(request){
+            const u=new URL(request.url);
+            if(u.pathname==='/image') return proxyImage(request);
+            const sample='https://cdn.donmai.us/180x180/70/da/70da06941b1169c92593d3df6d68411f.jpg';
+            return new Response(`<!doctype html><img id="test" src="/image?url=${encodeURIComponent(sample)}">`,{headers:{'content-type':'text/html'}});
+          }};
+          JS
+          cat > wrangler.art-proxy-test.jsonc <<'JSON'
+          {
+            "name":"kbs-art-image-proxy-test",
+            "main":"art-proxy-test.js",
+            "compatibility_date":"2026-08-28"
+          }
+          JSON
+      - name: Install Wrangler and Playwright
+        run: |
+          npm install --no-save wrangler@4 playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null
+      - name: Deploy isolated test Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy --config=wrangler.art-proxy-test.jsonc
+      - name: Verify proxied image bytes and Chromium rendering
+        shell: bash
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          const URL='https://kbs-art-image-proxy-test.jin345.workers.dev';
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage();
+            const responses=[]; const errors=[];
+            page.on('response',r=>responses.push({url:r.url(),status:r.status(),ct:r.headers()['content-type']||''}));
+            page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+            await page.goto(URL,{waitUntil:'networkidle',timeout:60000});
+            await page.waitForTimeout(2000);
+            const img=await page.evaluate(()=>{const i=document.querySelector('#test');return {complete:i.complete,naturalWidth:i.naturalWidth,naturalHeight:i.naturalHeight,src:i.src};});
+            console.log('IMAGE',img);
+            console.log('RESPONSES',responses);
+            console.log('ERRORS',errors);
+            if(!img.complete || img.naturalWidth<50) throw new Error('Proxied image did not render');
+            const imageResp=responses.find(r=>r.url.includes('/image?'));
+            if(!imageResp || imageResp.status!==200 || !imageResp.ct.startsWith('image/')) throw new Error('Proxy did not return image response');
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
