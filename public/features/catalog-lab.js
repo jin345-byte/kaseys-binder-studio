@@ -1,15 +1,11 @@
-/* Kasey's Binder Studio v2.3.1 — English + Pokémon TCG Pocket */
+/* Kasey's Binder Studio v2.8.0 — unified English TCG + Pokémon TCG Pocket library */
 const KBSCatalogLab=(()=>{
-  const CATALOG_KEY='kbsActiveCatalogV4';
   const DB_NAME='kaseyPocketCardCatalogV1';
   const DB_VERSION=1;
   const POCKET_SERIES='https://api.tcgdex.net/v2/en/series/tcgp';
   const SET_BASE='https://api.tcgdex.net/v2/en/sets/';
 
-  let activeCatalog=localStorage.getItem(CATALOG_KEY)||'en';
-  if(!['en','pocket'].includes(activeCatalog))activeCatalog='en';
-
-  let db=null,pocketCards=[],buildPromise=null;
+  let db=null,pocketCards=[],buildPromise=null,pocketState={ready:false,count:0,error:''};
   globalThis.KBSCatalogCards=[];
 
   function openDb(){
@@ -34,13 +30,7 @@ const KBSCatalogLab=(()=>{
   function store(name,mode='readonly'){return db.transaction(name,mode).objectStore(name)}
   function put(name,value){return new Promise((res,rej)=>{const r=store(name,'readwrite').put(value);r.onsuccess=()=>res(value);r.onerror=()=>rej(r.error)})}
   function getMeta(key){return new Promise((res,rej)=>{const r=store('meta').get(key);r.onsuccess=()=>res(r.result||null);r.onerror=()=>rej(r.error)})}
-  function getAllPocket(){
-    return new Promise((res,rej)=>{
-      const r=store('cards').index('catalog').getAll('pocket');
-      r.onsuccess=()=>res((r.result||[]).map(withSearchKeys));
-      r.onerror=()=>rej(r.error);
-    });
-  }
+  function getAllPocket(){return new Promise((res,rej)=>{const r=store('cards').index('catalog').getAll('pocket');r.onsuccess=()=>res((r.result||[]).map(withSearchKeys));r.onerror=()=>rej(r.error)})}
   async function replacePocket(rows){
     await openDb();
     const old=await getAllPocket().catch(()=>[]);
@@ -54,32 +44,28 @@ const KBSCatalogLab=(()=>{
   function imageCandidates(base){
     const b=String(base||'').replace(/\/(high|low)\.(?:webp|png|jpe?g)$/i,'');
     if(!b)return [];
-    return [
-      `${b}/high.webp`,
-      `${b}/low.webp`,
-      `${b}/high.png`,
-      `${b}/low.png`,
-      `${b}/high.jpg`,
-      `${b}/low.jpg`
-    ].filter((x,i,a)=>a.indexOf(x)===i);
+    return [`${b}/high.webp`,`${b}/low.webp`,`${b}/high.png`,`${b}/low.png`,`${b}/high.jpg`,`${b}/low.jpg`].filter((x,i,a)=>a.indexOf(x)===i);
   }
 
   function normalizePocket(c,setBrief,detail){
     const imgs=imageCandidates(c.image);
+    const rawSet=String(setBrief.id||'unknown');
+    const displaySet=setBrief.name||detail?.name||rawSet;
     return withSearchKeys({
       id:`pocket:${c.id}`,
       primaryId:c.id,
       tcgdexId:c.id,
-      language:'pocket',
+      sourceKey:`pocket:${c.id}`,
+      language:'en',
       catalog:'pocket',
-      catalogLabel:'Pokémon TCG Pocket',
+      catalogLabel:'TCG Pocket',
       source:'tcgdex-pocket',
       name:c.name||'Unknown card',
       originalName:c.name||'',
       localId:String(c.localId??''),
-      setId:setBrief.id,
-      rawSetId:setBrief.id,
-      setName:setBrief.name||detail?.name||setBrief.id,
+      setId:`pocket:${rawSet}`,
+      rawSetId:`pocket:${rawSet}`,
+      setName:`TCG Pocket · ${displaySet}`,
       series:'Pokémon TCG Pocket',
       releaseDate:detail?.releaseDate||'',
       illustrator:c.illustrator||'',
@@ -104,143 +90,91 @@ const KBSCatalogLab=(()=>{
   async function buildPocket(){
     if(buildPromise)return buildPromise;
     buildPromise=(async()=>{
-      const health=document.querySelector('#masterLibraryHealth');
-      if(health)health.textContent='Pokémon TCG Pocket · loading…';
       const series=await fetchJsonWithRetry(POCKET_SERIES,{retries:4,baseDelay:700});
       const sets=Array.isArray(series?.sets)?series.sets:[];
-      const chunks=new Array(sets.length);
-      let next=0,done=0;
-      const workers=Array.from({length:Math.min(6,sets.length)},async()=>{
+      if(!sets.length)throw new Error('Pocket set catalog was empty');
+      const chunks=new Array(sets.length);let next=0,done=0,failed=0;
+      const workers=Array.from({length:Math.min(4,sets.length)},async()=>{
         while(next<sets.length){
           const i=next++;
-          chunks[i]=await fetchPocketSet(sets[i]);
+          try{chunks[i]=await fetchPocketSet(sets[i]);}
+          catch(e){failed++;chunks[i]=[];console.warn('Pocket set skipped',sets[i]?.id,e?.message||e);}
           done++;
-          if(health)health.textContent=`Pokémon TCG Pocket · ${done}/${sets.length} sets`;
+          const health=document.querySelector('#masterLibraryHealth');
+          if(health)health.textContent=`Unified library · Pocket ${done}/${sets.length} sets${failed?` · ${failed} skipped`:''}`;
         }
       });
       await Promise.all(workers);
       const rows=chunks.flat().filter(Boolean);
+      if(!rows.length)throw new Error('Pocket catalog is temporarily unavailable');
       await replacePocket(rows);
-      await put('meta',{key:'build:pocket',count:rows.length,completed:true,updatedAt:Date.now()});
+      await put('meta',{key:'build:pocket',count:rows.length,completed:true,setErrors:failed,updatedAt:Date.now()});
+      pocketState={ready:true,count:rows.length,error:''};
       return rows;
     })().finally(()=>{buildPromise=null});
     return buildPromise;
   }
 
-  async function loadCache(){await openDb();pocketCards=await getAllPocket().catch(()=>[])}
-  async function ensurePocket(){if(pocketCards.length)return pocketCards;await loadCache();return pocketCards.length?pocketCards:buildPocket()}
-  async function pocketReady(){
+  function mergePocketIntoMaster(){
+    const english=masterCards.filter(c=>c?.catalog!=='pocket'&&c?.source!=='tcgdex-pocket');
+    masterCards=[...english,...pocketCards];
+    masterCardIndex=new Map(masterCards.map((c,i)=>[c.id,i]));
+    globalThis.KBSCatalogCards=masterCards;
+    masterReady=masterCards.length>0;
+    renderSetFilter();
+    loadArtists();
+    computeMasterHealth();
+    renderCards();
+  }
+
+  async function loadCache(){
     await openDb();
+    pocketCards=await getAllPocket().catch(()=>[]);
     const meta=await getMeta('build:pocket').catch(()=>null);
-    return {ready:Boolean(meta?.completed&&Number(meta.count)>0),count:Number(meta?.count||pocketCards.length||0)};
+    pocketState={ready:Boolean(meta?.completed&&pocketCards.length),count:pocketCards.length,error:''};
+    mergePocketIntoMaster();
   }
 
-  function renderPocketSetFilter(rows){
-    const sel=document.querySelector('#setFilter');if(!sel)return;
-    const current=sel.value,map=new Map();
-    rows.forEach(c=>{if(c.setId&&!map.has(c.setId))map.set(c.setId,c.setName||c.setId)});
-    const opts=[...map.entries()].sort((a,b)=>String(a[1]).localeCompare(String(b[1]),undefined,{numeric:true}));
-    sel.innerHTML='<option value="">All sets</option>'+opts.map(([id,n])=>`<option value="${esc(id)}">${esc(n)}</option>`).join('');
-    if(opts.some(([id])=>id===current))sel.value=current;
-  }
-
-  function renderPocketArtists(){
-    const sel=document.querySelector('#artistFilter'),clear=document.querySelector('#clearArtist');if(!sel)return;
-    const vals=[...new Set(pocketCards.map(c=>c.illustrator||c.artist||'').filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-    sel.disabled=false;if(clear)clear.disabled=false;
-    sel.innerHTML='<option value="">All artists</option>'+vals.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
-  }
-
-  async function runPocketSearch(){
-    const query=document.querySelector('#subject')?.value.trim()||'';
-    const setId=document.querySelector('#setFilter')?.value||'';
-    const artist=normText(document.querySelector('#artistFilter')?.value||'');
-    state.subject=query;save();renderHeader();
-    activeSearchController?.abort();
-    activeSearchController=new AbortController();
-    const signal=activeSearchController.signal;
-    try{
-      const all=await ensurePocket();if(signal.aborted)return;
-      globalThis.KBSCatalogCards=all;
-      let rows=all;
-      if(setId)rows=rows.filter(c=>c.setId===setId);
-      if(artist)rows=rows.filter(c=>normText(c.illustrator||c.artist||'')===artist);
-      if(query.length>=2){
-        const q=normText(query);
-        rows=rows.filter(c=>(c.nameLower||normText(c.name)).includes(q)||normText(c.setName||'').includes(q)||normText(c.localId||'').includes(q));
-      }
-      cards=rows.slice(0,MASTER_PAGE_SIZE);
-      renderCards();
-      renderPocketSetFilter(all);
-      renderPocketArtists();
-      const count=document.querySelector('#count');if(count)count.textContent=rows.length.toLocaleString();
-      const health=document.querySelector('#masterLibraryHealth');
-      if(health)health.textContent=`Pokémon TCG Pocket · ${all.length.toLocaleString()} cached · ${rows.length.toLocaleString()} matching`;
-    }catch(e){
-      if(e?.name==='AbortError')return;
-      console.error(e);cards=[];renderCards();showRuntimeError(e?.message||String(e));
-    }
-  }
-
-  const coreRunCardSearch=runCardSearch;
-  runCardSearch=async function(){
-    if(activeCatalog==='en'){globalThis.KBSCatalogCards=[];return coreRunCardSearch.apply(this,arguments)}
-    return runPocketSearch();
-  };
-
-  const coreRenderSetFilter=renderSetFilter;
-  renderSetFilter=function(){
-    if(activeCatalog==='en')return coreRenderSetFilter.apply(this,arguments);
-    if(pocketCards.length)return renderPocketSetFilter(pocketCards);
+  const coreLoadMasterFromDb=loadMasterFromDb;
+  loadMasterFromDb=async function(){
+    const result=await coreLoadMasterFromDb.apply(this,arguments);
+    if(pocketCards.length)mergePocketIntoMaster();
+    return result;
   };
 
   const coreBuildMasterLibrary=buildMasterLibrary;
   buildMasterLibrary=async function(){
-    const results=await Promise.allSettled([
-      coreBuildMasterLibrary(),
-      buildPocket().catch(e=>{showRuntimeError(e?.message||String(e));throw e})
-    ]);
-    await loadCache().catch(()=>{});
+    // Build the reliable English catalog first. Pocket is additive and may never invalidate English.
+    await coreBuildMasterLibrary();
+    try{
+      await buildPocket();
+    }catch(e){
+      pocketState={ready:false,count:pocketCards.length,error:e?.message||String(e)};
+      console.warn('Pocket catalog build deferred:',pocketState.error);
+    }
+    if(pocketCards.length)mergePocketIntoMaster();
     await updateLibrarySetupButton().catch(()=>{});
-    return results;
   };
 
   const coreUpdateButton=updateLibrarySetupButton;
   updateLibrarySetupButton=async function(){
     await coreUpdateButton.apply(this,arguments);
-    const p=await pocketReady().catch(()=>({ready:false,count:0}));
     const label=document.querySelector('#libraryBuildLabel'),hint=document.querySelector('#libraryBuildHint');
-    const enReady=masterCards.length>5000;
-    if(label)label.textContent=enReady&&p.ready?'Both Libraries Ready':'Build Both Card Libraries';
-    if(hint)hint.textContent=`English ${masterCards.length.toLocaleString()} · Pocket ${p.count.toLocaleString()}`;
+    const englishCount=masterCards.filter(c=>c?.catalog!=='pocket'&&c?.source!=='tcgdex-pocket').length;
+    const total=englishCount+pocketCards.length;
+    const englishReady=englishCount>5000;
+    if(label)label.textContent=englishReady&&pocketState.ready?'Unified Library Ready':'Build Card Library';
+    if(hint){
+      if(englishReady&&pocketState.ready)hint.textContent=`${total.toLocaleString()} cards · English + Pocket`;
+      else if(englishReady&&pocketState.error)hint.textContent=`English ready · Pocket will retry later`;
+      else hint.textContent=`English ${englishCount.toLocaleString()} · Pocket ${pocketCards.length.toLocaleString()}`;
+    }
   };
 
-  async function switchCatalog(next){
-    activeCatalog=['en','pocket'].includes(next)?next:'en';
-    localStorage.setItem(CATALOG_KEY,activeCatalog);
-    const selector=document.querySelector('#catalogFilter');
-    if(selector&&selector.value!==activeCatalog)selector.value=activeCatalog;
-    document.querySelector('#setFilter').value='';
-    document.querySelector('#artistFilter').value='';
-    if(activeCatalog==='en'){
-      globalThis.KBSCatalogCards=[];
-      coreRenderSetFilter();loadArtists();await search();return;
-    }
-    const rows=await ensurePocket();
-    globalThis.KBSCatalogCards=rows;
-    renderPocketSetFilter(rows);renderPocketArtists();await search();
-  }
+  // Set symbols only exist for the English web image source.
+  globalThis.KBSIsPocketSet=id=>String(id||'').startsWith('pocket:');
 
-  const selector=document.querySelector('#catalogFilter');
-  if(selector){
-    selector.value=activeCatalog;
-    selector.addEventListener('change',e=>switchCatalog(e.target.value).catch(err=>showRuntimeError(err?.message||String(err))));
-  }
+  openDb().then(loadCache).then(()=>updateLibrarySetupButton().catch(()=>{})).catch(e=>console.warn('Pocket cache unavailable',e));
 
-  openDb().then(loadCache).then(async()=>{
-    await updateLibrarySetupButton().catch(()=>{});
-    if(activeCatalog==='pocket')await switchCatalog('pocket');
-  }).catch(e=>console.error('Pocket library cache load failed',e));
-
-  return{get activeCatalog(){return activeCatalog},getCards:()=>globalThis.KBSCatalogCards||[],switchCatalog,buildPocket};
+  return{getCards:()=>masterCards,buildPocket,get pocketState(){return {...pocketState}}};
 })();
