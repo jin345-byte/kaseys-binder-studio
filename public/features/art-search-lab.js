@@ -1,4 +1,4 @@
-/* Kasey's Binder Studio v2.8.1 — unified tabbed artwork browser */
+/* Kasey's Binder Studio v2.8.2 — unified tabbed artwork browser */
 (function(){
   const subject=document.querySelector('#subject');
   const searchBtn=document.querySelector('#searchBtn');
@@ -25,12 +25,14 @@
   function booruTag(raw){return cleanName(raw).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[’']/g,'').replace(/[^a-z0-9♀♂._-]+/g,'_').replace(/^-+|-+$/g,'').replace(/^_+|_+$/g,'');}
   function cacheKey(raw){return booruTag(raw).replace(/-/g,'_');}
   function safeUrl(v){v=String(v||'').trim();return /^https:\/\//i.test(v)?v:'';}
-  function proxiedArtworkUrl(v){const u=safeUrl(v);return u?'/art-image?src='+encodeURIComponent(u):'';}
+  function safeFanUrl(v){
+    const raw=safeUrl(v);if(!raw)return '';
+    try{const u=new URL(raw);const host=u.hostname.toLowerCase();if(host!=='safebooru.org'&&!host.endsWith('.safebooru.org'))return '';if(!/\.(?:jpe?g|png|webp|gif)$/i.test(u.pathname))return '';return u.href}catch{return ''}
+  }
   function html(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   function fitFor(w,h){w=Number(w)||1;h=Number(h)||1;const r=w/h;if(r>=2.15)return '3x1';if(r>=1.35)return '2x1';if(r<=.62)return '1x2';return '1x1';}
   function sizeOptions(selected='1x1'){return SIZE_OPTIONS.map(([v,l])=>`<option value="${v}" ${v===selected?'selected':''}>${l}</option>`).join('');}
   function dedupe(rows){const seen=new Set();return rows.filter(x=>{const k=x.url||x.image;if(!k||seen.has(k))return false;seen.add(k);return true;});}
-
   function wakeArtworkImages(){requestAnimationFrame(()=>grid.querySelectorAll('img[data-art-img]').forEach(img=>{img.loading='eager';}));}
 
   function setTab(name,{syncMobile=true}={}){
@@ -68,8 +70,7 @@
   }
 
   async function fetchFanCache(raw,signal){
-    const key=cacheKey(raw);
-    if(!key)return [];
+    const key=cacheKey(raw);if(!key)return [];
     try{
       const r=await fetch('/art-cache/'+encodeURIComponent(key)+'.json',{signal,headers:{Accept:'application/json'},cache:'no-store'});
       if(r.status===404)return [];
@@ -77,11 +78,10 @@
       const payload=await r.json();
       const rows=Array.isArray(payload)?payload:(Array.isArray(payload?.results)?payload.results:[]);
       return rows.map((p,i)=>{
-        const remoteFile=safeUrl(p.url||p.file_url||p.large_file_url||p.preview_file_url);
-        const remoteThumb=safeUrl(p.thumb||p.preview_file_url||p.url)||remoteFile;
-        if(!remoteFile)return null;
-        const file=proxiedArtworkUrl(remoteFile),thumb=proxiedArtworkUrl(remoteThumb)||file;
-        return {id:'fan-'+(p.id||`${key}-${i}`),url:file,thumb,remoteUrl:remoteFile,title:cleanName(raw)+' fan art',artist:p.artist||'Community artwork',source:p.source||'Fan art cache',width:Number(p.width||p.image_width)||0,height:Number(p.height||p.image_height)||0,fit:fitFor(p.width||p.image_width,p.height||p.image_height),official:false};
+        const file=safeFanUrl(p.url||p.file_url||p.sample_url||p.preview_url);
+        const thumb=safeFanUrl(p.thumb||p.preview_url||p.sample_url||p.url)||file;
+        if(!file)return null;
+        return {id:'fan-'+(p.id||`${key}-${i}`),url:file,thumb,title:cleanName(raw)+' fan art',artist:p.artist||'Community artwork',source:p.source||'Safebooru fan art',width:Number(p.width||p.image_width)||0,height:Number(p.height||p.image_height)||0,fit:fitFor(p.width||p.image_width,p.height||p.image_height),official:false};
       }).filter(Boolean);
     }catch(e){if(e?.name==='AbortError')throw e;console.warn('Fan-art cache load failed',key,e);return [];}
   }
@@ -90,7 +90,7 @@
     const total=rows.length;count.textContent=String(total);tabCount.textContent=String(total);
     status.textContent=total?`${total} results for ${cleanName(raw)} · choose a slot size, then add to Art Tray`:`No artwork found for ${cleanName(raw)}.`;
     if(!total){grid.innerHTML='<div class="auto-art-empty">No matching artwork returned.</div>';return;}
-    grid.innerHTML=rows.map((a,i)=>`<article class="auto-art-card" data-auto-art="${i}"><button class="auto-art-pick" type="button" title="Add this artwork using the selected slot size"><span class="auto-art-image"><img data-art-img src="${html(a.thumb||a.url)}" loading="eager" decoding="async" alt="${html(a.title)}"><span class="auto-art-source">${html(a.source)}</span></span></button><strong>${html(a.title)}</strong><small>${html(a.artist||a.source)}</small><label class="auto-art-size"><span>Slot</span><select data-art-size aria-label="Artwork slot size">${sizeOptions(a.fit||'1x1')}</select></label><button class="btn auto-art-add" type="button">Add</button></article>`).join('');
+    grid.innerHTML=rows.map((a,i)=>`<article class="auto-art-card" data-auto-art="${i}"><button class="auto-art-pick" type="button" title="Add this artwork using the selected slot size"><span class="auto-art-image"><img data-art-img src="${html(a.thumb||a.url)}" loading="eager" decoding="async" referrerpolicy="no-referrer" alt="${html(a.title)}"><span class="auto-art-source">${html(a.source)}</span></span></button><strong>${html(a.title)}</strong><small>${html(a.artist||a.source)}</small><label class="auto-art-size"><span>Slot</span><select data-art-size aria-label="Artwork slot size">${sizeOptions(a.fit||'1x1')}</select></label><button class="btn auto-art-add" type="button">Add</button></article>`).join('');
     grid._rows=rows;if(activeTab==='artwork')wakeArtworkImages();
   }
 
