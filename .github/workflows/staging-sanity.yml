@@ -1,0 +1,173 @@
+name: Staging v2.8 Sanity
+
+on:
+  push:
+    branches: [staging-ui-auth-test]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sanity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Static structure and syntax checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check public/app.js
+          node --check public/features/cards-lab.js
+          node --check public/features/catalog-lab.js
+          node --check public/features/art-search-lab.js
+          node --check public/features/binder-lab.js
+          node --check public/features/mobile-lab.js
+          node --check src/staging-worker.js
+          python - <<'PY'
+          import re, pathlib
+          html=pathlib.Path('public/index.html').read_text(encoding='utf-8')
+          ids=re.findall(r'\bid=["\']([^"\']+)["\']',html)
+          dup=sorted({x for x in ids if ids.count(x)>1})
+          assert not dup, f'duplicate ids: {dup}'
+          assert 'id="catalogFilter"' not in html, 'Catalog selector still exists'
+          assert 'serviceWorker.register' not in html, 'Staging still registers a service worker'
+          assert 'art-search-proxy.js' not in html, 'Obsolete artwork proxy still referenced'
+          worker=pathlib.Path('src/staging-worker.js').read_text(encoding='utf-8')
+          assert '/api/art-search' not in worker, 'Obsolete artwork API still exists'
+          cat=pathlib.Path('public/features/catalog-lab.js').read_text(encoding='utf-8')
+          for needle in ['TCG Pocket ·','pocket-source-badge','mergePocketIntoMaster','Build Card Library']:
+              assert needle in cat, f'missing unified-library feature: {needle}'
+          art=pathlib.Path('public/features/art-search-lab.js').read_text(encoding='utf-8')
+          assert 'loading="eager"' in art, 'Artwork thumbnails are not eager-loaded'
+          print('STATIC PASS',len(ids),'unique ids')
+          PY
+
+      - name: Install Playwright Chromium
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null
+
+      - name: Exercise live staging UI
+        shell: bash
+        run: |
+          node <<'JS'
+          const { chromium } = require('playwright');
+          const URL='https://kaseys-binder-studio-staging.jin345.workers.dev';
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const ctx=await browser.newContext({viewport:{width:1440,height:1000}});
+            const page=await ctx.newPage();
+            const errors=[];
+            const failed=[];
+            page.on('pageerror',e=>errors.push('PAGE '+e.message));
+            page.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
+            page.on('requestfailed',r=>failed.push({url:r.url(),error:r.failure()?.errorText||''}));
+            await page.goto(URL,{waitUntil:'networkidle',timeout:60000});
+            await page.waitForTimeout(1800);
+
+            const shell=await page.evaluate(async()=>({
+              version:document.querySelector('#versionLink')?.textContent||'',
+              catalogSelector:!!document.querySelector('#catalogFilter'),
+              cardsTab:!!document.querySelector('#libraryCardsTab'),
+              artTab:!!document.querySelector('#libraryArtworkTab'),
+              setFilter:!!document.querySelector('#setFilter'),
+              artistFilter:!!document.querySelector('#artistFilter'),
+              binderButton:!!document.querySelector('#openBinders'),
+              cloudAccount:!!document.querySelector('.cloud-account'),
+              swControlled:!!navigator.serviceWorker?.controller,
+              swRegistrations:navigator.serviceWorker? (await navigator.serviceWorker.getRegistrations()).length:0
+            }));
+            console.log('SHELL',shell);
+            if(!/2\.8\.0/.test(shell.version))throw new Error('Expected v2.8.0 staging shell');
+            if(shell.catalogSelector)throw new Error('Catalog selector should be removed');
+            for(const k of ['cardsTab','artTab','setFilter','artistFilter','binderButton'])if(!shell[k])throw new Error('Missing UI '+k);
+            if(shell.swControlled||shell.swRegistrations)throw new Error('Staging service worker still active');
+
+            // Binder modal sanity.
+            await page.click('#openBinders');
+            await page.waitForTimeout(400);
+            const binderOpen=await page.evaluate(()=>document.querySelector('#binderModal')?.getAttribute('aria-hidden')==='false');
+            console.log('BINDER_OPEN',binderOpen);
+            if(!binderOpen)throw new Error('Binder modal did not open');
+            await page.click('#closeBinders');
+
+            // Artwork search: explicitly open the Artwork tab before inspecting images.
+            await page.fill('#subject','eevee');
+            await page.click('#searchBtn');
+            await page.click('#libraryArtworkTab');
+            await page.waitForTimeout(8000);
+            const art=await page.evaluate(()=>{
+              const imgs=[...document.querySelectorAll('#autoArtworkResults img')];
+              return {
+                cards:document.querySelectorAll('#autoArtworkResults .auto-art-card').length,
+                loaded:imgs.filter(i=>i.complete&&i.naturalWidth>0).length,
+                broken:imgs.filter(i=>i.complete&&i.naturalWidth===0).length,
+                pending:imgs.filter(i=>!i.complete).length,
+                samples:imgs.slice(0,6).map(i=>({src:i.currentSrc||i.src,w:i.naturalWidth,h:i.naturalHeight,complete:i.complete})),
+                status:document.querySelector('#autoArtworkStatus')?.textContent||''
+              };
+            });
+            console.log('ARTWORK',JSON.stringify(art,null,2));
+            if(art.cards<10)throw new Error('Expected >=10 artwork cards, got '+art.cards);
+            if(art.loaded<10)throw new Error(`Artwork images not actually rendering: loaded=${art.loaded} broken=${art.broken} pending=${art.pending}`);
+
+            // More button should expand the same result set.
+            const before=art.cards;
+            const moreDisabled=await page.isDisabled('#autoArtworkLoadMore');
+            if(!moreDisabled){
+              await page.click('#autoArtworkLoadMore');
+              await page.waitForTimeout(2500);
+              const after=await page.locator('#autoArtworkResults .auto-art-card').count();
+              console.log('ARTWORK_MORE',before,'->',after);
+              if(after<=before)throw new Error('Artwork More did not append results');
+            }
+
+            // Return to cards and verify card search UI remains functional.
+            await page.click('#libraryCardsTab');
+            await page.waitForTimeout(1000);
+            const cardsCount=await page.locator('#cards .card-item').count();
+            console.log('CARD_RESULTS',cardsCount);
+
+            // Start unified library build and ensure it progresses without a global red error.
+            await page.evaluate(()=>document.querySelector('#syncMasterLibrary')?.click());
+            await page.waitForTimeout(18000);
+            const lib=await page.evaluate(()=>({
+              errorVisible:!document.querySelector('#runtimeErrorBanner')?.hidden,
+              error:document.querySelector('#runtimeErrorText')?.textContent||'',
+              status:document.querySelector('#masterLibraryStatus')?.textContent||'',
+              progress:document.querySelector('#libraryProgressText')?.textContent||'',
+              pct:document.querySelector('#libraryProgressPercent')?.textContent||''
+            }));
+            console.log('LIBRARY',lib);
+            if(lib.errorVisible)throw new Error('Global app notice appeared during library build: '+lib.error);
+            if(!/Building|Library|catalog|ready/i.test(lib.status+' '+lib.progress))throw new Error('Library build did not start/progress');
+
+            // Mobile preview/navigation sanity.
+            await page.click('#mobilePreviewToggle');
+            await page.waitForTimeout(500);
+            const mobile=await page.evaluate(()=>({
+              enabled:document.body.classList.contains('mobile-lab-enabled')||document.body.className.includes('mobile'),
+              nav:!!document.querySelector('#mobileLabBottomNav'),
+              art:!!document.querySelector('[data-mobile-lab="art"]'),
+              page:!!document.querySelector('[data-mobile-lab="page"]')
+            }));
+            console.log('MOBILE',mobile);
+            if(!mobile.nav||!mobile.art||!mobile.page)throw new Error('Mobile navigation missing');
+
+            const api=await page.evaluate(async()=>{
+              const c=await fetch('/api/config',{credentials:'include'});return {status:c.status,ok:c.ok};
+            });
+            console.log('AUTH_API',api);
+            if(!api.ok)throw new Error('/api/config failed');
+
+            console.log('FAILED_REQUESTS',JSON.stringify(failed.slice(0,30),null,2));
+            console.log('CONSOLE_ERRORS',JSON.stringify(errors.slice(0,30),null,2));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
