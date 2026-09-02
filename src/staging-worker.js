@@ -2,7 +2,8 @@ import productionWorker from './worker.js';
 
 const CLOUD_CSS = '<link rel="stylesheet" href="/features/cloud-sync.css">';
 const CLOUD_JS = '<script src="/features/cloud-sync.js"></script>';
-const ART_PROXY_JS = '<script src="/features/art-search-proxy.js"></script>';
+const ART_BUILD = '2026-09-02-1057';
+const ART_PROXY_JS = `<script src="/features/art-search-proxy.js?v=${ART_BUILD}"></script>`;
 
 function isHtmlRequest(request, response) {
   if (request.method !== 'GET') return false;
@@ -143,9 +144,24 @@ async function handleArtworkSearch(request) {
     providers: { danbooru: danbooru.length, safebooru: safebooru.length }
   }, {
     headers: {
-      'cache-control': 'public, max-age=120',
-      'x-kbs-art-source': 'multi-provider-proxy'
+      'cache-control': 'no-store',
+      'x-kbs-art-source': 'multi-provider-proxy',
+      'x-kbs-art-build': ART_BUILD
     }
+  });
+}
+
+function noStoreResponse(response) {
+  const headers = new Headers(response.headers);
+  headers.delete('content-length');
+  headers.set('cache-control', 'no-store, no-cache, must-revalidate, max-age=0');
+  headers.set('pragma', 'no-cache');
+  headers.set('expires', '0');
+  headers.set('x-kbs-art-build', ART_BUILD);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
   });
 }
 
@@ -156,18 +172,24 @@ export default {
       return handleArtworkSearch(request);
     }
 
+    if (request.method === 'GET' && (
+      url.pathname === '/features/art-search-proxy.js' ||
+      url.pathname === '/features/art-search-lab.js'
+    )) {
+      const asset = await env.ASSETS.fetch(request);
+      return noStoreResponse(asset);
+    }
+
     const response = await productionWorker.fetch(request, env, ctx);
     if (!isHtmlRequest(request, response)) return response;
 
     let html = await response.text();
+    html = html.replace(
+      '<script src="features/art-search-lab.js"></script>',
+      `${ART_PROXY_JS}\n<script src="features/art-search-lab.js?v=${ART_BUILD}"></script>`
+    );
     if (!html.includes('features/cloud-sync.css')) {
       html = html.replace('</head>', `  ${CLOUD_CSS}\n</head>`);
-    }
-    if (!html.includes('features/art-search-proxy.js')) {
-      html = html.replace(
-        '<script src="features/art-search-lab.js"></script>',
-        `  ${ART_PROXY_JS}\n<script src="features/art-search-lab.js"></script>`
-      );
     }
     if (!html.includes('features/cloud-sync.js')) {
       html = html.replace('</body>', `  ${CLOUD_JS}\n</body>`);
@@ -175,8 +197,11 @@ export default {
 
     const headers = new Headers(response.headers);
     headers.delete('content-length');
-    headers.set('cache-control', 'no-store');
+    headers.set('cache-control', 'no-store, no-cache, must-revalidate, max-age=0');
+    headers.set('pragma', 'no-cache');
+    headers.set('expires', '0');
     headers.set('x-kbs-staging', 'auth-baseline');
+    headers.set('x-kbs-art-build', ART_BUILD);
     return new Response(html, {
       status: response.status,
       statusText: response.statusText,
