@@ -1,0 +1,191 @@
+name: Build Staging Art Cache
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: binder-studio-art-cache
+  cancel-in-progress: false
+
+jobs:
+  build-deploy-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout staging branch
+        uses: actions/checkout@v4
+        with:
+          ref: staging-ui-auth-test
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build validated fan-art cache
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os, time, urllib.parse, urllib.request, urllib.error
+
+          UA='Kaseys-Binder-Studio-Art-Cache/1.0'
+          OUT='public/art-cache'
+          os.makedirs(OUT,exist_ok=True)
+
+          def get_json(url,retries=5):
+              last=None
+              for attempt in range(retries+1):
+                  req=urllib.request.Request(url,headers={'User-Agent':UA,'Accept':'application/json'})
+                  try:
+                      with urllib.request.urlopen(req,timeout=30) as r:
+                          return json.loads(r.read().decode('utf-8','replace'))
+                  except Exception as e:
+                      last=e
+                      if attempt>=retries: break
+                      time.sleep(min(1.0*(2**attempt),12))
+              raise last
+
+          species_payload=get_json('https://pokeapi.co/api/v2/pokemon-species?limit=2000')
+          species=[x.get('name','') for x in species_payload.get('results',[]) if x.get('name')]
+          print('SPECIES',len(species))
+
+          def cache_key(name):
+              return name.lower().replace('-', '_')
+
+          def query_candidates(name):
+              base=cache_key(name)
+              raw=name.lower()
+              vals=[base,raw,f'{base}_(pokemon)',f'{raw}_(pokemon)']
+              out=[]
+              for v in vals:
+                  if v not in out: out.append(v)
+              return out
+
+          def fetch_posts(name):
+              best=[]
+              used=''
+              for tag in query_candidates(name):
+                  params=urllib.parse.urlencode({'limit':'40','page':'1','tags':f'{tag} rating:g'})
+                  try:
+                      rows=get_json('https://safebooru.donmai.us/posts.json?'+params,retries=3)
+                  except Exception as e:
+                      print('WARN',name,tag,repr(e))
+                      continue
+                  if not isinstance(rows,list): rows=[]
+                  normalized=[]
+                  seen=set()
+                  for p in rows:
+                      url=p.get('large_file_url') or p.get('file_url') or p.get('preview_file_url')
+                      thumb=p.get('preview_file_url') or p.get('large_file_url') or p.get('file_url')
+                      if not isinstance(url,str) or not url.startswith('https://'): continue
+                      if url in seen: continue
+                      seen.add(url)
+                      normalized.append({
+                          'id':str(p.get('id') or ''),
+                          'url':url,
+                          'thumb':thumb if isinstance(thumb,str) and thumb.startswith('https://') else url,
+                          'width':int(p.get('image_width') or 0),
+                          'height':int(p.get('image_height') or 0),
+                          'source':'Safe Donmai cache'
+                      })
+                  if len(normalized)>len(best):
+                      best=normalized; used=tag
+                  if len(best)>=20: break
+              return best,used
+
+          counts={}
+          total_rows=0
+          for i,name in enumerate(species,1):
+              rows,used=fetch_posts(name)
+              key=cache_key(name)
+              counts[key]=len(rows)
+              total_rows+=len(rows)
+              with open(os.path.join(OUT,key+'.json'),'w',encoding='utf-8') as f:
+                  json.dump({'pokemon':name,'tag':used,'results':rows},f,separators=(',',':'))
+              if i%25==0 or i==len(species):
+                  print(f'PROGRESS {i}/{len(species)} files · {total_rows} artwork rows')
+              time.sleep(0.12)
+
+          required=['eevee','pikachu','gardevoir','charizard','umbreon']
+          print('VALIDATION', {k:counts.get(k,0) for k in required})
+          weak=[k for k in required if counts.get(k,0)<10]
+          if weak:
+              raise SystemExit('FAIL: required fan-art caches under 10 results: '+','.join(weak))
+
+          with open(os.path.join(OUT,'index.json'),'w',encoding='utf-8') as f:
+              json.dump({'species':len(species),'artworkRows':total_rows,'counts':counts,'generatedAt':int(time.time())},f,separators=(',',':'))
+          print('PASS cache build',len(species),'species',total_rows,'rows')
+          PY
+
+      - name: Commit cache to staging branch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/art-cache public/features/art-search-lab.js public/sw.js
+          if git diff --cached --quiet; then
+            echo "No cache changes to commit"
+          else
+            git commit -m "Build validated staging fan-art cache"
+            git push origin HEAD:staging-ui-auth-test
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Wrangler
+        run: npm install --no-save wrangler@4
+
+      - name: Deploy staging
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy --config=wrangler.staging.jsonc
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null
+
+      - name: Verify staging in Chromium
+        shell: bash
+        run: |
+          node <<'JS'
+          const { chromium } = require('playwright');
+          const STAGING='https://kaseys-binder-studio-staging.jin345.workers.dev';
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage();
+            const errors=[];
+            page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+            await page.goto(STAGING,{waitUntil:'networkidle',timeout:60000});
+            await page.waitForTimeout(1500);
+            await page.fill('#subject','eevee');
+            await page.click('#searchBtn');
+            await page.waitForTimeout(3500);
+            const art=await page.evaluate(()=>({
+              cards:document.querySelectorAll('#autoArtworkResults .auto-art-card').length,
+              status:document.querySelector('#autoArtworkStatus')?.textContent||''
+            }));
+            console.log('ART',art);
+            if(art.cards<10)throw new Error('Expected >=10 artwork cards, got '+art.cards+' '+art.status);
+            await page.evaluate(()=>document.querySelector('#syncMasterLibrary')?.click());
+            await page.waitForTimeout(5000);
+            const lib=await page.evaluate(()=>({
+              error:document.querySelector('#runtimeErrorText')?.textContent||'',
+              status:document.querySelector('#masterLibraryStatus')?.textContent||''
+            }));
+            console.log('LIBRARY',lib);
+            if(lib.error)throw new Error('Library error: '+lib.error);
+            if(!/Building local catalog|Master Library|Library/.test(lib.status))throw new Error('Unexpected library status: '+lib.status);
+            const sw=await page.evaluate(async()=>({controlled:!!navigator.serviceWorker.controller,registration:!!(await navigator.serviceWorker.getRegistration())}));
+            console.log('SERVICE_WORKER',sw);
+            console.log('CONSOLE_ERRORS',errors);
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
