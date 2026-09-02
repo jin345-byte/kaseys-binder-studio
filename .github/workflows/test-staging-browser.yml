@@ -18,95 +18,79 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install playwright@1.55.0 >/dev/null 2>&1
           npx playwright install chromium >/dev/null
-      - name: Exercise staging in Chromium
+      - name: Exercise staging artwork images and library in Chromium
         shell: bash
         run: |
           node <<'JS'
           const { chromium } = require('playwright');
           const STAGING='https://kaseys-binder-studio-staging.jin345.workers.dev';
-          const RAW='https://raw.githubusercontent.com/PokemonTCG/pokemon-tcg-data/master/sets/en.json';
-          const FAN='https://safebooru.donmai.us/posts.json?limit=20&page=1&tags=eevee%20rating%3Ag';
           (async()=>{
             const browser=await chromium.launch({headless:true});
             const ctx=await browser.newContext();
             const page=await ctx.newPage();
-            const interesting=[];
             const errors=[];
             const failed=[];
-            page.on('console',m=>{ if(m.type()==='error') errors.push('CONSOLE '+m.text()); });
+            const responses=[];
+            page.on('console',m=>{ if(m.type()==='error') errors.push(m.text()); });
             page.on('pageerror',e=>errors.push('PAGEERROR '+e.message));
-            page.on('requestfailed',r=>failed.push({url:r.url(),failure:r.failure()}));
-            page.on('response',async r=>{
+            page.on('requestfailed',r=>failed.push({url:r.url(),error:r.failure()?.errorText||''}));
+            page.on('response',r=>{
               const u=r.url();
-              if(/raw\.githubusercontent\.com|pokeapi\.co|donmai\.us|safebooru\.org/.test(u)){
-                let prefix='';
-                try{prefix=(await r.text()).slice(0,180).replace(/\s+/g,' ');}catch{}
-                interesting.push({url:u,status:r.status(),ct:r.headers()['content-type']||'',prefix});
+              if(/raw\.githubusercontent\.com|donmai\.us|art-cache|pokemontcg\.io|tcgdex/.test(u)){
+                responses.push({url:u,status:r.status(),ct:r.headers()['content-type']||''});
               }
             });
 
             let fatal='';
             try{
               await page.goto(STAGING,{waitUntil:'networkidle',timeout:60000});
-              const sw=await page.evaluate(async()=>{
-                const reg=await navigator.serviceWorker.getRegistration();
-                return {
-                  controlled:!!navigator.serviceWorker.controller,
-                  controller:navigator.serviceWorker.controller?.scriptURL||null,
-                  active:reg?.active?.scriptURL||null,
-                  waiting:reg?.waiting?.scriptURL||null
-                };
-              });
-              console.log('SERVICE_WORKER',JSON.stringify(sw));
-
-              const direct=await page.evaluate(async({raw,fan})=>{
-                async function probe(url){
-                  try{
-                    const r=await fetch(url,{headers:{Accept:'application/json'},cache:'no-store'});
-                    const text=await r.text();
-                    let jsonOk=false,shape='';
-                    try{
-                      const j=JSON.parse(text);jsonOk=true;shape=Array.isArray(j)?`array:${j.length}`:typeof j;
-                    }catch{}
-                    return {ok:r.ok,status:r.status,ct:r.headers.get('content-type')||'',acao:r.headers.get('access-control-allow-origin')||'',jsonOk,shape,prefix:text.slice(0,180).replace(/\s+/g,' ')};
-                  }catch(e){return {error:String(e?.message||e)};}
-                }
-                return {raw:await probe(raw),fan:await probe(fan)};
-              },{raw:RAW,fan:FAN});
-              console.log('DIRECT_FETCH',JSON.stringify(direct,null,2));
-
               await page.fill('#subject','eevee');
               await page.click('#searchBtn');
-              await page.waitForTimeout(5000);
-              const art=await page.evaluate(()=>({
-                count:document.querySelector('#autoArtworkCount')?.textContent,
-                status:document.querySelector('#autoArtworkStatus')?.textContent,
-                cards:[...document.querySelectorAll('#autoArtworkResults .auto-art-card')].length,
-                html:document.querySelector('#autoArtworkResults')?.innerHTML?.slice(0,300)
-              }));
-              console.log('ARTWORK_UI',JSON.stringify(art));
+              await page.waitForTimeout(6000);
 
-              // DOM click bypasses animation/stability heuristics.
+              const art=await page.evaluate(()=>{
+                const imgs=[...document.querySelectorAll('#autoArtworkResults img')];
+                return {
+                  cards:document.querySelectorAll('#autoArtworkResults .auto-art-card').length,
+                  status:document.querySelector('#autoArtworkStatus')?.textContent||'',
+                  images:imgs.map((img,i)=>({i,src:img.currentSrc||img.src,complete:img.complete,naturalWidth:img.naturalWidth,naturalHeight:img.naturalHeight})),
+                  loaded:imgs.filter(img=>img.complete&&img.naturalWidth>0).length,
+                  broken:imgs.filter(img=>img.complete&&img.naturalWidth===0).length
+                };
+              });
+              console.log('ARTWORK_DIAG',JSON.stringify(art,null,2));
+
+              // Start the full library and watch long enough to catch intermittent set failures.
               await page.evaluate(()=>document.querySelector('#syncMasterLibrary')?.click());
-              await page.waitForTimeout(10000);
+              for(let i=0;i<12;i++){
+                await page.waitForTimeout(5000);
+                const state=await page.evaluate(()=>({
+                  error:document.querySelector('#runtimeErrorText')?.textContent||'',
+                  status:document.querySelector('#masterLibraryStatus')?.textContent||'',
+                  progress:document.querySelector('#libraryProgressText')?.textContent||''
+                }));
+                console.log('LIBRARY_TICK',i+1,JSON.stringify(state));
+                if(state.error) break;
+                if(/ready|complete|synced/i.test(state.status)) break;
+              }
+
               const lib=await page.evaluate(()=>({
                 error:document.querySelector('#runtimeErrorText')?.textContent||'',
                 status:document.querySelector('#masterLibraryStatus')?.textContent||'',
                 progress:document.querySelector('#libraryProgressText')?.textContent||''
               }));
-              console.log('LIBRARY_UI',JSON.stringify(lib));
+              console.log('LIBRARY_FINAL',JSON.stringify(lib,null,2));
 
-              if(direct.raw?.jsonOk!==true) throw new Error('Direct raw GitHub fetch is not valid JSON: '+JSON.stringify(direct.raw));
-              if(direct.fan?.jsonOk!==true) throw new Error('Direct fan-art fetch is not valid JSON: '+JSON.stringify(direct.fan));
+              const relevantFailed=failed.filter(x=>/raw\.githubusercontent\.com|donmai\.us|art-cache|pokemontcg\.io|tcgdex/.test(x.url));
+              console.log('RELEVANT_RESPONSES',JSON.stringify(responses,null,2));
+              console.log('RELEVANT_FAILED',JSON.stringify(relevantFailed,null,2));
+              console.log('CONSOLE_ERRORS',JSON.stringify(errors,null,2));
+
+              if(art.cards<10) throw new Error('Expected at least 10 artwork cards, got '+art.cards);
+              if(art.loaded<10) throw new Error('Artwork cards exist but images failed to render: loaded='+art.loaded+' broken='+art.broken);
               if(lib.error) throw new Error('Library UI error: '+lib.error);
-              if(Number(art.cards)<5) throw new Error('Artwork UI returned fewer than 5 cards: '+JSON.stringify(art));
             }catch(e){fatal=String(e?.stack||e);}
-            finally{
-              console.log('NETWORK',JSON.stringify(interesting,null,2));
-              console.log('REQUEST_FAILED',JSON.stringify(failed,null,2));
-              console.log('ERRORS',JSON.stringify(errors,null,2));
-              await browser.close();
-            }
-            if(fatal)throw new Error(fatal);
+            await browser.close();
+            if(fatal) throw new Error(fatal);
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
