@@ -71,25 +71,31 @@ jobs:
             await page.goto(URL,{waitUntil:'networkidle',timeout:60000});
             await page.waitForTimeout(1800);
 
-            const shell=await page.evaluate(async()=>({
-              version:document.querySelector('#versionLink')?.textContent||'',
-              catalogSelector:!!document.querySelector('#catalogFilter'),
-              cardsTab:!!document.querySelector('#libraryCardsTab'),
-              artTab:!!document.querySelector('#libraryArtworkTab'),
-              setFilter:!!document.querySelector('#setFilter'),
-              artistFilter:!!document.querySelector('#artistFilter'),
-              binderButton:!!document.querySelector('#openBinders'),
-              cloudAccount:!!document.querySelector('.cloud-account'),
-              swControlled:!!navigator.serviceWorker?.controller,
-              swRegistrations:navigator.serviceWorker? (await navigator.serviceWorker.getRegistrations()).length:0
+            const shell=await page.evaluate(()=>({
+              version:String(document.querySelector('#versionLink')?.textContent||''),
+              catalogSelector:Boolean(document.querySelector('#catalogFilter')),
+              cardsTab:Boolean(document.querySelector('#libraryCardsTab')),
+              artTab:Boolean(document.querySelector('#libraryArtworkTab')),
+              setFilter:Boolean(document.querySelector('#setFilter')),
+              artistFilter:Boolean(document.querySelector('#artistFilter')),
+              binderButton:Boolean(document.querySelector('#openBinders')),
+              cloudAccount:Boolean(document.querySelector('.cloud-account'))
             }));
             console.log('SHELL',shell);
+            console.log('INITIAL_ERRORS',JSON.stringify(errors));
             if(!/2\.8\.0/.test(shell.version))throw new Error('Expected v2.8.0 staging shell');
             if(shell.catalogSelector)throw new Error('Catalog selector should be removed');
             for(const k of ['cardsTab','artTab','setFilter','artistFilter','binderButton'])if(!shell[k])throw new Error('Missing UI '+k);
-            if(shell.swControlled||shell.swRegistrations)throw new Error('Staging service worker still active');
 
-            // Binder modal sanity.
+            const sw=await page.evaluate(async()=>{
+              if(!('serviceWorker' in navigator))return {supported:false,controlled:false,count:0};
+              let count=0;
+              try{const regs=await navigator.serviceWorker.getRegistrations();count=Number(regs?.length||0);}catch{}
+              return {supported:true,controlled:Boolean(navigator.serviceWorker.controller),count};
+            });
+            console.log('SERVICE_WORKER',sw);
+            if(sw.controlled||sw.count)throw new Error('Staging service worker still active');
+
             await page.click('#openBinders');
             await page.waitForTimeout(400);
             const binderOpen=await page.evaluate(()=>document.querySelector('#binderModal')?.getAttribute('aria-hidden')==='false');
@@ -97,27 +103,25 @@ jobs:
             if(!binderOpen)throw new Error('Binder modal did not open');
             await page.click('#closeBinders');
 
-            // Artwork search: explicitly open the Artwork tab before inspecting images.
             await page.fill('#subject','eevee');
             await page.click('#searchBtn');
             await page.click('#libraryArtworkTab');
             await page.waitForTimeout(8000);
             const art=await page.evaluate(()=>{
-              const imgs=[...document.querySelectorAll('#autoArtworkResults img')];
+              const imgs=Array.from(document.querySelectorAll('#autoArtworkResults img'));
               return {
-                cards:document.querySelectorAll('#autoArtworkResults .auto-art-card').length,
-                loaded:imgs.filter(i=>i.complete&&i.naturalWidth>0).length,
-                broken:imgs.filter(i=>i.complete&&i.naturalWidth===0).length,
-                pending:imgs.filter(i=>!i.complete).length,
-                samples:imgs.slice(0,6).map(i=>({src:i.currentSrc||i.src,w:i.naturalWidth,h:i.naturalHeight,complete:i.complete})),
-                status:document.querySelector('#autoArtworkStatus')?.textContent||''
+                cards:Number(document.querySelectorAll('#autoArtworkResults .auto-art-card').length),
+                loaded:Number(imgs.filter(i=>i.complete&&i.naturalWidth>0).length),
+                broken:Number(imgs.filter(i=>i.complete&&i.naturalWidth===0).length),
+                pending:Number(imgs.filter(i=>!i.complete).length),
+                samples:imgs.slice(0,6).map(i=>({src:String(i.currentSrc||i.src||''),w:Number(i.naturalWidth||0),h:Number(i.naturalHeight||0),complete:Boolean(i.complete)})),
+                status:String(document.querySelector('#autoArtworkStatus')?.textContent||'')
               };
             });
             console.log('ARTWORK',JSON.stringify(art,null,2));
             if(art.cards<10)throw new Error('Expected >=10 artwork cards, got '+art.cards);
             if(art.loaded<10)throw new Error(`Artwork images not actually rendering: loaded=${art.loaded} broken=${art.broken} pending=${art.pending}`);
 
-            // More button should expand the same result set.
             const before=art.cards;
             const moreDisabled=await page.isDisabled('#autoArtworkLoadMore');
             if(!moreDisabled){
@@ -128,41 +132,35 @@ jobs:
               if(after<=before)throw new Error('Artwork More did not append results');
             }
 
-            // Return to cards and verify card search UI remains functional.
             await page.click('#libraryCardsTab');
             await page.waitForTimeout(1000);
             const cardsCount=await page.locator('#cards .card-item').count();
             console.log('CARD_RESULTS',cardsCount);
 
-            // Start unified library build and ensure it progresses without a global red error.
             await page.evaluate(()=>document.querySelector('#syncMasterLibrary')?.click());
             await page.waitForTimeout(18000);
             const lib=await page.evaluate(()=>({
-              errorVisible:!document.querySelector('#runtimeErrorBanner')?.hidden,
-              error:document.querySelector('#runtimeErrorText')?.textContent||'',
-              status:document.querySelector('#masterLibraryStatus')?.textContent||'',
-              progress:document.querySelector('#libraryProgressText')?.textContent||'',
-              pct:document.querySelector('#libraryProgressPercent')?.textContent||''
+              errorVisible:Boolean(document.querySelector('#runtimeErrorBanner')&&!document.querySelector('#runtimeErrorBanner').hidden),
+              error:String(document.querySelector('#runtimeErrorText')?.textContent||''),
+              status:String(document.querySelector('#masterLibraryStatus')?.textContent||''),
+              progress:String(document.querySelector('#libraryProgressText')?.textContent||''),
+              pct:String(document.querySelector('#libraryProgressPercent')?.textContent||'')
             }));
             console.log('LIBRARY',lib);
             if(lib.errorVisible)throw new Error('Global app notice appeared during library build: '+lib.error);
             if(!/Building|Library|catalog|ready/i.test(lib.status+' '+lib.progress))throw new Error('Library build did not start/progress');
 
-            // Mobile preview/navigation sanity.
             await page.click('#mobilePreviewToggle');
             await page.waitForTimeout(500);
             const mobile=await page.evaluate(()=>({
-              enabled:document.body.classList.contains('mobile-lab-enabled')||document.body.className.includes('mobile'),
-              nav:!!document.querySelector('#mobileLabBottomNav'),
-              art:!!document.querySelector('[data-mobile-lab="art"]'),
-              page:!!document.querySelector('[data-mobile-lab="page"]')
+              nav:Boolean(document.querySelector('#mobileLabBottomNav')),
+              art:Boolean(document.querySelector('[data-mobile-lab="art"]')),
+              page:Boolean(document.querySelector('[data-mobile-lab="page"]'))
             }));
             console.log('MOBILE',mobile);
             if(!mobile.nav||!mobile.art||!mobile.page)throw new Error('Mobile navigation missing');
 
-            const api=await page.evaluate(async()=>{
-              const c=await fetch('/api/config',{credentials:'include'});return {status:c.status,ok:c.ok};
-            });
+            const api=await page.evaluate(async()=>{const c=await fetch('/api/config',{credentials:'include'});return {status:Number(c.status),ok:Boolean(c.ok)};});
             console.log('AUTH_API',api);
             if(!api.ok)throw new Error('/api/config failed');
 
