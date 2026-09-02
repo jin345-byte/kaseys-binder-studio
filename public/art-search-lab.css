@@ -1,0 +1,269 @@
+/* v2.7.6 shared Cards / Artwork browser */
+.library.has-browser-tabs{
+  position:relative;
+  display:block!important;
+  min-height:0!important;
+}
+.library-browser-tabs{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px;
+  margin-bottom:8px;
+  padding:5px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:color-mix(in srgb,var(--surface) 90%,transparent);
+}
+.library-browser-tab{
+  position:relative;
+  min-height:38px;
+  border:1px solid transparent;
+  border-radius:9px;
+  background:transparent;
+  color:var(--muted);
+  font-weight:900;
+}
+.library-browser-tab.active{
+  border-color:color-mix(in srgb,var(--accent) 38%,var(--line));
+  background:color-mix(in srgb,var(--accent) 10%,var(--surface2));
+  color:var(--accent);
+}
+.library-tab-count{
+  display:inline-grid;
+  place-items:center;
+  min-width:20px;
+  height:20px;
+  margin-left:5px;
+  padding:0 5px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  color:var(--text);
+  font-size:9px;
+}
+.library[data-library-tab="cards"] .artwork-pane{display:none!important}
+.library[data-library-tab="artwork"] .variant-pane{display:none!important}
+.library[data-library-tab="cards"] .variant-pane,
+.library[data-library-tab="artwork"] .artwork-pane{
+  display:grid!important;
+}
+
+/* Active pane occupies the same browser footprint. */
+@media(min-width:821px){
+  .library.has-browser-tabs{
+    height:calc(100vh - 166px)!important;
+    min-height:680px!important;
+  }
+  .library.has-browser-tabs>.browser-pane{
+    height:calc(100% - 54px)!important;
+    min-height:0!important;
+  }
+  .library[data-library-tab="cards"] .variant-pane{
+    grid-template-rows:auto auto minmax(0,1fr)!important;
+  }
+  .library[data-library-tab="cards"] .cards-viewport{
+    min-height:0!important;
+    height:100%!important;
+    overflow:auto!important;
+  }
+  .library[data-library-tab="artwork"] .artwork-pane{
+    grid-template-rows:auto minmax(0,1.15fr) auto minmax(120px,.55fr)!important;
+  }
+}
+
+/* Matching artwork results */
+.auto-artwork-results-wrap{
+  display:grid;
+  grid-template-rows:auto minmax(0,1fr);
+  gap:6px;
+  min-height:0;
+  padding:7px 0 8px;
+  border-bottom:1px solid color-mix(in srgb,var(--line) 78%,transparent);
+}
+.auto-artwork-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+.auto-artwork-head>div:first-child{
+  display:flex;
+  align-items:baseline;
+  gap:7px;
+  min-width:0;
+}
+.auto-artwork-head small{
+  color:var(--muted);
+  font-size:8px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.auto-artwork-head-actions{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  flex:0 0 auto;
+}
+.auto-artwork-more{
+  min-height:28px;
+  padding:3px 8px;
+  border:1px solid color-mix(in srgb,var(--accent) 42%,var(--line));
+  border-radius:8px;
+  background:color-mix(in srgb,var(--accent) 10%,var(--surface2));
+  color:var(--accent);
+  font-size:9px;
+  font-weight:900;
+}
+.auto-artwork-more:disabled{opacity:.45;cursor:default}
+.auto-artwork-scroll{
+  min-height:0;
+  overflow:auto;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+}
+.auto-artwork-results{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:7px;
+}
+.auto-art-card{
+  display:grid;
+  grid-template-rows:auto auto auto auto auto;
+  gap:4px;
+  min-width:0;
+  padding:5px;
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:color-mix(in srgb,var(--surface2) 88%,transparent);
+}
+.auto-art-card.added{
+  border-color:var(--accent);
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 18%,transparent);
+}
+.auto-art-pick{
+  min-width:0;
+  padding:0;
+  border:0;
+  background:transparent;
+}
+.auto-art-image{
+  position:relative;
+  display:block;
+  aspect-ratio:1/1;
+  overflow:hidden;
+  border-radius:8px;
+  background:#080b10;
+}
+.auto-art-image img{
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+.auto-art-source{
+  position:absolute;
+  left:4px;top:4px;
+  padding:2px 4px;
+  border-radius:5px;
+  background:#000b;
+  color:white;
+  font-size:6.5px;
+  font-weight:900;
+}
+.auto-art-card>strong{
+  font-size:8px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.auto-art-card>small{
+  color:var(--muted);
+  font-size:7px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.auto-art-size{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  align-items:center;
+  gap:4px;
+  color:var(--muted);
+  font-size:7px;
+  font-weight:900;
+}
+.auto-art-size select{
+  width:100%;
+  min-width:0;
+  min-height:27px!important;
+  height:27px!important;
+  padding:1px 4px!important;
+  border:1px solid var(--line);
+  border-radius:7px;
+  background:var(--surface);
+  color:var(--text);
+  font-size:9px!important;
+}
+.auto-art-add{
+  min-height:28px!important;
+  height:28px;
+  padding:2px 5px!important;
+  font-size:8px!important;
+}
+.auto-art-empty{
+  grid-column:1/-1;
+  padding:18px;
+  text-align:center;
+  color:var(--muted);
+  font-size:10px;
+}
+
+/* Mobile / forced preview uses the same shared tabs instead of stacking panes. */
+body.mobile-lab-enabled .library.has-browser-tabs{
+  height:auto!important;
+  min-height:0!important;
+}
+body.mobile-lab-enabled .library-browser-tabs{
+  position:sticky;
+  top:55px;
+  z-index:55;
+  margin:0 0 6px;
+  padding:4px;
+  border-radius:10px;
+}
+body.mobile-lab-enabled .library-browser-tab{
+  min-height:34px;
+  font-size:10px;
+}
+body.mobile-lab-enabled .library.has-browser-tabs>.browser-pane{
+  height:auto!important;
+  min-height:0!important;
+}
+body.mobile-lab-enabled .auto-artwork-scroll{
+  max-height:58vh;
+  overflow:auto!important;
+}
+body.mobile-lab-enabled .auto-artwork-results{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:6px;
+}
+body.mobile-lab-enabled .auto-artwork-head{
+  align-items:flex-start;
+}
+body.mobile-lab-enabled .auto-artwork-head>div:first-child{
+  display:grid;
+  gap:2px;
+}
+body.mobile-lab-enabled .auto-artwork-head small{
+  max-width:230px;
+}
+body.mobile-lab-enabled .auto-art-card{
+  padding:4px;
+}
+body.mobile-lab-enabled .auto-art-size{
+  grid-template-columns:1fr;
+  gap:2px;
+}
+body.mobile-lab-enabled .auto-art-add{
+  min-height:31px!important;
+}
