@@ -1,0 +1,63 @@
+name: Deploy Staging
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: binder-studio-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Migrate and deploy staging
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout staging branch
+        uses: actions/checkout@v4
+        with:
+          ref: staging-ui-auth-test
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify staging config isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "staging-ui-auth-test"
+          grep -q 'kaseys-binder-studio-staging' wrangler.staging.jsonc
+          grep -q 'kaseys-binder-studio-staging-db' wrangler.staging.jsonc
+          grep -q '7f42e214-4995-4240-9044-623a52eeed52' wrangler.staging.jsonc
+          if grep -q 'ea5aaa71-88e3-4bff-b997-7aa9bff3c24d' wrangler.staging.jsonc; then
+            echo 'Production D1 database ID found in staging config. Refusing deployment.'
+            exit 1
+          fi
+
+      - name: Install Wrangler
+        run: npm install --global wrangler@4
+
+      - name: Apply staging D1 migration
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: wrangler d1 execute kaseys-binder-studio-staging-db --remote --file=./migrations/0001_auth_sync.sql --config=wrangler.staging.jsonc
+
+      - name: Deploy staging Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: wrangler deploy --config=wrangler.staging.jsonc
+
+      - name: Deployment summary
+        run: |
+          echo '### Binder Studio staging deployment complete' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Source branch: `staging-ui-auth-test`' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Worker: `kaseys-binder-studio-staging`' >> "$GITHUB_STEP_SUMMARY"
+          echo '- D1: `kaseys-binder-studio-staging-db`' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Production config was not used.' >> "$GITHUB_STEP_SUMMARY"
