@@ -11,28 +11,18 @@
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="styles/v2-visual.css">
 <link rel="stylesheet" href="features/feature-lab.css">
+<link rel="stylesheet" href="art-search-lab.css">
+<link rel="stylesheet" href="styles/mobile-lab.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap">
-  <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#f5d52f">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#f5d52f">
 </head>
 <body data-theme="jolteon">
-<div class="theme-scene" aria-hidden="true">
-  <span class="theme-orb orb-a"></span>
-  <span class="theme-orb orb-b"></span>
-  <span class="theme-orb orb-c"></span>
-  <span class="theme-ribbon ribbon-a"></span>
-  <span class="theme-ribbon ribbon-b"></span>
-</div>
+<div class="theme-scene" aria-hidden="true"><span class="theme-orb orb-a"></span><span class="theme-orb orb-b"></span><span class="theme-orb orb-c"></span><span class="theme-ribbon ribbon-a"></span><span class="theme-ribbon ribbon-b"></span></div>
 <div class="app">
   <div class="top">
-    <div class="brand brand-modern">
-      <div class="k-logo" aria-hidden="true"><span>K</span></div>
-      <div class="brand-copy"><h1>Kasey's Binder Studio</h1></div>
-    </div>
-    <div class="top-actions">
-      <button class="version-link" id="versionLink" type="button" title="Build information">v2.6.0 TEST</button>
-      <button class="btn guided-tour-launch" id="guidedTourLaunch" type="button" title="Show me how Binder Studio works">▶ Guided Tour</button>
-</div>
+    <div class="brand brand-modern"><div class="k-logo" aria-hidden="true"><span>K</span></div><div class="brand-copy"><h1>Kasey's Binder Studio</h1></div></div>
+    <div class="top-actions"><button class="version-link" id="versionLink" type="button" title="Build information">v2.7.6 STAGING</button><button class="btn mobile-preview-toggle" id="mobilePreviewToggle" type="button" aria-pressed="false" title="Force the phone layout in this desktop browser">▣ Mobile Preview</button><button class="btn guided-tour-launch" id="guidedTourLaunch" type="button" title="Show me how Binder Studio works">▶ Guided Tour</button></div>
   </div>
   <section class="controls panel command-deck">
     <label><span>Pokémon or Trainer</span><div class="searchrow"><input id="subject" type="search" placeholder="Try Gardevoir, Pikachu, or Lillie"><button class="btn" id="searchBtn">Search</button></div></label>
@@ -42,174 +32,48 @@
   <nav class="mobile-tabs" id="mobileTabs" aria-label="Mobile Binder Studio sections"><button id="tabLibrary" class="active" type="button">Browse cards & art</button><button id="tabCanvas" type="button">Binder page</button></nav>
   <div class="workspace">
     <aside class="library panel">
+      <nav class="library-browser-tabs" id="libraryBrowserTabs" aria-label="Library browser">
+        <button class="library-browser-tab active" id="libraryCardsTab" data-library-tab="cards" type="button"><span>▤</span> Cards</button>
+        <button class="library-browser-tab" id="libraryArtworkTab" data-library-tab="artwork" type="button"><span>✦</span> Artwork <span class="library-tab-count" id="libraryArtworkTabCount">0</span></button>
+      </nav>
       <section class="browser-pane variant-pane" aria-label="Card variants">
-        <div class="sectionhead">
-          <div>
-            <span class="eyebrow">Matching card variants</span>
-            <h2 id="subjectTitle">Choose a subject</h2>
-          </div>
-          <span class="badge" id="count">0</span>
-        </div>
-
+        <div class="sectionhead"><div><span class="eyebrow">Matching card variants</span><h2 id="subjectTitle">Choose a subject</h2></div><span class="badge" id="count">0</span></div>
         <div class="variant-filters">
-          <label class="catalog-filter">
-            <span>Catalog</span>
-            <select id="catalogFilter" aria-label="Card catalog">
-              <option value="en">English TCG</option>
-              <option value="pocket">Pokémon TCG Pocket</option>
-            </select>
-          </label>
-          <label>
-            <span>Set</span>
-            <div class="set-filter-row"><span class="set-symbol-frame" id="setSymbolFrame" hidden><img id="setSymbolPreview" alt=""></span><select id="setFilter"><option value="">All sets</option></select></div>
-          </label>
-          <label>
-            <span>Artist</span>
-            <select id="artistFilter"><option value="">All artists</option></select>
-          </label>
+          <label class="catalog-filter"><span>Catalog</span><select id="catalogFilter" aria-label="Card catalog"><option value="en">English TCG</option><option value="pocket">Pokémon TCG Pocket</option></select></label>
+          <label><span>Set</span><div class="set-filter-row"><span class="set-symbol-frame" id="setSymbolFrame" hidden><img id="setSymbolPreview" alt=""></span><select id="setFilter"><option value="">All sets</option></select></div></label>
+          <label><span>Artist</span><select id="artistFilter"><option value="">All artists</option></select></label>
           <button class="btn ghost" id="clearArtist" type="button">Clear artist</button>
         </div>
-
-        <div class="cards-viewport" id="cardsViewport">
-          <div class="cards" id="cards">
-            <div class="empty">Type a Pokémon or Trainer name to find alternate printings and artwork.</div>
-          </div>
-        </div>
+        <div class="cards-viewport" id="cardsViewport"><div class="cards" id="cards"><div class="empty">Type a Pokémon or Trainer name to find alternate printings and artwork.</div></div></div>
       </section>
-
       <section class="browser-pane artwork-pane" aria-label="Outside artwork">
-        <div class="arthead">
-          <div>
-            <span class="eyebrow">Outside artwork</span>
-            <h2>Art tray</h2>
-            <small>Add artwork by direct image link or upload.</small>
-          </div>
-          <div class="artactions">
-            <button class="artlink" id="artPokemonLink" type="button" title="Open this Pokémon directly on the Artwork tab">Open Pokémon artwork ↗</button>
-          </div>
-        </div>
-
-        <div class="artadd">
-          <input id="artUrl" type="url" placeholder="Paste a direct HTTPS image link">
-          <select id="newArtSize"></select>
-          <button class="btn" id="addUrl">Add link</button>
-          <label class="btn upload">Upload image<input id="upload" type="file" accept="image/*" multiple></label>
-        </div>
-
+        <div class="arthead"><div><span class="eyebrow">Outside artwork</span><h2>Art tray</h2><small>Add artwork by direct image link or upload.</small></div><div class="artactions"><button class="artlink" id="artPokemonLink" type="button" title="Open this Pokémon directly on the Artwork tab">Open Pokémon artwork ↗</button></div></div>
+        <section class="auto-artwork-results-wrap" id="autoArtworkSection" aria-label="Matching artwork">
+          <div class="auto-artwork-head"><div><span class="eyebrow">Matching artwork</span><small id="autoArtworkStatus">Search a Pokémon to load artwork automatically.</small></div><div class="auto-artwork-head-actions"><span class="badge" id="autoArtworkCount">0</span><button class="auto-artwork-more" id="autoArtworkLoadMore" type="button" title="Load another batch of matching artwork">↻ More</button></div></div>
+          <div class="auto-artwork-scroll" id="autoArtworkScroll"><div class="auto-artwork-results" id="autoArtworkResults"></div></div>
+        </section>
+        <div class="artadd"><input id="artUrl" type="url" placeholder="Paste a direct HTTPS image link"><select id="newArtSize"></select><button class="btn" id="addUrl">Add link</button><label class="btn upload">Upload image<input id="upload" type="file" accept="image/*" multiple></label></div>
         <div class="arts" id="arts"></div>
       </section>
     </aside>
-    <section class="canvas panel" id="canvas">
-      <div class="canvas-workspace">
-        <div class="grid l3x3" id="grid"></div>
-        <aside class="canvas-side-controls" aria-label="Live binder controls">
-          <div class="control-module binder-heading-module"><div class="canvashead"><div><span class="eyebrow">Live binder page</span><h2 id="canvasTitle">Untitled composition</h2></div><span class="status">Drag on desktop · tap a card, then tap a pocket on iPhone</span></div>
-          <div class="editor-page-nav" id="editorPageNav"><button class="page-arrow" id="editorPrev" type="button" aria-label="Previous binder page">‹</button><div class="page-numbers" id="editorPageNumbers" aria-label="Binder pages"></div><button class="page-arrow" id="editorNext" type="button" aria-label="Next binder page">›</button></div></div>
-          <section class="library-setup-card control-module library-module" id="librarySetupCard">
-          <span class="library-setup-kicker">First-time setup</span>
-          <button type="button" class="library-build-cta needs-build" id="syncMasterLibrary">
-            <span class="library-build-icon">◆</span>
-            <span class="library-build-copy">
-              <strong id="libraryBuildLabel">Build Card Library</strong>
-              <small id="libraryBuildHint">Press this first</small>
-            </span>
-          </button>
-        
-          <div class="library-setup-progress" id="librarySetupProgress">
-            <div class="library-progress-head">
-              <strong id="masterLibraryStatus">Master Library not synced</strong>
-              <span class="library-progress-percent" id="libraryProgressPercent">0%</span>
-            </div>
-            
-            <div class="pikachu-progress" id="libraryProgressBar" aria-hidden="true">
-              <div class="pikachu-progress-fill" id="libraryProgressFill" style="width:0%">
-                <span class="pikachu-bolt">⚡</span>
-              </div>
-            </div>
-            <div class="library-progress-foot">
-              <small id="libraryProgressText">Build the library to unlock the full card catalog.</small>
-              <small id="masterLibraryHealth" class="master-health"></small>
-            </div>
-          </div>
-</section>
-<div class="selectedbar control-module selected-module" id="selected"><span><strong>Nothing selected</strong><small>Choose a card or artwork from the tray.</small></span></div>
-          <div class="colors control-module appearance-module"><label class="color-control"><span class="color-icon binder-icon">B</span><span class="color-copy"><strong>Binder</strong><small>Outer fabric</small></span><input id="binderColor" type="color" value="#111827" aria-label="Binder color"></label><label class="color-control"><span class="color-icon page-icon">P</span><span class="color-copy"><strong>Page</strong><small>Page material</small></span><input id="pageColor" type="color" value="#080b12" aria-label="Page color"></label><label class="color-control"><span class="color-icon sleeve-icon">S</span><span class="color-copy"><strong>Sleeves</strong><small>Card surround</small></span><input id="sleeveColor" type="color" value="#334155" aria-label="Sleeve color"></label></div>
-        </aside>
-      </div>
-    </section>
+    <section class="canvas panel" id="canvas"><div class="canvas-workspace"><div class="grid l3x3" id="grid"></div><aside class="canvas-side-controls" aria-label="Live binder controls">
+      <div class="control-module binder-heading-module"><div class="canvashead"><div><span class="eyebrow">Live binder page</span><h2 id="canvasTitle">Untitled composition</h2></div><span class="status">Drag on desktop · tap a card, then tap a pocket on iPhone</span></div><div class="editor-page-nav" id="editorPageNav"><button class="page-arrow" id="editorPrev" type="button" aria-label="Previous binder page">‹</button><div class="page-numbers" id="editorPageNumbers" aria-label="Binder pages"></div><button class="page-arrow" id="editorNext" type="button" aria-label="Next binder page">›</button></div></div>
+      <section class="library-setup-card control-module library-module" id="librarySetupCard"><span class="library-setup-kicker">First-time setup</span><button type="button" class="library-build-cta needs-build" id="syncMasterLibrary"><span class="library-build-icon">◆</span><span class="library-build-copy"><strong id="libraryBuildLabel">Build Card Library</strong><small id="libraryBuildHint">Press this first</small></span></button><div class="library-setup-progress" id="librarySetupProgress"><div class="library-progress-head"><strong id="masterLibraryStatus">Master Library not synced</strong><span class="library-progress-percent" id="libraryProgressPercent">0%</span></div><div class="pikachu-progress" id="libraryProgressBar" aria-hidden="true"><div class="pikachu-progress-fill" id="libraryProgressFill" style="width:0%"><span class="pikachu-bolt">⚡</span></div></div><div class="library-progress-foot"><small id="libraryProgressText">Build the library to unlock the full card catalog.</small><small id="masterLibraryHealth" class="master-health"></small></div></div></section>
+      <div class="mobile-page-actions" id="mobilePageActions" aria-label="Mobile page actions"><button class="btn" id="mobilePageBinders" type="button">Binders</button><button class="btn" id="mobilePagePrint" type="button">Print</button><button class="btn" id="mobilePageTiles" type="button">Tiles</button><button class="btn" id="mobilePageTour" type="button">Tour</button><button class="btn ghost" id="mobilePageClear" type="button">Clear</button></div>
+      <div class="selectedbar control-module selected-module" id="selected"><span><strong>Nothing selected</strong><small>Choose a card or artwork from the tray.</small></span></div>
+      <div class="colors control-module appearance-module"><label class="color-control"><span class="color-icon binder-icon">B</span><span class="color-copy"><strong>Binder</strong><small>Outer fabric</small></span><input id="binderColor" type="color" value="#111827" aria-label="Binder color"></label><label class="color-control"><span class="color-icon page-icon">P</span><span class="color-copy"><strong>Page</strong><small>Page material</small></span><input id="pageColor" type="color" value="#080b12" aria-label="Page color"></label><label class="color-control"><span class="color-icon sleeve-icon">S</span><span class="color-copy"><strong>Sleeves</strong><small>Card surround</small></span><input id="sleeveColor" type="color" value="#334155" aria-label="Sleeve color"></label></div>
+    </aside></div></section>
   </div>
 </div>
-<div class="binder-modal" id="binderModal" aria-hidden="true">
-  <div class="binder-shell panel">
-    <header class="binder-modal-head"><div><span class="eyebrow">Saved locally in this extension</span><h2>My Binders</h2></div><button class="modal-close" id="closeBinders" aria-label="Close binder library">×</button></header>
-    <div class="binder-toolbar"><button class="btn" id="newBinder">+ New binder</button><button class="btn ghost" id="newPage">+ New page</button><button class="btn ghost" id="renameBinder">Rename binder</button><button class="btn ghost" id="deleteBinder">Delete binder</button><span class="binder-status" id="binderStatus">Loading…</span></div>
-    <div class="binder-list" id="binderList"></div>
-    <div class="page-browser" id="pageBrowser"></div>
-  </div>
-</div>
-<div class="binder-viewer" id="binderViewer" aria-hidden="true">
-  <div class="viewer-shell panel"><header class="viewer-head"><div><span class="eyebrow">Binder viewer</span><h2 id="viewerTitle">Binder</h2></div><button class="modal-close" id="closeViewer">×</button></header><div class="viewer-nav"><button class="btn ghost" id="viewerPrev">‹ Previous</button><div class="viewer-pages"><span id="viewerCounter">Page 1</span><div class="page-numbers viewer-page-numbers" id="viewerPageNumbers" aria-label="Viewer page numbers"></div></div><button class="btn ghost" id="viewerNext">Next ›</button><button class="btn" id="viewerEdit">Edit this page</button></div><div id="viewerPage" class="viewer-page"></div></div>
-</div><div class="toast" id="toast"></div>
-
-
-<!-- v2.2 Feature Lab -->
-<div class="feature-drawer" id="cardDetailsDrawer" aria-hidden="true">
-  <div class="feature-drawer-shell">
-    <header class="feature-drawer-head">
-      <div><span class="eyebrow">Card inspector</span><h2 id="cardDetailsTitle">Card details</h2></div>
-      <button class="btn feature-close" id="cardDetailsClose" type="button">×</button>
-    </header>
-    <div class="card-details-body" id="cardDetailsBody"></div>
-  </div>
-</div>
-
-
-
-
-<div class="hover-card-preview" id="hoverCardPreview" hidden></div>
-<div class="search-suggestions" id="searchSuggestions" hidden></div>
-
-<div class="build-info-modal" id="buildInfoModal" hidden>
-  <div class="build-info-shell" role="dialog" aria-modal="true" aria-labelledby="buildInfoTitle">
-    <div class="build-info-head">
-      <div>
-        <span class="eyebrow">Build information</span>
-        <h2 id="buildInfoTitle">Kasey’s Binder Studio v2.6.0 Feature Lab</h2>
-      </div>
-      <button class="btn build-info-close" id="buildInfoClose" type="button">×</button>
-    </div>
-    <div class="build-info-content">
-      <section><strong>v2.2.0 Feature Lab — TEST BUILD</strong><p>A dedicated test branch containing the next major workflow and visual features before they are considered stable.</p></section>
-      <section><strong>Card workflow</strong><p>The interface now launches the fixed Gardevoir walkthrough directly from a glowing Guided Tour button. The old Help Center and visible theme selector were removed; the Jolteon theme remains fixed.</p></section>
-      <section><strong>Binder workflow</strong><p>Animated page changes, binder overview upgrades, duplicate pages and drag-to-reorder pages. Undo/Redo and Templates were removed from this test branch.</p></section>
-      <section><strong>Theme workflow</strong><p>Jolteon · Voltage Lab is now the only active theme for this test branch. The other Eeveelution themes have been removed temporarily.</p></section>
-      <section><strong>Architecture</strong><p>Experimental functionality is isolated into Cards, Catalog and Binder modules so the core editor remains easier to audit.</p></section>
-    </div>
-  </div>
-</div>
-
-<div id="runtimeErrorBanner" class="runtime-error-banner" hidden>
-    <div><strong>Library error</strong><small id="runtimeErrorText"></small></div>
-    <button type="button" id="runtimeErrorDismiss">×</button>
-  </div>
-<script src="app.js"></script>
-<script src="features/cards-lab.js"></script>
-<script src="features/catalog-lab.js"></script>
-<script src="features/binder-lab.js"></script>
-
-<div class="guided-demo" id="guidedDemo" hidden aria-hidden="true">
-  <div class="guided-demo-shade"></div>
-  <div class="guided-demo-card" id="guidedDemoCard" role="dialog" aria-live="polite">
-<small id="guidedDemoStep">STEP 1 OF 10</small>
-    <h3 id="guidedDemoTitle">Welcome</h3>
-    <p id="guidedDemoText"></p>
-    <div class="guided-demo-actions">
-<span></span>
-<button class="btn" id="guidedDemoNext" type="button">Next</button>
-    </div>
-  </div>
-</div>
-
+<div class="binder-modal" id="binderModal" aria-hidden="true"><div class="binder-shell panel"><header class="binder-modal-head"><div><span class="eyebrow">Saved on this device · cloud synced when signed in</span><h2>My Binders</h2></div><button class="modal-close" id="closeBinders" aria-label="Close binder library">×</button></header><div class="binder-toolbar"><button class="btn" id="newBinder">+ New binder</button><button class="btn ghost" id="newPage">+ New page</button><button class="btn ghost" id="renameBinder">Rename binder</button><button class="btn ghost" id="deleteBinder">Delete binder</button><span class="binder-status" id="binderStatus">Loading…</span></div><div class="binder-list" id="binderList"></div><div class="page-browser" id="pageBrowser"></div></div></div>
+<div class="binder-viewer" id="binderViewer" aria-hidden="true"><div class="viewer-shell panel"><header class="viewer-head"><div><span class="eyebrow">Binder viewer</span><h2 id="viewerTitle">Binder</h2></div><button class="modal-close" id="closeViewer">×</button></header><div class="viewer-nav"><button class="btn ghost" id="viewerPrev">‹ Previous</button><div class="viewer-pages"><span id="viewerCounter">Page 1</span><div class="page-numbers viewer-page-numbers" id="viewerPageNumbers" aria-label="Viewer page numbers"></div></div><button class="btn ghost" id="viewerNext">Next ›</button><button class="btn" id="viewerEdit">Edit this page</button></div><div id="viewerPage" class="viewer-page"></div></div></div><div class="toast" id="toast"></div>
+<div class="feature-drawer" id="cardDetailsDrawer" aria-hidden="true"><div class="feature-drawer-shell"><header class="feature-drawer-head"><div><span class="eyebrow">Card inspector</span><h2 id="cardDetailsTitle">Card details</h2></div><button class="btn feature-close" id="cardDetailsClose" type="button">×</button></header><div class="card-details-body" id="cardDetailsBody"></div></div></div>
+<div class="hover-card-preview" id="hoverCardPreview" hidden></div><div class="search-suggestions" id="searchSuggestions" hidden></div>
+<div class="build-info-modal" id="buildInfoModal" hidden><div class="build-info-shell" role="dialog" aria-modal="true" aria-labelledby="buildInfoTitle"><div class="build-info-head"><div><span class="eyebrow">Build information</span><h2 id="buildInfoTitle">Kasey’s Binder Studio v2.7.6 Staging</h2></div><button class="btn build-info-close" id="buildInfoClose" type="button">×</button></div><div class="build-info-content"><section><strong>v2.7.6 Staging</strong><p>Cards and artwork share one browser space with automatic artwork search, slot sizing, mobile navigation and cloud-sync compatibility testing.</p></section></div></div></div>
+<div id="runtimeErrorBanner" class="runtime-error-banner" hidden><div><strong>Library error</strong><small id="runtimeErrorText"></small></div><button type="button" id="runtimeErrorDismiss">×</button></div>
+<script src="app.js"></script><script src="features/cards-lab.js"></script><script src="features/catalog-lab.js"></script><script src="features/binder-lab.js"></script>
+<div class="guided-demo" id="guidedDemo" hidden aria-hidden="true"><div class="guided-demo-shade"></div><div class="guided-demo-card" id="guidedDemoCard" role="dialog" aria-live="polite"><small id="guidedDemoStep">STEP 1 OF 10</small><h3 id="guidedDemoTitle">Welcome</h3><p id="guidedDemoText"></p><div class="guided-demo-actions"><span></span><button class="btn" id="guidedDemoNext" type="button">Next</button></div></div></div>
 <script src="features/help-lab.js"></script>
-  <script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(console.error));}</script>
+<nav class="mobile-lab-bottom-nav" id="mobileLabBottomNav" aria-label="Phone navigation"><button class="mobile-lab-nav-btn active" data-mobile-lab="cards" type="button"><span>▤</span>Cards</button><button class="mobile-lab-nav-btn" data-mobile-lab="page" type="button"><span>▦</span>Page</button><button class="mobile-lab-nav-btn" data-mobile-lab="art" type="button"><span>✦</span>Art</button></nav>
+<script src="features/art-search-lab.js"></script><script src="features/mobile-lab.js"></script><script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(console.error));}</script>
 </body></html>
