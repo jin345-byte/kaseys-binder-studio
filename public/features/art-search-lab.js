@@ -1,4 +1,4 @@
-/* Kasey's Binder Studio v2.7.7 — tabbed card/art browser + direct safe fan-art search */
+/* Kasey's Binder Studio v2.7.8 — tabbed card/art browser + same-origin fan-art cache */
 (function(){
   const subject=document.querySelector('#subject');
   const searchBtn=document.querySelector('#searchBtn');
@@ -8,22 +8,22 @@
   const tabs=document.querySelector('#libraryBrowserTabs');
   const cardsTab=document.querySelector('#libraryCardsTab');
   const artworkTab=document.querySelector('#libraryArtworkTab');
-
   const grid=document.querySelector('#autoArtworkResults');
   const status=document.querySelector('#autoArtworkStatus');
   const count=document.querySelector('#autoArtworkCount');
   const tabCount=document.querySelector('#libraryArtworkTabCount');
   const moreBtn=document.querySelector('#autoArtworkLoadMore');
-
   if(!subject||!library||!variantPane||!artworkPane||!tabs||!grid)return;
 
   const SIZE_OPTIONS=[['1x1','1×1'],['1x2','1×2'],['2x1','2×1'],['3x1','3×1'],['2x2','2×2'],['3x3','3×3']];
+  const PAGE_SIZE=20;
   const cache=new Map();
   let controller=null,debounce=null,requestSerial=0,activeTab='cards',lastQuery='';
   library.classList.add('has-browser-tabs');
 
   function cleanName(raw){return String(raw||'').trim().replace(/\s+(ex|gx|vmax|vstar|v-union|v|break|lv\.?\s*x|star)$/i,'').trim();}
-  function booruTag(raw){return cleanName(raw).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[’']/g,'').replace(/[^a-z0-9♀♂._-]+/g,'_').replace(/^_+|_+$/g,'');}
+  function booruTag(raw){return cleanName(raw).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[’']/g,'').replace(/[^a-z0-9♀♂._-]+/g,'_').replace(/^-+|-+$/g,'').replace(/^_+|_+$/g,'');}
+  function cacheKey(raw){return booruTag(raw).replace(/-/g,'_');}
   function safeUrl(v){v=String(v||'').trim();return /^https:\/\//i.test(v)?v:'';}
   function html(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   function fitFor(w,h){w=Number(w)||1;h=Number(h)||1;const r=w/h;if(r>=2.15)return '3x1';if(r>=1.35)return '2x1';if(r<=.62)return '1x2';return '1x1';}
@@ -54,7 +54,7 @@
     const slug=(typeof pokemonSpeciesSlug==='function'?pokemonSpeciesSlug(cleanName(raw)):cleanName(raw).toLowerCase().replace(/\s+/g,'-'));
     if(!slug)return [];
     try{
-      const r=await fetch('https://pokeapi.co/api/v2/pokemon/'+encodeURIComponent(slug),{signal,headers:{Accept:'application/json'}});
+      const r=await fetch('https://pokeapi.co/api/v2/pokemon/'+encodeURIComponent(slug),{signal,headers:{Accept:'application/json'},cache:'no-store'});
       if(!r.ok)return [];
       const d=await r.json();
       const official=d?.sprites?.other?.['official-artwork']||{};
@@ -63,22 +63,22 @@
     }catch(e){if(e?.name==='AbortError')throw e;return [];}
   }
 
-  async function fetchFanArt(raw,page,signal){
-    const tag=booruTag(raw);
-    if(!tag)return [];
-    const params=new URLSearchParams({limit:'40',page:String(Math.max(0,page||0)+1),tags:`${tag} rating:g`});
+  async function fetchFanCache(raw,signal){
+    const key=cacheKey(raw);
+    if(!key)return [];
     try{
-      const r=await fetch('https://safebooru.donmai.us/posts.json?'+params.toString(),{signal,mode:'cors',headers:{Accept:'application/json'}});
-      if(!r.ok)throw new Error('Fan-art provider HTTP '+r.status);
-      const rows=await r.json();
-      if(!Array.isArray(rows))return [];
+      const r=await fetch('/art-cache/'+encodeURIComponent(key)+'.json',{signal,headers:{Accept:'application/json'},cache:'no-store'});
+      if(r.status===404)return [];
+      if(!r.ok)throw new Error('Artwork cache HTTP '+r.status);
+      const payload=await r.json();
+      const rows=Array.isArray(payload)?payload:(Array.isArray(payload?.results)?payload.results:[]);
       return rows.map((p,i)=>{
-        const file=safeUrl(p.large_file_url||p.file_url||p.preview_file_url);
-        const thumb=safeUrl(p.preview_file_url||p.large_file_url||p.file_url)||file;
+        const file=safeUrl(p.url||p.file_url||p.large_file_url||p.preview_file_url);
+        const thumb=safeUrl(p.thumb||p.preview_file_url||p.url)||file;
         if(!file)return null;
-        return {id:'fan-'+(p.id||`${page}-${i}`),url:file,thumb,title:cleanName(raw)+' fan art',artist:'Community artwork',source:'Safe Donmai',width:Number(p.image_width)||0,height:Number(p.image_height)||0,fit:fitFor(p.image_width,p.image_height),official:false};
+        return {id:'fan-'+(p.id||`${key}-${i}`),url:file,thumb,title:cleanName(raw)+' fan art',artist:p.artist||'Community artwork',source:p.source||'Fan art cache',width:Number(p.width||p.image_width)||0,height:Number(p.height||p.image_height)||0,fit:fitFor(p.width||p.image_width,p.height||p.image_height),official:false};
       }).filter(Boolean);
-    }catch(e){if(e?.name==='AbortError')throw e;return [];}
+    }catch(e){if(e?.name==='AbortError')throw e;console.warn('Fan-art cache load failed',key,e);return [];}
   }
 
   function render(rows,raw){
@@ -102,17 +102,23 @@
     const raw=subject.value.trim(),q=cleanName(raw).toLowerCase();
     if(q.length<2){lastQuery='';grid.innerHTML='';count.textContent='0';tabCount.textContent='0';status.textContent='Search a Pokémon to load artwork automatically.';moreBtn.disabled=true;return;}
     let entry=cache.get(q);
-    if(!entry||force&&!more){entry={rows:[],page:-1,officialLoaded:false};cache.set(q,entry);}
-    if(!more&&!force&&q===lastQuery&&entry.rows.length){render(entry.rows,raw);return;}
+    if(!entry||force&&!more){entry={official:[],fan:[],visibleFan:0,loaded:false};cache.set(q,entry);}
+    if(!more&&!force&&q===lastQuery&&entry.loaded){render(dedupe([...entry.official,...entry.fan.slice(0,entry.visibleFan)]),raw);return;}
     lastQuery=q;controller?.abort();controller=new AbortController();const serial=++requestSerial;
     moreBtn.disabled=true;moreBtn.textContent=more?'Loading…':'↻ More';status.textContent=more?`Loading more ${cleanName(raw)} artwork…`:'Finding official and fan artwork…';
     try{
-      if(!entry.officialLoaded){const official=await fetchOfficial(raw,controller.signal);if(serial!==requestSerial)return;entry.rows=dedupe([...entry.rows,...official]);entry.officialLoaded=true;}
-      const nextPage=more?entry.page+1:0;
-      const fan=await fetchFanArt(raw,nextPage,controller.signal);if(serial!==requestSerial)return;
-      entry.page=nextPage;entry.rows=dedupe([...entry.rows,...fan]);cache.set(q,entry);render(entry.rows,raw);
-      status.textContent=fan.length?`${entry.rows.length} artwork results loaded · press ↻ More for another batch`:`${entry.rows.length} results loaded · no additional artwork returned`;
-      moreBtn.disabled=fan.length===0;moreBtn.textContent='↻ More';
+      if(!entry.loaded){
+        const [official,fan]=await Promise.all([fetchOfficial(raw,controller.signal),fetchFanCache(raw,controller.signal)]);
+        if(serial!==requestSerial)return;
+        entry.official=official;entry.fan=dedupe(fan);entry.visibleFan=Math.min(PAGE_SIZE,entry.fan.length);entry.loaded=true;
+      }else if(more){
+        entry.visibleFan=Math.min(entry.fan.length,entry.visibleFan+PAGE_SIZE);
+      }
+      const rows=dedupe([...entry.official,...entry.fan.slice(0,entry.visibleFan)]);
+      cache.set(q,entry);render(rows,raw);
+      const remaining=Math.max(0,entry.fan.length-entry.visibleFan);
+      status.textContent=entry.fan.length?`${rows.length} artwork results shown${remaining?` · ${remaining} more available`:''}`:`${rows.length} official results · fan-art cache not available yet`;
+      moreBtn.disabled=remaining===0;moreBtn.textContent='↻ More';
     }catch(e){if(e?.name==='AbortError')return;status.textContent='Artwork search failed. Card results are unaffected.';moreBtn.disabled=false;moreBtn.textContent='↻ Retry';}
   }
 
