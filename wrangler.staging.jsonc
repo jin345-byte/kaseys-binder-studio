@@ -11,7 +11,7 @@
     {
       "binding": "DB",
       "database_name": "kaseys-binder-studio-staging-db",
-      "database_id": "REPLACE_WITH_STAGING_D1_DATABASE_ID"
+      "database_id": "7f42e214-4995-4240-9044-623a52eeed52"
     }
   ],
   "vars": {
