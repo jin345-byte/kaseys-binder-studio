@@ -115,14 +115,21 @@ const KBSCatalogLab=(()=>{
     return buildPromise;
   }
 
+  function rebuildUnifiedFilters(){
+    const sets=new Map();
+    for(const c of masterCards)if(c?.setId&&!sets.has(c.setId))sets.set(c.setId,c.setName||c.setId);
+    masterSetOptions=[...sets].map(([id,name])=>({id,name})).sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
+    renderSetFilter();
+    loadArtists();
+  }
+
   function mergePocketIntoMaster(){
     const english=masterCards.filter(c=>c?.catalog!=='pocket'&&c?.source!=='tcgdex-pocket');
     masterCards=[...english,...pocketCards];
     masterCardIndex=new Map(masterCards.map((c,i)=>[c.id,i]));
     globalThis.KBSCatalogCards=masterCards;
     masterReady=masterCards.length>0;
-    renderSetFilter();
-    loadArtists();
+    rebuildUnifiedFilters();
     computeMasterHealth();
     renderCards();
   }
@@ -144,7 +151,6 @@ const KBSCatalogLab=(()=>{
 
   const coreBuildMasterLibrary=buildMasterLibrary;
   buildMasterLibrary=async function(){
-    // Build the reliable English catalog first. Pocket is additive and may never invalidate English.
     await coreBuildMasterLibrary();
     try{
       await buildPocket();
@@ -166,15 +172,13 @@ const KBSCatalogLab=(()=>{
     if(label)label.textContent=englishReady&&pocketState.ready?'Unified Library Ready':'Build Card Library';
     if(hint){
       if(englishReady&&pocketState.ready)hint.textContent=`${total.toLocaleString()} cards · English + Pocket`;
-      else if(englishReady&&pocketState.error)hint.textContent=`English ready · Pocket will retry later`;
+      else if(englishReady&&pocketState.error)hint.textContent='English ready · Pocket will retry later';
       else hint.textContent=`English ${englishCount.toLocaleString()} · Pocket ${pocketCards.length.toLocaleString()}`;
     }
   };
 
-  // Set symbols only exist for the English web image source.
   globalThis.KBSIsPocketSet=id=>String(id||'').startsWith('pocket:');
 
   openDb().then(loadCache).then(()=>updateLibrarySetupButton().catch(()=>{})).catch(e=>console.warn('Pocket cache unavailable',e));
-
   return{getCards:()=>masterCards,buildPocket,get pocketState(){return {...pocketState}}};
 })();
