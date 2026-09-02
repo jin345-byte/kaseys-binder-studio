@@ -1,0 +1,20 @@
+{
+  "name": "kaseys-binder-studio-staging",
+  "main": "src/staging-worker.js",
+  "compatibility_date": "2026-08-28",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "kaseys-binder-studio-staging-db",
+      "database_id": "REPLACE_WITH_STAGING_D1_DATABASE_ID"
+    }
+  ],
+  "vars": {
+    "GOOGLE_CLIENT_ID": "666882296502-0jg87086n0vr39cd5guef38pg66toter.apps.googleusercontent.com"
+  }
+}
