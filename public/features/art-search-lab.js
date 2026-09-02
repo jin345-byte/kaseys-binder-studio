@@ -1,4 +1,4 @@
-/* Kasey's Binder Studio v2.7.6 — tabbed card/art browser + paged artwork search */
+/* Kasey's Binder Studio v2.7.6a — tabbed card/art browser + paged artwork search */
 (function(){
   const subject=document.querySelector('#subject');
   const searchBtn=document.querySelector('#searchBtn');
@@ -111,17 +111,15 @@
       });
       if(!r.ok)return [];
       const d=await r.json();
-      const other=d?.sprites?.other||{};
+      const official=d?.sprites?.other?.['official-artwork']||{};
       const candidates=[
-        ['Official artwork',other?.['official-artwork']?.front_default],
-        ['Official shiny',other?.['official-artwork']?.front_shiny],
-        ['Pokémon HOME',other?.home?.front_default],
-        ['Dream World',other?.dream_world?.front_default]
+        ['Official artwork',official.front_default],
+        ['Official shiny artwork',official.front_shiny]
       ];
       return candidates.filter(([,u])=>safeUrl(u)).map(([label,url],i)=>({
         id:'official-'+slug+'-'+i,url,thumb:url,title:label,
-        artist:'Official Pokémon artwork',source:'PokéAPI',
-        width:1,height:1,fit:'1x1',official:true
+        artist:'Official Pokémon artwork',source:'PokéAPI · Official artwork',
+        width:475,height:475,fit:'1x1',official:true
       }));
     }catch(e){
       if(e?.name==='AbortError')throw e;
