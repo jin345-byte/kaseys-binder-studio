@@ -1,0 +1,102 @@
+name: Rebuild Safebooru Art Cache
+
+on:
+  push:
+    branches: [staging-ui-auth-test]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rebuild-safebooru-art-cache
+  cancel-in-progress: true
+
+jobs:
+  rebuild:
+    if: ${{ !contains(github.event.head_commit.message, '[art-cache-built]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: staging-ui-auth-test
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build direct-renderable Safebooru cache
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os, time, urllib.parse, urllib.request
+          UA='Kaseys-Binder-Studio-Safebooru-Cache/2.8.2'
+          OUT='public/art-cache'; os.makedirs(OUT,exist_ok=True)
+          def get_json(url,retries=4):
+              last=None
+              for attempt in range(retries+1):
+                  try:
+                      req=urllib.request.Request(url,headers={'User-Agent':UA,'Accept':'application/json','Cache-Control':'no-cache'})
+                      with urllib.request.urlopen(req,timeout=30) as r:return json.loads(r.read().decode('utf-8','replace'))
+                  except Exception as e:
+                      last=e
+                      if attempt<retries: time.sleep(min(1.0*(2**attempt),8))
+              raise last
+          species=get_json('https://pokeapi.co/api/v2/pokemon-species?limit=2000').get('results',[])
+          names=[x.get('name','') for x in species if x.get('name')]
+          def key(name):return name.lower().replace('-','_')
+          def candidates(name):
+              vals=[key(name),name.lower()]
+              out=[]
+              for v in vals:
+                  if v and v not in out:out.append(v)
+              return out
+          def normalize(posts):
+              rows=[]; seen=set()
+              for p in posts if isinstance(posts,list) else []:
+                  directory=str(p.get('directory','')).strip(); image=str(p.get('image','')).strip()
+                  constructed=f'https://safebooru.org/images/{urllib.parse.quote(directory)}/{urllib.parse.quote(image)}' if directory and image else ''
+                  thumb_name='thumbnail_'+image if image else ''
+                  constructed_thumb=f'https://safebooru.org/thumbnails/{urllib.parse.quote(directory)}/{urllib.parse.quote(thumb_name)}' if directory and thumb_name else ''
+                  url=p.get('file_url') or p.get('sample_url') or constructed
+                  thumb=p.get('preview_url') or p.get('sample_url') or constructed_thumb or url
+                  if not isinstance(url,str) or not url.startswith('https://safebooru.org/'):continue
+                  if url in seen:continue
+                  seen.add(url)
+                  rows.append({'id':str(p.get('id') or ''),'url':url,'thumb':thumb if isinstance(thumb,str) and thumb.startswith('https://safebooru.org/') else url,'width':int(p.get('width') or 0),'height':int(p.get('height') or 0),'source':'Safebooru fan art'})
+              return rows
+          def fetch_rows(name):
+              best=[];used=''
+              for tag in candidates(name):
+                  params=urllib.parse.urlencode({'page':'dapi','s':'post','q':'index','json':'1','limit':'40','pid':'0','tags':tag})
+                  try:payload=get_json('https://safebooru.org/index.php?'+params,retries=3)
+                  except Exception as e:
+                      print('WARN',name,tag,repr(e));continue
+                  posts=payload if isinstance(payload,list) else (payload.get('post',[]) if isinstance(payload,dict) else [])
+                  rows=normalize(posts)
+                  if len(rows)>len(best):best,used=rows,tag
+                  if len(best)>=20:break
+              return best[:40],used
+          counts={};total=0
+          for i,name in enumerate(names,1):
+              rows,tag=fetch_rows(name);k=key(name);counts[k]=len(rows);total+=len(rows)
+              with open(os.path.join(OUT,k+'.json'),'w',encoding='utf-8') as f:json.dump({'pokemon':name,'tag':tag,'results':rows},f,separators=(',',':'))
+              if i%25==0 or i==len(names):print('PROGRESS',i,'/',len(names),'rows',total)
+              time.sleep(.10)
+          required=['eevee','pikachu','gardevoir','charizard','umbreon']
+          print('REQUIRED',{x:counts.get(x,0) for x in required})
+          weak=[x for x in required if counts.get(x,0)<10]
+          if weak:raise SystemExit('Required caches weak: '+','.join(weak))
+          with open(os.path.join(OUT,'index.json'),'w',encoding='utf-8') as f:json.dump({'provider':'safebooru','species':len(names),'artworkRows':total,'counts':counts,'generatedAt':int(time.time())},f,separators=(',',':'))
+          print('PASS',len(names),'species',total,'rows')
+          PY
+      - name: Commit rebuilt cache
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/art-cache
+          if git diff --cached --quiet; then
+            echo 'Cache already current'
+          else
+            git commit -m 'Rebuild Safebooru artwork cache [art-cache-built]'
+            git push origin HEAD:staging-ui-auth-test
+          fi
