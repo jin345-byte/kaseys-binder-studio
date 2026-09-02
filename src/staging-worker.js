@@ -2,6 +2,7 @@ import productionWorker from './worker.js';
 
 const CLOUD_CSS = '<link rel="stylesheet" href="/features/cloud-sync.css">';
 const CLOUD_JS = '<script src="/features/cloud-sync.js"></script>';
+const ART_PROXY_JS = '<script src="/features/art-search-proxy.js"></script>';
 
 function isHtmlRequest(request, response) {
   if (request.method !== 'GET') return false;
@@ -128,6 +129,12 @@ export default {
     let html = await response.text();
     if (!html.includes('features/cloud-sync.css')) {
       html = html.replace('</head>', `  ${CLOUD_CSS}\n</head>`);
+    }
+    if (!html.includes('features/art-search-proxy.js')) {
+      html = html.replace(
+        '<script src="features/art-search-lab.js"></script>',
+        `  ${ART_PROXY_JS}\n<script src="features/art-search-lab.js"></script>`
+      );
     }
     if (!html.includes('features/cloud-sync.js')) {
       html = html.replace('</body>', `  ${CLOUD_JS}\n</body>`);
