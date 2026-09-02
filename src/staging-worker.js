@@ -53,7 +53,7 @@ async function fetchDanbooru(tag, page) {
     const params = new URLSearchParams({
       limit: '40',
       page: String(page + 1),
-      tags: `${q} rating:general`
+      tags: `${q} rating:g`
     });
     try {
       const r = await fetch(`https://danbooru.donmai.us/posts.json?${params.toString()}`, {
