@@ -1,0 +1,82 @@
+name: Test Staging Browser
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null
+      - name: Exercise staging in Chromium
+        shell: bash
+        run: |
+          node <<'JS'
+          const { chromium } = require('playwright');
+          const STAGING='https://kaseys-binder-studio-staging.jin345.workers.dev';
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const ctx=await browser.newContext();
+            const page=await ctx.newPage();
+            const interesting=[];
+            const errors=[];
+            page.on('console',m=>{ if(m.type()==='error') errors.push('CONSOLE '+m.text()); });
+            page.on('pageerror',e=>errors.push('PAGEERROR '+e.message));
+            page.on('response',async r=>{
+              const u=r.url();
+              if(/raw\.githubusercontent\.com|pokeapi\.co|donmai\.us|safebooru\.org/.test(u)){
+                let prefix='';
+                try{prefix=(await r.text()).slice(0,120).replace(/\s+/g,' ');}catch{}
+                interesting.push({url:u,status:r.status(),ct:r.headers()['content-type']||'',prefix});
+              }
+            });
+            await page.goto(STAGING,{waitUntil:'networkidle',timeout:60000});
+            const sw=await page.evaluate(async()=>{
+              const reg=await navigator.serviceWorker.getRegistration();
+              return {controlled:!!navigator.serviceWorker.controller,script:reg?.active?.scriptURL||null};
+            });
+            console.log('SERVICE_WORKER',JSON.stringify(sw));
+
+            // Artwork search
+            await page.fill('#subject','eevee');
+            await page.click('#searchBtn');
+            await page.waitForTimeout(5000);
+            const art=await page.evaluate(()=>({
+              count:document.querySelector('#autoArtworkCount')?.textContent,
+              status:document.querySelector('#autoArtworkStatus')?.textContent,
+              cards:[...document.querySelectorAll('#autoArtworkResults .auto-art-card')].length,
+              html:document.querySelector('#autoArtworkResults')?.innerHTML?.slice(0,300)
+            }));
+            console.log('ARTWORK_UI',JSON.stringify(art));
+
+            // Library build - let first requests happen; stop before long full build.
+            await page.click('#syncMasterLibrary');
+            await page.waitForTimeout(8000);
+            const lib=await page.evaluate(()=>({
+              error:document.querySelector('#runtimeErrorText')?.textContent||'',
+              status:document.querySelector('#masterLibraryStatus')?.textContent||'',
+              progress:document.querySelector('#libraryProgressText')?.textContent||''
+            }));
+            console.log('LIBRARY_UI',JSON.stringify(lib));
+            console.log('NETWORK',JSON.stringify(interesting,null,2));
+            console.log('ERRORS',JSON.stringify(errors,null,2));
+
+            const sawRaw=interesting.some(x=>x.url.includes('raw.githubusercontent.com'));
+            const sawDonmai=interesting.some(x=>x.url.includes('donmai.us'));
+            if(!sawRaw) throw new Error('No raw GitHub catalog request was observed.');
+            if(!sawDonmai) throw new Error('No Donmai fan-art request was observed.');
+            if(lib.error) throw new Error('Library UI error: '+lib.error);
+            if(Number(art.cards)<5) throw new Error('Artwork UI returned fewer than 5 cards: '+JSON.stringify(art));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
