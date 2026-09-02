@@ -8,6 +8,10 @@ const KBSCatalogLab=(()=>{
   let db=null,pocketCards=[],buildPromise=null,pocketState={ready:false,count:0,error:''};
   globalThis.KBSCatalogCards=[];
 
+  const style=document.createElement('style');
+  style.textContent='.pocket-source-badge{display:inline-flex;align-items:center;width:max-content;margin-top:4px;padding:2px 6px;border:1px solid currentColor;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.05em;opacity:.9}.card-item.is-pocket-card .item-copy strong{display:block}';
+  document.head.appendChild(style);
+
   function openDb(){
     if(db)return Promise.resolve(db);
     return new Promise((resolve,reject)=>{
@@ -134,6 +138,31 @@ const KBSCatalogLab=(()=>{
     renderCards();
   }
 
+  function decorateUnifiedCards(){
+    document.querySelectorAll('#cards .card-item').forEach(el=>{
+      const c=cards.find(x=>x.id===el.dataset.id)||masterCards.find(x=>x.id===el.dataset.id);
+      if(!c||c.catalog!=='pocket')return;
+      el.classList.add('is-pocket-card');
+      const copy=el.querySelector('.item-copy');
+      if(copy&&!copy.querySelector('.pocket-source-badge')){
+        const badge=document.createElement('span');badge.className='pocket-source-badge';badge.textContent='TCG Pocket';copy.appendChild(badge);
+      }
+    });
+  }
+
+  const priorRenderCards=renderCards;
+  renderCards=function(){const r=priorRenderCards.apply(this,arguments);queueMicrotask(decorateUnifiedCards);return r;};
+  const priorRenderStable=renderAllCardsStable;
+  renderAllCardsStable=function(){const r=priorRenderStable.apply(this,arguments);queueMicrotask(decorateUnifiedCards);return r;};
+
+  function syncSetSymbol(){
+    const id=document.querySelector('#setFilter')?.value||'';
+    if(!id.startsWith('pocket:'))return;
+    const frame=document.querySelector('#setSymbolFrame'),img=document.querySelector('#setSymbolPreview');
+    if(frame)frame.hidden=true;if(img)img.removeAttribute('src');
+  }
+  document.querySelector('#setFilter')?.addEventListener('change',()=>queueMicrotask(syncSetSymbol));
+
   async function loadCache(){
     await openDb();
     pocketCards=await getAllPocket().catch(()=>[]);
@@ -152,12 +181,8 @@ const KBSCatalogLab=(()=>{
   const coreBuildMasterLibrary=buildMasterLibrary;
   buildMasterLibrary=async function(){
     await coreBuildMasterLibrary();
-    try{
-      await buildPocket();
-    }catch(e){
-      pocketState={ready:false,count:pocketCards.length,error:e?.message||String(e)};
-      console.warn('Pocket catalog build deferred:',pocketState.error);
-    }
+    try{await buildPocket();}
+    catch(e){pocketState={ready:false,count:pocketCards.length,error:e?.message||String(e)};console.warn('Pocket catalog build deferred:',pocketState.error);}
     if(pocketCards.length)mergePocketIntoMaster();
     await updateLibrarySetupButton().catch(()=>{});
   };
@@ -178,7 +203,6 @@ const KBSCatalogLab=(()=>{
   };
 
   globalThis.KBSIsPocketSet=id=>String(id||'').startsWith('pocket:');
-
   openDb().then(loadCache).then(()=>updateLibrarySetupButton().catch(()=>{})).catch(e=>console.warn('Pocket cache unavailable',e));
   return{getCards:()=>masterCards,buildPocket,get pocketState(){return {...pocketState}}};
 })();
