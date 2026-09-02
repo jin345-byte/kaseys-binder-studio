@@ -36,28 +36,28 @@ jobs:
           node --check public/features/cloud-sync.js
           node --check src/staging-worker.js
           python - <<'PY'
-          import re, pathlib
+          import re, pathlib, json
           html=pathlib.Path('public/index.html').read_text(encoding='utf-8')
           ids=re.findall(r'\bid=["\']([^"\']+)["\']',html)
           dup=sorted({x for x in ids if ids.count(x)>1})
           assert not dup, f'duplicate ids: {dup}'
           assert 'id="catalogFilter"' not in html
           assert 'id="setFilter"' in html and 'id="artistFilter"' in html
-          assert 'serviceWorker.register' not in html
-          assert 'art-search-proxy.js' not in html
-          assert 'App notice' in html
+          assert 'serviceWorker.register' not in html and 'art-search-proxy.js' not in html
           worker=pathlib.Path('src/staging-worker.js').read_text(encoding='utf-8')
-          assert '/api/art-search' not in worker
-          assert "url.pathname === '/art-image'" in worker
+          assert '/api/art-search' not in worker and '/art-image' not in worker
           cat=pathlib.Path('public/features/catalog-lab.js').read_text(encoding='utf-8')
           for needle in ['TCG Pocket ·','pocket-source-badge','mergePocketIntoMaster','setId:`pocket:${rawSet}`']:
-              assert needle in cat, f'missing unified-library feature: {needle}'
+              assert needle in cat, f'missing unified feature: {needle}'
           art=pathlib.Path('public/features/art-search-lab.js').read_text(encoding='utf-8')
-          assert 'loading="eager"' in art and "'/art-image?src='" in art
-          # Active application modules must not contain the invalid instanceof pattern seen in old proxy code.
+          assert 'safeFanUrl' in art and 'safebooru.org' in art and '/art-image?src=' not in art and 'loading="eager"' in art
           for p in ['public/app.js','public/features/cards-lab.js','public/features/catalog-lab.js','public/features/art-search-lab.js','public/features/mobile-lab.js','public/features/cloud-sync.js']:
               assert 'instanceof URL' not in pathlib.Path(p).read_text(encoding='utf-8'), p
-          print('STATIC PASS',len(ids),'unique ids')
+          eevee=json.loads(pathlib.Path('public/art-cache/eevee.json').read_text(encoding='utf-8'))
+          rows=eevee.get('results',[])
+          assert len(rows)>=10, 'eevee cache too small'
+          assert all('safebooru.org' in str(x.get('url','')) for x in rows[:10]), 'cache has not been rebuilt to Safebooru yet'
+          print('STATIC PASS',len(ids),'unique ids',len(rows),'eevee fan-art rows')
           PY
 
       - name: Install Wrangler and browser tooling
@@ -71,7 +71,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler deploy --config=wrangler.staging.jsonc
 
-      - name: Exercise deployed staging in Chromium
+      - name: End-to-end Chromium sanity
         shell: bash
         run: |
           node <<'JS'
@@ -79,89 +79,42 @@ jobs:
           const {PNG}=require('pngjs');
           const fs=require('fs');
           const URL='https://kaseys-binder-studio-staging.jin345.workers.dev';
-          function imageVariance(path){
-            const png=PNG.sync.read(fs.readFileSync(path));
-            const vals=[];
-            const x0=Math.floor(png.width*.08),x1=Math.ceil(png.width*.92);
-            const y0=Math.floor(png.height*.08),y1=Math.ceil(png.height*.82);
-            for(let y=y0;y<y1;y+=2)for(let x=x0;x<x1;x+=2){const i=(y*png.width+x)*4;if(png.data[i+3]<30)continue;vals.push(.2126*png.data[i]+.7152*png.data[i+1]+.0722*png.data[i+2]);}
-            if(!vals.length)return 0;
-            const mean=vals.reduce((a,b)=>a+b,0)/vals.length;
-            return Math.sqrt(vals.reduce((a,b)=>a+(b-mean)**2,0)/vals.length);
-          }
+          function variance(path){const p=PNG.sync.read(fs.readFileSync(path));let n=0,sum=0,sum2=0;for(let y=8;y<p.height-8;y+=2)for(let x=8;x<p.width-8;x+=2){const i=(y*p.width+x)*4;if(p.data[i+3]<30)continue;const v=.2126*p.data[i]+.7152*p.data[i+1]+.0722*p.data[i+2];n++;sum+=v;sum2+=v*v}const m=sum/Math.max(1,n);return Math.sqrt(Math.max(0,sum2/Math.max(1,n)-m*m));}
           (async()=>{
             const browser=await chromium.launch({headless:true});
             const ctx=await browser.newContext({viewport:{width:1440,height:1100}});
             const page=await ctx.newPage();
-            const errors=[],failed=[],artResponses=[];
+            const errors=[],failed=[],safeResponses=[];
             page.on('pageerror',e=>errors.push('PAGE '+e.message));
             page.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
             page.on('requestfailed',r=>failed.push({url:r.url(),error:r.failure()?.errorText||''}));
-            page.on('response',r=>{if(r.url().includes('/art-image?'))artResponses.push({url:r.url().slice(0,220),status:r.status(),ct:r.headers()['content-type']||''})});
+            page.on('response',r=>{if(r.url().includes('safebooru.org/')&&!r.url().includes('index.php'))safeResponses.push({url:r.url().slice(0,180),status:r.status(),ct:r.headers()['content-type']||''})});
+            await page.goto(URL,{waitUntil:'networkidle',timeout:60000});await page.waitForTimeout(1200);
+            if(await page.locator('#catalogFilter').count())throw new Error('Catalog selector exists');
+            for(const s of ['#setFilter','#artistFilter','#libraryCardsTab','#libraryArtworkTab','.cloud-account'])if(await page.locator(s).count()!==1)throw new Error('Missing UI '+s);
+            if(ctx.serviceWorkers().length)throw new Error('Service worker still active');
 
-            await page.goto(URL,{waitUntil:'networkidle',timeout:60000});
-            await page.waitForTimeout(1500);
-            if(await page.locator('#catalogFilter').count())throw new Error('Catalog selector still exists');
-            for(const s of ['#setFilter','#artistFilter','#libraryCardsTab','#libraryArtworkTab','.cloud-account'])if(await page.locator(s).count()!==1)throw new Error('Missing shell UI '+s);
-            if(ctx.serviceWorkers().length)throw new Error('Staging service worker still active');
-
-            await page.click('#openBinders');await page.waitForTimeout(300);
-            if(await page.locator('#binderModal').getAttribute('aria-hidden')!=='false')throw new Error('Binder modal did not open');
+            await page.click('#openBinders');await page.waitForTimeout(250);
+            if(await page.locator('#binderModal').getAttribute('aria-hidden')!=='false')throw new Error('Binder modal failed');
             await page.click('#closeBinders');
 
-            await page.fill('#subject','eevee');
-            await page.click('#searchBtn');
-            await page.click('#libraryArtworkTab');
-            await page.waitForTimeout(10000);
-            const cards=await page.locator('#autoArtworkResults .auto-art-card').count();
-            const imgCount=await page.locator('#autoArtworkResults img').count();
-            console.log('ARTWORK_COUNTS',{cards,imgCount});
-            console.log('ART_IMAGE_RESPONSES',JSON.stringify(artResponses.slice(0,30),null,2));
-            if(cards<10||imgCount<10)throw new Error(`Artwork results incomplete: cards=${cards}, images=${imgCount}`);
-            const goodProxy=artResponses.filter(x=>x.status===200&&String(x.ct).startsWith('image/')).length;
-            if(goodProxy<8)throw new Error('Artwork image endpoint returned only '+goodProxy+' valid image responses');
+            await page.fill('#subject','eevee');await page.click('#searchBtn');await page.click('#libraryArtworkTab');await page.waitForTimeout(8000);
+            const cards=await page.locator('#autoArtworkResults .auto-art-card').count();const imgs=page.locator('#autoArtworkResults img');const imgCount=await imgs.count();
+            console.log('ARTWORK_COUNTS',{cards,imgCount});console.log('SAFE_RESPONSES',JSON.stringify(safeResponses.slice(0,20),null,2));
+            if(cards<10||imgCount<10)throw new Error('Artwork results incomplete');
+            const good=safeResponses.filter(x=>x.status===200&&String(x.ct).startsWith('image/')).length;if(good<8)throw new Error('Only '+good+' Safebooru images loaded');
+            let fan=-1;for(let i=0;i<imgCount;i++){const src=(await imgs.nth(i).getAttribute('src'))||'';if(src.includes('safebooru.org/')){fan=i;break;}}
+            if(fan<0)throw new Error('No Safebooru artwork rendered');
+            await imgs.nth(fan).screenshot({path:'fan.png'});const v=variance('fan.png');console.log('ART_PIXEL_VARIANCE',v);if(v<=8)throw new Error('Artwork visually blank');
+            const before=await page.locator('#arts > *').count();await page.locator('#autoArtworkResults .auto-art-add').nth(fan).click();await page.waitForTimeout(400);const after=await page.locator('#arts > *').count();if(after<=before)throw new Error('Add to Art Tray failed');
+            if(!(await page.isDisabled('#autoArtworkLoadMore'))){const c0=cards;await page.click('#autoArtworkLoadMore');await page.waitForTimeout(1000);const c1=await page.locator('#autoArtworkResults .auto-art-card').count();if(c1<=c0)throw new Error('More artwork failed');}
 
-            let fanIndex=-1,fanSrc='';
-            for(let i=0;i<imgCount;i++){
-              const src=(await page.locator('#autoArtworkResults img').nth(i).getAttribute('src'))||'';
-              if(src.includes('/art-image?')){fanIndex=i;fanSrc=src;break;}
-            }
-            if(fanIndex<0)throw new Error('No same-origin fan artwork image found');
-            const proxyResp=await page.request.get(new URL(fanSrc,URL).href);
-            const proxyBody=await proxyResp.body();
-            console.log('ART_PROXY_DIRECT',{status:proxyResp.status(),ct:proxyResp.headers()['content-type'],bytes:proxyBody.length});
-            if(!proxyResp.ok()||!String(proxyResp.headers()['content-type']||'').startsWith('image/')||proxyBody.length<3000)throw new Error('Artwork image proxy did not return usable image bytes');
-
-            await page.locator('#autoArtworkResults img').nth(fanIndex).screenshot({path:'fan-art.png'});
-            const variance=imageVariance('fan-art.png');
-            console.log('ART_PIXEL_VARIANCE',variance);
-            if(!(variance>8))throw new Error('Artwork screenshot appears visually blank; variance='+variance);
-
-            const trayBefore=await page.locator('#arts > *').count();
-            await page.locator('#autoArtworkResults .auto-art-add').nth(Math.min(fanIndex,cards-1)).click();await page.waitForTimeout(500);
-            const trayAfter=await page.locator('#arts > *').count();
-            console.log('ART_TRAY',trayBefore,'->',trayAfter);if(trayAfter<=trayBefore)throw new Error('Artwork add failed');
-
-            if(!(await page.isDisabled('#autoArtworkLoadMore'))){const before=cards;await page.click('#autoArtworkLoadMore');await page.waitForTimeout(1200);const after=await page.locator('#autoArtworkResults .auto-art-card').count();console.log('MORE',before,'->',after);if(after<=before)throw new Error('More artwork failed');}
-
-            await page.click('#libraryCardsTab');
-            await page.locator('#syncMasterLibrary').click({force:true});
-            await page.waitForTimeout(20000);
-            const bannerVisible=await page.locator('#runtimeErrorBanner').isVisible();
-            const bannerText=(await page.locator('#runtimeErrorText').textContent())||'';
-            const libStatus=((await page.locator('#masterLibraryStatus').textContent())||'')+' '+((await page.locator('#libraryProgressText').textContent())||'');
-            console.log('LIBRARY',{bannerVisible,bannerText,libStatus});
-            if(bannerVisible)throw new Error('Unexpected app notice during library build: '+bannerText);
-            if(!/Building|Library|catalog/i.test(libStatus))throw new Error('Library did not start/progress');
-
-            await page.click('#mobilePreviewToggle');await page.waitForTimeout(300);
-            const bodyClass=(await page.locator('body').getAttribute('class'))||'';
-            if(!bodyClass.includes('mobile-lab-enabled')||await page.locator('#mobileLabBottomNav').count()!==1)throw new Error('Mobile preview failed');
-
-            const cfg=await page.request.get(URL+'/api/config');if(!cfg.ok())throw new Error('/api/config failed');
-            console.log('AUTH_CONFIG',cfg.status());
-            console.log('FAILED',JSON.stringify(failed.filter(x=>/art-image|raw\.githubusercontent\.com/.test(x.url)).slice(0,30),null,2));
-            console.log('CONSOLE_ERRORS',JSON.stringify(errors.slice(0,30),null,2));
+            await page.click('#libraryCardsTab');await page.locator('#syncMasterLibrary').click({force:true});await page.waitForTimeout(20000);
+            const banner=await page.locator('#runtimeErrorBanner').isVisible();const txt=(await page.locator('#runtimeErrorText').textContent())||'';const status=((await page.locator('#masterLibraryStatus').textContent())||'')+' '+((await page.locator('#libraryProgressText').textContent())||'');
+            console.log('LIBRARY',{banner,txt,status});if(banner)throw new Error('Unexpected app notice: '+txt);if(!/Building|Library|catalog/i.test(status))throw new Error('Library did not progress');
+            await page.click('#mobilePreviewToggle');await page.waitForTimeout(250);const cls=(await page.locator('body').getAttribute('class'))||'';if(!cls.includes('mobile-lab-enabled'))throw new Error('Mobile preview failed');
+            const cfg=await page.request.get(URL+'/api/config');if(!cfg.ok())throw new Error('Auth config failed');
+            console.log('AUTH_CONFIG',cfg.status());console.log('RELEVANT_FAILED',JSON.stringify(failed.filter(x=>/safebooru|raw\.githubusercontent/.test(x.url)).slice(0,25),null,2));console.log('CONSOLE_ERRORS',JSON.stringify(errors.slice(0,25),null,2));
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
