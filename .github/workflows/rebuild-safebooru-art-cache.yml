@@ -1,8 +1,9 @@
 name: Rebuild Safebooru Art Cache
 
 on:
-  push:
-    branches: [staging-ui-auth-test]
+  workflow_dispatch:
+  schedule:
+    - cron: '17 10 * * 0'
 
 permissions:
   contents: write
@@ -13,7 +14,6 @@ concurrency:
 
 jobs:
   rebuild:
-    if: ${{ !contains(github.event.head_commit.message, '[art-cache-built]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,7 +28,7 @@ jobs:
         run: |
           python - <<'PY'
           import json, os, time, urllib.parse, urllib.request
-          UA='Kaseys-Binder-Studio-Safebooru-Cache/2.8.2'
+          UA='Kaseys-Binder-Studio-Safebooru-Cache/2.8.5'
           OUT='public/art-cache'; os.makedirs(OUT,exist_ok=True)
           def get_json(url,retries=4):
               last=None
