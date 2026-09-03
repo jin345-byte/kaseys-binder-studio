@@ -55,16 +55,46 @@ async function artworkImage(request) {
   }
 }
 
+async function cardSearch(request) {
+  const incoming = new URL(request.url);
+  const target = new URL('https://api.pokemontcg.io/v2/cards');
+  target.search = incoming.search;
+  try {
+    const upstream = await fetch(target.href, {
+      headers: {
+        'accept':'application/json',
+        'user-agent':'Mozilla/5.0 Kaseys-Binder-Studio/2.8'
+      },
+      cf:{cacheEverything:true,cacheTtl:300}
+    });
+    const headers = new Headers();
+    headers.set('content-type', upstream.headers.get('content-type') || 'application/json; charset=utf-8');
+    headers.set('cache-control', upstream.ok ? 'public, max-age=300' : 'no-store');
+    headers.set('access-control-allow-origin','*');
+    headers.set('x-content-type-options','nosniff');
+    headers.set('x-kbs-card-search','proxy');
+    return new Response(upstream.body,{status:upstream.status,statusText:upstream.statusText,headers});
+  } catch (e) {
+    console.error('Card search proxy failed', target.href, e);
+    return new Response(JSON.stringify({error:'Card search unavailable'}),{
+      status:502,
+      headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-kbs-card-search':'proxy'}
+    });
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
     if (request.method === 'GET' && url.pathname === '/api/art-image') return artworkImage(request);
+    if (request.method === 'GET' && url.pathname === '/api/card-search') return cardSearch(request);
 
     if (request.method === 'GET' && (
       url.pathname === '/features/art-search-lab.js' ||
       url.pathname === '/features/catalog-lab.js' ||
-      url.pathname === '/features/mobile-lab.js'
+      url.pathname === '/features/mobile-lab.js' ||
+      url.pathname === '/features/staging-fetch-shim.js'
     )) return noStoreResponse(await env.ASSETS.fetch(request));
 
     const response = await productionWorker.fetch(request, env, ctx);
