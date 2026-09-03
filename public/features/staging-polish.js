@@ -7,6 +7,41 @@
   const binderGrid=document.querySelector('#grid');
   if(!artGrid||!binderGrid)return;
 
+  /* Desktop columns must end together. Legacy viewport-height rules made the
+     artwork library stop hundreds of pixels above the real binder canvas.
+     Measure the rendered canvas instead of guessing from vh. */
+  const workspace=document.querySelector('.workspace');
+  const libraryPanel=document.querySelector('.library.has-browser-tabs,.library');
+  const canvasPanel=document.querySelector('.canvas');
+  let heightSyncFrame=0;
+  function syncWorkspaceHeights(){
+    cancelAnimationFrame(heightSyncFrame);
+    heightSyncFrame=requestAnimationFrame(()=>{
+      if(!workspace||!libraryPanel||!canvasPanel)return;
+      const desktop=innerWidth>=821&&!document.body.classList.contains('mobile-lab-enabled');
+      if(!desktop){
+        workspace.style.removeProperty('align-items');
+        libraryPanel.style.removeProperty('height');
+        libraryPanel.style.removeProperty('min-height');
+        libraryPanel.removeAttribute('data-canvas-height-sync');
+        return;
+      }
+      /* Disable CSS grid stretching so canvasPanel reports its own natural content height. */
+      workspace.style.setProperty('align-items','start','important');
+      libraryPanel.style.removeProperty('height');
+      const canvasHeight=Math.ceil(Math.max(canvasPanel.scrollHeight,canvasPanel.getBoundingClientRect().height));
+      if(canvasHeight>0){
+        libraryPanel.style.setProperty('height',canvasHeight+'px','important');
+        libraryPanel.style.setProperty('min-height',canvasHeight+'px','important');
+        libraryPanel.dataset.canvasHeightSync=String(canvasHeight);
+      }
+    });
+  }
+  if(typeof ResizeObserver!=='undefined'&&canvasPanel){new ResizeObserver(syncWorkspaceHeights).observe(canvasPanel)}
+  window.addEventListener('resize',syncWorkspaceHeights,{passive:true});
+  new MutationObserver(syncWorkspaceHeights).observe(binderGrid,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
+  setTimeout(syncWorkspaceHeights,0);setTimeout(syncWorkspaceHeights,250);setTimeout(syncWorkspaceHeights,900);
+
   const preview=document.createElement('div');
   preview.className='artwork-hover-preview';
   preview.id='artworkHoverPreview';
