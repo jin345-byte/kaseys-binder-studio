@@ -28,7 +28,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for f in public/app.js public/features/cards-lab.js public/features/catalog-lab.js public/features/art-search-lab.js public/features/binder-lab.js public/features/mobile-lab.js public/features/cloud-sync.js public/features/staging-fetch-shim.js public/features/staging-polish.js public/features/staging-v287.js public/features/help-lab.js src/staging-worker.js; do node --check "$f"; done
+          for f in public/app.js public/features/cards-lab.js public/features/catalog-lab.js public/features/art-search-lab.js public/features/binder-lab.js public/features/mobile-lab.js public/features/cloud-sync.js public/features/staging-fetch-shim.js public/features/staging-polish.js public/features/help-lab.js src/staging-worker.js; do node --check "$f"; done
           python - <<'PY'
           import re,pathlib,json
           html=pathlib.Path('public/index.html').read_text(encoding='utf-8')
@@ -39,16 +39,18 @@ jobs:
           assert 'serviceWorker.register' not in html and 'art-search-proxy.js' not in html
           assert 'pikachu-bolt' not in html and 'library-build-icon' not in html
           worker=pathlib.Path('src/staging-worker.js').read_text(encoding='utf-8')
-          for x in ['/api/art-image','/api/art-feed','/api/card-search','styles/staging-v287.css','features/staging-v287.js','features/help-lab.js','cdn.artofpkm.com']:
+          for x in ['/api/art-image','/api/art-feed','/api/card-search','cdn.artofpkm.com']:
               assert x in worker, x
           assert '/api/art-search' not in worker
           tour=pathlib.Path('public/features/help-lab.js').read_text(encoding='utf-8')
           assert '#catalogFilter' not in tour
           for x in ['#libraryArtworkTab','Choose matching artwork','Position and resize artwork','Save and manage binder pages']:
               assert x in tour, x
-          rail=pathlib.Path('public/styles/staging-v287.css').read_text(encoding='utf-8')
+          polish=pathlib.Path('public/styles/staging-polish.css').read_text(encoding='utf-8')
           for x in ['grid-template-columns:minmax(0,1fr) 46px','flex-direction:column','kbsPageRailPop','height:34px','data-progress']:
-              assert x in rail, x
+              assert x in polish, x
+          polishjs=pathlib.Path('public/features/staging-polish.js').read_text(encoding='utf-8')
+          assert 'page-switch-pop' in polishjs and 'scrollIntoView' in polishjs
           art=pathlib.Path('public/features/art-search-lab.js').read_text(encoding='utf-8')
           assert 'data-art-size' not in art and 'auto-art-size' not in art
           assert '/api/art-feed?' in art and 'nextPid' in art and 'exhausted' in art
@@ -86,21 +88,18 @@ jobs:
             page.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
             page.on('response',r=>{if(r.url().includes('/api/art-image?'))artResponses.push({status:r.status(),ct:r.headers()['content-type']||'',marker:r.headers()['x-kbs-art-image']||''})});
 
-            let ready=false;
+            let libraryButton=null;
             for(let attempt=0;attempt<10;attempt++){
               await page.goto(STAGING+'/?qa='+Date.now(),{waitUntil:'networkidle',timeout:60000});
               await page.waitForTimeout(500);
-              ready=(await page.locator('link[href*="staging-v287.css"]').count())===1&&(await page.locator('script[src*="staging-v287.js"]').count())===1;
-              if(ready)break;
+              libraryButton=await page.locator('.canvas-side-controls #syncMasterLibrary').boundingBox();
+              if(libraryButton&&libraryButton.height<=38)break;
               await page.waitForTimeout(2200);
             }
-            if(!ready)throw new Error('v2.8.7 staging assets did not propagate');
+            if(!libraryButton||libraryButton.height>38)throw new Error('Compact v2.8.7 library bar did not propagate');
             if(ctx.serviceWorkers().length)throw new Error('Service worker active');
             if(await page.locator('#catalogFilter').count())throw new Error('Catalog selector exists');
             if(await page.locator('.pikachu-bolt,.library-build-icon').count())throw new Error('Library decoration still present');
-
-            const libraryButton=await page.locator('.canvas-side-controls #syncMasterLibrary').boundingBox();
-            if(!libraryButton||libraryButton.height>38)throw new Error('Build library control is still oversized');
 
             const pocketCountBefore=await page.locator('#grid .pocket.filled').count();
             await page.click('#guidedTourLaunch');
