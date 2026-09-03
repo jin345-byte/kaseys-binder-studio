@@ -61,7 +61,7 @@ function emptyCardSearch(upstreamStatus='') {
     'cache-control':'no-store',
     'access-control-allow-origin':'*',
     'x-content-type-options':'nosniff',
-    'x-kbs-card-search':'proxy-fallback'
+    'x-kbs-card-search':'proxy'
   });
   if (upstreamStatus) headers.set('x-kbs-card-upstream-status', String(upstreamStatus));
   return new Response(JSON.stringify({data:[],page:1,pageSize:250,count:0,totalCount:0}),{status:200,headers});
