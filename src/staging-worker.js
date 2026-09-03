@@ -3,7 +3,7 @@ import productionWorker from './worker.js';
 const CLOUD_CSS = '<link rel="stylesheet" href="/features/cloud-sync.css">';
 const CLOUD_JS = '<script src="/features/cloud-sync.js"></script>';
 const STAGING_BUILD = '2.8.4-unified-cleanup';
-const ART_IMAGE_HOSTS = new Set(['cdn.donmai.us','raw.githubusercontent.com']);
+const ART_IMAGE_HOSTS = new Set(['cdn.donmai.us','safebooru.org','raw.githubusercontent.com']);
 
 function isHtmlRequest(request, response) {
   if (request.method !== 'GET') return false;
@@ -35,7 +35,7 @@ async function artworkImage(request) {
       headers: {
         'accept':'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
         'user-agent':'Mozilla/5.0 Kaseys-Binder-Studio/2.8',
-        'referer':'https://safebooru.donmai.us/'
+        'referer': target.hostname.toLowerCase()==='safebooru.org' ? 'https://safebooru.org/' : 'https://safebooru.donmai.us/'
       },
       cf:{cacheEverything:true,cacheTtl:86400}
     });
@@ -59,18 +59,13 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // Staging-only same-origin artwork delivery. Auth, sync, and production API routes remain in worker.js.
-    if (request.method === 'GET' && url.pathname === '/api/art-image') {
-      return artworkImage(request);
-    }
+    if (request.method === 'GET' && url.pathname === '/api/art-image') return artworkImage(request);
 
     if (request.method === 'GET' && (
       url.pathname === '/features/art-search-lab.js' ||
       url.pathname === '/features/catalog-lab.js' ||
       url.pathname === '/features/mobile-lab.js'
-    )) {
-      return noStoreResponse(await env.ASSETS.fetch(request));
-    }
+    )) return noStoreResponse(await env.ASSETS.fetch(request));
 
     const response = await productionWorker.fetch(request, env, ctx);
     if (!isHtmlRequest(request, response)) return response;
