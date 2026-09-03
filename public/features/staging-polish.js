@@ -1,6 +1,7 @@
 /* Binder Studio staging polish — artwork hover preview, wheel zoom, animated brand, page rail, Art of Pokemon proxy */
 (function(){
   if(!document.querySelector('link[data-kbs-v288-rail]')){const link=document.createElement('link');link.rel='stylesheet';link.href='styles/staging-v288-fix.css?v=2.8.8';link.dataset.kbsV288Rail='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-kbs-prebuilt-catalog]')){const s=document.createElement('script');s.src='features/prebuilt-catalog-bootstrap.js?v=2.8.9';s.dataset.kbsPrebuiltCatalog='1';document.head.appendChild(s)}
 
   const artGrid=document.querySelector('#autoArtworkResults');
   const binderGrid=document.querySelector('#grid');
