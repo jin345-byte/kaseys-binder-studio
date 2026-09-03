@@ -1,0 +1,83 @@
+name: Art of Pokemon Proxy Check
+
+on:
+  push:
+    branches: [staging-ui-auth-test]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: binder-studio-artofpkm-proxy
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser tooling
+        run: |
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null
+      - name: Verify exact Art of Pokemon image through staging
+        shell: bash
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          const STAGING='https://kaseys-binder-studio-staging.jin345.workers.dev';
+          const SOURCE='https://cdn.artofpkm.com/rp4nom0pifi0d7ozvegmbon7hv5c';
+          const PROXY=STAGING+'/api/art-image?url='+encodeURIComponent(SOURCE);
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          (async()=>{
+            let response=null;
+            for(let i=0;i<12;i++){
+              response=await fetch(PROXY,{cache:'no-store'}).catch(()=>null);
+              const source=response?.headers?.get('x-kbs-art-source')||'';
+              const type=response?.headers?.get('content-type')||'';
+              console.log('PROXY_ATTEMPT',{i,status:response?.status,source,type});
+              if(response?.ok&&source==='cdn.artofpkm.com'&&type.startsWith('image/'))break;
+              try{await response?.body?.cancel()}catch{}
+              await sleep(5000);
+            }
+            if(!response?.ok)throw new Error('Art of Pokemon proxy did not become available');
+            if(response.headers.get('x-kbs-art-source')!=='cdn.artofpkm.com')throw new Error('Wrong proxy source marker');
+            const type=response.headers.get('content-type')||'';
+            if(!type.startsWith('image/'))throw new Error('Proxy did not return an image');
+            const bytes=Buffer.from(await response.arrayBuffer());
+            console.log('PROXY_BYTES',bytes.length,'UPSTREAM_LENGTH',response.headers.get('x-kbs-art-upstream-length'));
+            if(bytes.length<5000)throw new Error('Art of Pokemon response is suspiciously small');
+
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1280,height:900}});
+            const errors=[];
+            page.on('pageerror',e=>errors.push(e.message));
+            page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+
+            await page.setContent(`<img id="probe" src="${PROXY.replace(/&/g,'&amp;')}">`);
+            await page.waitForFunction(()=>{const i=document.querySelector('#probe');return i&&i.complete&&i.naturalWidth>0&&i.naturalHeight>0},{timeout:30000});
+            const dims=await page.locator('#probe').evaluate(i=>({w:i.naturalWidth,h:i.naturalHeight}));
+            console.log('PROXY_DIMENSIONS',dims);
+            if(dims.w<100||dims.h<100)throw new Error(`Decoded image dimensions are suspiciously small: ${dims.w}x${dims.h}`);
+
+            await page.goto(STAGING+'/?artofpkmqa='+Date.now(),{waitUntil:'networkidle',timeout:60000});
+            await page.click('#libraryArtworkTab');
+            const before=await page.locator('#arts .item').count();
+            await page.fill('#artUrl',SOURCE);
+            await page.click('#addUrl');
+            await page.waitForFunction(n=>document.querySelectorAll('#arts .item').length>n,before,{timeout:30000});
+            const added=page.locator('#arts .item').last();
+            const img=added.locator('img').first();
+            const src=await img.getAttribute('src');
+            const addedDims=await img.evaluate(i=>({w:i.naturalWidth,h:i.naturalHeight,complete:i.complete}));
+            console.log('TRAY_IMAGE',{src,addedDims});
+            if(!src?.includes('/api/art-image?url='))throw new Error('Pasted Art of Pokemon URL was not rewritten to same-origin proxy');
+            if(src.includes('cdn.artofpkm.com/rp4nom0pifi0d7ozvegmbon7hv5c')&&!src.includes('/api/art-image?url='))throw new Error('Raw hotlink leaked into tray');
+            if(!addedDims.complete||addedDims.w<100||addedDims.h<100)throw new Error('Tray image did not decode correctly');
+            if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
