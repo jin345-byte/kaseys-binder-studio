@@ -1,5 +1,7 @@
-/* Binder Studio staging polish — artwork hover preview, wheel zoom, animated brand, mobile page nav, Art of Pokemon proxy */
+/* Binder Studio staging polish — artwork hover preview, wheel zoom, animated brand, page rail, Art of Pokemon proxy */
 (function(){
+  if(!document.querySelector('link[data-kbs-v288-rail]')){const link=document.createElement('link');link.rel='stylesheet';link.href='styles/staging-v288-fix.css?v=2.8.8';link.dataset.kbsV288Rail='1';document.head.appendChild(link)}
+
   const artGrid=document.querySelector('#autoArtworkResults');
   const binderGrid=document.querySelector('#grid');
   if(!artGrid||!binderGrid)return;
@@ -30,14 +32,14 @@
   const brandTitle=document.querySelector('.brand-copy h1');
   if(brandTitle&&!brandTitle.dataset.animatedBrand){const text=brandTitle.textContent||'';brandTitle.textContent='';brandTitle.classList.add('brand-animated');brandTitle.dataset.animatedBrand='1';[...text].forEach((ch,i)=>{const span=document.createElement('span');span.className=ch===' '?'brand-char brand-space':'brand-char';span.style.setProperty('--char-index',String(i));span.textContent=ch===' '?'\u00a0':ch;brandTitle.appendChild(span)})}
 
-  /* Keep active page visible and give page changes the requested scale/rotate pop. */
+  /* Keep the active page visible and animate every actual page change. */
   const pageNumbers=document.querySelector('#editorPageNumbers');
   let lastActive='';
   function revealActivePage(){
     if(!pageNumbers)return;
     const active=pageNumbers.querySelector('.page-number.active,[aria-current="page"]');
     if(!active)return;
-    active.scrollIntoView({behavior:'smooth',block:'center',inline:'center'});
+    active.scrollIntoView({behavior:'smooth',block:'center',inline:'nearest'});
     const key=active.dataset.pageId||active.dataset.page||active.textContent?.trim()||'';
     if(key&&key!==lastActive){lastActive=key;active.classList.remove('page-switch-pop');void active.offsetWidth;active.classList.add('page-switch-pop');setTimeout(()=>active.classList.remove('page-switch-pop'),380)}
   }
