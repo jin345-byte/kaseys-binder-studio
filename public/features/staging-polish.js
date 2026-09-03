@@ -36,10 +36,14 @@
   artGrid.addEventListener('pointerout',e=>{if(e.target.closest('.auto-art-image img'))hidePreview()});
   artGrid.addEventListener('click',hidePreview);
 
+  function getItem(index){
+    try{return typeof state!=='undefined'?state?.pockets?.[index]:null}catch{return null}
+  }
+  function persist(){try{if(typeof save==='function')save()}catch{}}
   function clamp(n,min,max){return Math.min(max,Math.max(min,n));}
   function applyZooms(){
     binderGrid.querySelectorAll('.pocket.art[data-pocket]').forEach(p=>{
-      const i=Number(p.dataset.pocket),item=globalThis.state?.pockets?.[i],img=p.querySelector('img');
+      const i=Number(p.dataset.pocket),item=getItem(i),img=p.querySelector('img');
       if(!item||!img)return;
       const z=Number.isFinite(item.zoom)?item.zoom:1;
       img.style.transform=`scale(${z})`;
@@ -55,7 +59,7 @@
     const img=e.target.closest('.pocket.art img');
     if(!img)return;
     const pocket=img.closest('.pocket.art[data-pocket]');
-    const i=Number(pocket?.dataset?.pocket),item=globalThis.state?.pockets?.[i];
+    const i=Number(pocket?.dataset?.pocket),item=getItem(i);
     if(!item||item.kind!=='art')return;
     e.preventDefault();e.stopPropagation();
     const current=Number.isFinite(item.zoom)?item.zoom:1;
@@ -64,6 +68,6 @@
     img.style.transform=`scale(${item.zoom})`;
     pocket.dataset.artZoom=String(Math.round(item.zoom*100));
     pocket.title=`Artwork position · wheel to resize · ${Math.round(item.zoom*100)}%`;
-    clearTimeout(saveTimer);saveTimer=setTimeout(()=>{try{globalThis.save?.()}catch{}},120);
+    clearTimeout(saveTimer);saveTimer=setTimeout(persist,120);
   },{passive:false});
 })();
