@@ -80,7 +80,7 @@ jobs:
           const {chromium}=require('playwright');
           const {PNG}=require('pngjs');
           const fs=require('fs');
-          const URL='https://kaseys-binder-studio-staging.jin345.workers.dev';
+          const STAGING='https://kaseys-binder-studio-staging.jin345.workers.dev';
           function variance(path){const p=PNG.sync.read(fs.readFileSync(path));let n=0,sum=0,sum2=0;for(let y=8;y<p.height-8;y+=2)for(let x=8;x<p.width-8;x+=2){const i=(y*p.width+x)*4;if(p.data[i+3]<30)continue;const v=.2126*p.data[i]+.7152*p.data[i+1]+.0722*p.data[i+2];n++;sum+=v;sum2+=v*v}const m=sum/Math.max(1,n);return Math.sqrt(Math.max(0,sum2/Math.max(1,n)-m*m));}
           (async()=>{
             const browser=await chromium.launch({headless:true});
@@ -92,7 +92,7 @@ jobs:
             page.on('requestfailed',r=>{const x={url:r.url(),error:r.failure()?.errorText||''};failed.push(x);console.log('REQUEST_FAILED',x)});
             page.on('response',r=>{if(r.url().includes('/api/art-image?'))artResponses.push({url:r.url().slice(0,190),status:r.status(),ct:r.headers()['content-type']||'',marker:r.headers()['x-kbs-art-image']||''})});
 
-            await page.goto(URL,{waitUntil:'networkidle',timeout:60000});await page.waitForTimeout(1000);
+            await page.goto(STAGING,{waitUntil:'networkidle',timeout:60000});await page.waitForTimeout(1000);
             if(await page.locator('#catalogFilter').count())throw new Error('Catalog selector exists');
             for(const s of ['#setFilter','#artistFilter','#libraryCardsTab','#libraryArtworkTab','.cloud-account'])if(await page.locator(s).count()!==1)throw new Error('Missing UI '+s);
             if(ctx.serviceWorkers().length)throw new Error('Service worker still active');
@@ -113,7 +113,7 @@ jobs:
             const banner=await page.locator('#runtimeErrorBanner').isVisible();const txt=(await page.locator('#runtimeErrorText').textContent())||'';const libStatus=((await page.locator('#masterLibraryStatus').textContent())||'')+' '+((await page.locator('#libraryProgressText').textContent())||'');
             console.log('LIBRARY',{banner,txt,libStatus});if(banner)throw new Error('Unexpected app notice: '+txt);if(!/Building|Library|catalog/i.test(libStatus))throw new Error('Library did not progress');
             await page.click('#mobilePreviewToggle');await page.waitForTimeout(200);const cls=(await page.locator('body').getAttribute('class'))||'';if(!cls.includes('mobile-lab-enabled'))throw new Error('Mobile preview failed');
-            const cfg=await page.request.get(URL+'/api/config');if(!cfg.ok())throw new Error('Auth config failed');
+            const cfg=await page.request.get(STAGING+'/api/config');if(!cfg.ok())throw new Error('Auth config failed');
             console.log('AUTH_CONFIG',cfg.status());console.log('FAILED_REQUESTS',JSON.stringify(failed.slice(0,25),null,2));console.log('CONSOLE_ERRORS',JSON.stringify(errors.slice(0,25),null,2));
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
