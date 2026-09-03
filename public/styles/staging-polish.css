@@ -1,300 +1,48 @@
 /* Binder Studio staging polish — page actions, artwork preview, animated brand, mobile navigation */
 
-/* Saved-binder page cards: keep every action inside its card in one clean row. */
-.page-card-actions{
-  display:grid!important;
-  grid-template-columns:repeat(4,minmax(0,1fr))!important;
-  gap:6px!important;
-  width:100%!important;
-  min-width:0!important;
-  align-items:stretch!important;
-}
-.page-card-actions button{
-  width:100%!important;
-  min-width:0!important;
-  max-width:100%!important;
-  min-height:30px!important;
-  height:30px!important;
-  padding:4px 3px!important;
-  border-radius:999px!important;
-  font-size:10px!important;
-  line-height:1!important;
-  font-weight:800!important;
-  letter-spacing:-.015em!important;
-  white-space:nowrap!important;
-  overflow:hidden!important;
-  text-overflow:clip!important;
-}
+.page-card-actions{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:6px!important;width:100%!important;min-width:0!important;align-items:stretch!important}
+.page-card-actions button{width:100%!important;min-width:0!important;max-width:100%!important;min-height:30px!important;height:30px!important;padding:4px 3px!important;border-radius:999px!important;font-size:10px!important;line-height:1!important;font-weight:800!important;letter-spacing:-.015em!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:clip!important}
 .page-card-actions .danger{font-size:9.5px!important}
 
-/* Circular animated Binder Studio mark. */
-.k-logo{
-  position:relative!important;
-  isolation:isolate!important;
-  display:grid!important;
-  place-items:center!important;
-  width:58px!important;
-  height:58px!important;
-  min-width:58px!important;
-  border:1px solid rgba(255,236,116,.82)!important;
-  border-radius:50%!important;
-  background:
-    radial-gradient(circle at 35% 28%,rgba(255,255,255,.84) 0 7%,transparent 8% 100%),
-    radial-gradient(circle at 50% 50%,#ffe96a 0 39%,#f5d52f 40% 61%,#b28d08 62% 68%,#171307 69% 73%,#f5d52f 74% 100%)!important;
-  color:#111820!important;
-  box-shadow:
-    0 0 0 2px rgba(245,213,47,.14),
-    0 0 24px rgba(245,213,47,.28),
-    inset 0 0 18px rgba(255,255,255,.28),
-    inset 0 -7px 12px rgba(91,68,0,.24)!important;
-  overflow:hidden!important;
-}
-.k-logo::before{
-  content:"";
-  position:absolute;
-  inset:5px;
-  z-index:-1;
-  border:1px solid rgba(17,24,32,.28);
-  border-radius:50%;
-  box-shadow:inset 0 0 0 2px rgba(255,255,255,.12);
-}
-.k-logo::after{
-  content:"";
-  position:absolute;
-  width:20px;
-  height:180%;
-  left:-40%;
-  top:-40%;
-  transform:rotate(28deg);
-  background:linear-gradient(90deg,transparent,rgba(255,255,255,.58),transparent);
-  animation:kbsLogoSweep 4.8s ease-in-out infinite;
-  pointer-events:none;
-}
-.k-logo span{
-  display:block;
-  color:#111820!important;
-  font-size:29px!important;
-  line-height:1!important;
-  font-weight:1000!important;
-  font-style:italic;
-  letter-spacing:-.1em;
-  text-shadow:0 1px rgba(255,255,255,.46),0 2px 4px rgba(0,0,0,.22);
-  transform-origin:50% 68%;
-  animation:kbsLogoKick 5.2s cubic-bezier(.2,.8,.25,1) infinite;
-}
-@keyframes kbsLogoKick{
-  0%,72%,100%{transform:translateY(0) rotate(0deg) scale(1)}
-  76%{transform:translateY(-9px) rotate(-18deg) scale(1.06)}
-  81%{transform:translateY(2px) rotate(7deg) scale(.98)}
-  86%{transform:translateY(-3px) rotate(-4deg) scale(1.02)}
-  91%{transform:translateY(0) rotate(0deg) scale(1)}
-}
-@keyframes kbsLogoSweep{
-  0%,65%{left:-55%;opacity:0}
-  70%{opacity:1}
-  88%{left:135%;opacity:.9}
-  100%{left:135%;opacity:0}
-}
-.brand-copy h1.brand-animated{display:flex!important;align-items:baseline;white-space:nowrap}
-.brand-copy h1.brand-animated .brand-char{
-  display:inline-block;
-  transform-origin:50% 100%;
-  animation:kbsTitleBounce 6s ease-in-out infinite;
-  animation-delay:calc(var(--char-index,0) * 42ms);
-}
-.brand-copy h1.brand-animated .brand-space{width:.28em}
-@keyframes kbsTitleBounce{
-  0%,73%,100%{transform:translateY(0) rotate(0)}
-  77%{transform:translateY(-8px) rotate(-9deg)}
-  83%{transform:translateY(1px) rotate(3deg)}
-  88%{transform:translateY(-2px) rotate(-1deg)}
-  92%{transform:translateY(0) rotate(0)}
-}
+.k-logo{position:relative!important;isolation:isolate!important;display:grid!important;place-items:center!important;width:58px!important;height:58px!important;min-width:58px!important;border:1px solid rgba(255,236,116,.82)!important;border-radius:50%!important;background:radial-gradient(circle at 35% 28%,rgba(255,255,255,.84) 0 7%,transparent 8% 100%),radial-gradient(circle at 50% 50%,#ffe96a 0 39%,#f5d52f 40% 61%,#b28d08 62% 68%,#171307 69% 73%,#f5d52f 74% 100%)!important;color:#111820!important;box-shadow:0 0 0 2px rgba(245,213,47,.14),0 0 24px rgba(245,213,47,.28),inset 0 0 18px rgba(255,255,255,.28),inset 0 -7px 12px rgba(91,68,0,.24)!important;overflow:hidden!important}
+.k-logo::before{content:"";position:absolute;inset:5px;z-index:-1;border:1px solid rgba(17,24,32,.28);border-radius:50%;box-shadow:inset 0 0 0 2px rgba(255,255,255,.12)}
+.k-logo::after{content:"";position:absolute;width:20px;height:180%;left:-40%;top:-40%;transform:rotate(28deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.58),transparent);animation:kbsLogoSweep 4.8s ease-in-out infinite;pointer-events:none}
+.k-logo span{display:block;color:#111820!important;font-size:29px!important;line-height:1!important;font-weight:1000!important;font-style:italic;letter-spacing:-.1em;text-shadow:0 1px rgba(255,255,255,.46),0 2px 4px rgba(0,0,0,.22);transform-origin:50% 68%;animation:kbsLogoKick 5.2s cubic-bezier(.2,.8,.25,1) infinite}
+@keyframes kbsLogoKick{0%,72%,100%{transform:translateY(0) rotate(0deg) scale(1)}76%{transform:translateY(-9px) rotate(-18deg) scale(1.06)}81%{transform:translateY(2px) rotate(7deg) scale(.98)}86%{transform:translateY(-3px) rotate(-4deg) scale(1.02)}91%{transform:translateY(0) rotate(0deg) scale(1)}}
+@keyframes kbsLogoSweep{0%,65%{left:-55%;opacity:0}70%{opacity:1}88%{left:135%;opacity:.9}100%{left:135%;opacity:0}}
+.brand-copy h1.brand-animated{display:flex!important;align-items:baseline;white-space:nowrap}.brand-copy h1.brand-animated .brand-char{display:inline-block;transform-origin:50% 100%;animation:kbsTitleBounce 6s ease-in-out infinite;animation-delay:calc(var(--char-index,0) * 42ms)}.brand-copy h1.brand-animated .brand-space{width:.28em}
+@keyframes kbsTitleBounce{0%,73%,100%{transform:translateY(0) rotate(0)}77%{transform:translateY(-8px) rotate(-9deg)}83%{transform:translateY(1px) rotate(3deg)}88%{transform:translateY(-2px) rotate(-1deg)}92%{transform:translateY(0) rotate(0)}}
 
-/* Build-library progress no longer uses either decorative icon. */
 .pikachu-bolt,.library-build-icon{display:none!important}
+.auto-art-card{grid-template-rows:auto auto auto auto!important}.auto-art-size{display:none!important}.auto-art-add{width:100%!important;font-size:9px!important;font-weight:900!important}.auto-art-image{cursor:zoom-in}
+.artwork-hover-preview{position:fixed;z-index:12000;width:min(340px,38vw);max-height:min(480px,72vh);padding:9px;border:1px solid color-mix(in srgb,var(--accent) 44%,var(--line));border-radius:16px;background:color-mix(in srgb,var(--surface) 96%,transparent);box-shadow:0 22px 70px rgba(0,0,0,.42);pointer-events:none;opacity:0;transform:translateY(5px) scale(.985);transition:opacity .11s ease,transform .11s ease;backdrop-filter:blur(14px)}.artwork-hover-preview.visible{opacity:1;transform:none}.artwork-hover-preview img{display:block;width:100%;max-height:min(430px,66vh);object-fit:contain;border-radius:11px;background:#080b10}
+.pocket.art .sleeve{overflow:hidden!important}.pocket.art img{transform-origin:50% 50%;will-change:transform,object-position}.pocket.art:hover{cursor:grab}
 
-/* Matching-artwork cards no longer carry a per-result slot-size selector. */
-.auto-art-card{grid-template-rows:auto auto auto auto!important}
-.auto-art-size{display:none!important}
-.auto-art-add{
-  width:100%!important;
-  font-size:9px!important;
-  font-weight:900!important;
-}
-.auto-art-image{cursor:zoom-in}
+/* Compact card-library setup: button is a progress bar, not a large card. */
+.canvas-side-controls .library-setup-card{padding:6px!important;gap:5px!important}
+.canvas-side-controls .library-setup-kicker{display:none!important}
+.canvas-side-controls #syncMasterLibrary{position:relative!important;display:flex!important;align-items:center!important;justify-content:center!important;width:100%!important;min-height:34px!important;height:34px!important;padding:0 42px 0 10px!important;border-radius:999px!important;overflow:hidden!important;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 88%,#fff) 0 var(--mobile-library-progress,0%),color-mix(in srgb,var(--surface2) 92%,#000) var(--mobile-library-progress,0%) 100%)!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 28%,transparent),0 5px 14px rgba(0,0,0,.14)!important}
+.canvas-side-controls #syncMasterLibrary .library-build-copy{display:block!important;min-width:0!important;width:100%!important;text-align:left!important}.canvas-side-controls #libraryBuildLabel{display:block!important;overflow:hidden!important;white-space:nowrap!important;text-overflow:ellipsis!important;font-size:10px!important;line-height:1!important;font-weight:950!important}.canvas-side-controls #libraryBuildHint{display:none!important}.canvas-side-controls #syncMasterLibrary::after{content:attr(data-progress);position:absolute;right:10px;top:50%;transform:translateY(-50%);font:950 9px/1 ui-sans-serif,system-ui,sans-serif;color:var(--text)}
+.canvas-side-controls .library-setup-progress{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:3px 8px!important;padding:5px 4px 1px!important;border:0!important;background:transparent!important}.canvas-side-controls .library-progress-head{display:contents!important}.canvas-side-controls .library-progress-head strong{min-width:0!important;overflow:hidden!important;white-space:nowrap!important;text-overflow:ellipsis!important;font-size:9px!important}.canvas-side-controls .library-progress-percent{font-size:9px!important}.canvas-side-controls .pikachu-progress{grid-column:1/-1!important;height:5px!important;margin:0!important}.canvas-side-controls .library-progress-foot{grid-column:1/-1!important;margin:0!important}.canvas-side-controls #libraryProgressText{display:none!important}.canvas-side-controls #masterLibraryHealth{display:block!important;overflow:hidden!important;white-space:nowrap!important;text-overflow:ellipsis!important;font-size:8px!important;opacity:.78}
 
-/* Large desktop artwork preview, parallel to the card-variant hover preview. */
-.artwork-hover-preview{
-  position:fixed;
-  z-index:12000;
-  width:min(340px,38vw);
-  max-height:min(480px,72vh);
-  padding:9px;
-  border:1px solid color-mix(in srgb,var(--accent) 44%,var(--line));
-  border-radius:16px;
-  background:color-mix(in srgb,var(--surface) 96%,transparent);
-  box-shadow:0 22px 70px rgba(0,0,0,.42);
-  pointer-events:none;
-  opacity:0;
-  transform:translateY(5px) scale(.985);
-  transition:opacity .11s ease,transform .11s ease;
-  backdrop-filter:blur(14px);
-}
-.artwork-hover-preview.visible{opacity:1;transform:none}
-.artwork-hover-preview img{
-  display:block;
-  width:100%;
-  max-height:min(430px,66vh);
-  object-fit:contain;
-  border-radius:11px;
-  background:#080b10;
-}
+body.mobile-lab-enabled .top{display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto auto!important;gap:5px!important;min-height:0!important;padding:7px 9px 8px!important;align-items:center!important}body.mobile-lab-enabled .brand{display:flex!important;width:100%!important;min-width:0!important;align-items:center!important;justify-content:flex-start!important;gap:9px!important}body.mobile-lab-enabled .k-logo{width:42px!important;height:42px!important;min-width:42px!important}body.mobile-lab-enabled .k-logo span{font-size:22px!important}body.mobile-lab-enabled .brand-copy{min-width:0!important;overflow:hidden!important}body.mobile-lab-enabled .brand h1{max-width:100%!important;font-size:16px!important;line-height:1.05!important;overflow:hidden!important;text-overflow:ellipsis!important}body.mobile-lab-enabled .top-actions{display:grid!important;grid-template-columns:minmax(0,.72fr) minmax(0,1.28fr) minmax(0,.78fr)!important;width:100%!important;min-width:0!important;gap:5px!important;align-items:stretch!important}body.mobile-lab-enabled .top-actions>*{min-width:0!important;width:100%!important;max-width:100%!important}body.mobile-lab-enabled .top-actions button,body.mobile-lab-enabled .top-actions .btn,body.mobile-lab-enabled .cloud-account-btn{min-width:0!important;width:100%!important;min-height:32px!important;height:32px!important;padding:4px 6px!important;border-radius:10px!important;font-size:8.5px!important;line-height:1!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}body.mobile-lab-enabled .version-link{font-size:8px!important;padding-inline:4px!important}body.mobile-lab-enabled .mobile-preview-toggle{font-size:8px!important;padding-inline:4px!important}body.mobile-lab-enabled .cloud-account{display:flex!important;width:100%!important;min-width:0!important}body.mobile-lab-enabled .cloud-popover{top:92px!important}
 
-/* Artwork wheel zoom is clipped to the pocket/sleeve, not the page. */
-.pocket.art .sleeve{overflow:hidden!important}
-.pocket.art img{
-  transform-origin:50% 50%;
-  will-change:transform,object-position;
+/* Narrow/mobile Live Binder Page becomes a vertical page rail at the right. */
+@media(max-width:700px){
+  .canvas-side-controls,body.mobile-lab-enabled .canvas .canvas-side-controls{display:grid!important;grid-template-columns:minmax(0,1fr) 46px!important;grid-auto-flow:row!important;align-items:start!important;justify-items:stretch!important;gap:7px!important;width:100%!important}
+  .canvas-side-controls>.control-module{width:100%!important;max-width:none!important;margin:0!important}
+  .canvas-side-controls>.binder-heading-module,body.mobile-lab-enabled .canvas .canvas-side-controls>.binder-heading-module{grid-column:2!important;grid-row:1 / span 4!important;align-self:start!important;display:flex!important;flex-direction:column!important;align-items:center!important;width:46px!important;max-width:46px!important;min-width:46px!important;padding:5px!important;gap:5px!important;border-radius:16px!important;overflow:visible!important}
+  .binder-heading-module .canvashead{display:none!important}
+  .binder-heading-module .editor-page-nav,body.mobile-lab-enabled .canvas .binder-heading-module .editor-page-nav{display:grid!important;grid-template-columns:1fr!important;grid-template-rows:30px minmax(0,1fr) 30px!important;width:34px!important;max-width:34px!important;min-height:188px!important;max-height:min(54vh,360px)!important;gap:4px!important;margin:0!important;overflow:hidden!important}
+  .binder-heading-module .page-arrow{display:grid!important;place-items:center!important;width:30px!important;min-width:30px!important;height:30px!important;min-height:30px!important;padding:0!important;margin:auto!important;border-radius:10px!important;font-size:16px!important;line-height:1!important;transition:transform .18s cubic-bezier(.2,.8,.25,1),background .18s ease,border-color .18s ease!important}
+  .binder-heading-module .page-numbers,body.mobile-lab-enabled .canvas .binder-heading-module .page-numbers{display:flex!important;flex-direction:column!important;align-items:center!important;gap:4px!important;width:34px!important;min-width:34px!important;height:100%!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;padding:1px 2px!important;scrollbar-width:none!important;scroll-snap-type:y proximity!important;overscroll-behavior-y:contain!important}
+  .binder-heading-module .page-numbers::-webkit-scrollbar{display:none!important}
+  .binder-heading-module .page-number,body.mobile-lab-enabled .canvas .binder-heading-module .page-number{flex:0 0 28px!important;display:grid!important;place-items:center!important;width:28px!important;min-width:28px!important;height:28px!important;min-height:28px!important;padding:0!important;border-radius:9px!important;font-size:9px!important;line-height:1!important;scroll-snap-align:center!important;transform-origin:center!important;transition:transform .18s cubic-bezier(.2,.8,.25,1),background .18s ease,border-color .18s ease,box-shadow .18s ease!important}
+  .binder-heading-module .page-number:hover{transform:translateX(-3px) scale(1.08)!important;border-color:var(--accent)!important}.binder-heading-module .page-number.active,.binder-heading-module .page-number[aria-current="page"]{transform:scale(1.12)!important;background:color-mix(in srgb,var(--accent) 22%,var(--surface2))!important;border-color:var(--accent)!important;box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 14%,transparent),0 5px 16px color-mix(in srgb,var(--accent) 20%,transparent)!important}.binder-heading-module .page-number.page-switch-pop{animation:kbsPageRailPop .34s cubic-bezier(.18,.88,.28,1.35)!important}.binder-heading-module .page-arrow:hover{transform:scale(1.08)!important;border-color:var(--accent)!important}
+  .canvas-side-controls>.library-module,.canvas-side-controls>.selected-module,.canvas-side-controls>.appearance-module,.canvas-side-controls>.mobile-page-actions{grid-column:1!important}.canvas-side-controls>.library-module{grid-row:1!important}.canvas-side-controls>.mobile-page-actions{grid-row:2!important}.canvas-side-controls>.selected-module{grid-row:3!important}.canvas-side-controls>.appearance-module{grid-row:4!important}
 }
-.pocket.art:hover{cursor:grab}
+@keyframes kbsPageRailPop{0%{transform:scale(.72) rotate(-10deg)}58%{transform:scale(1.18) rotate(4deg)}100%{transform:scale(1.12) rotate(0)}}
 
-/* Mobile: the header becomes a clean two-tier composition instead of squeezing everything into one line. */
-body.mobile-lab-enabled .top{
-  display:grid!important;
-  grid-template-columns:minmax(0,1fr)!important;
-  grid-template-rows:auto auto!important;
-  gap:5px!important;
-  min-height:0!important;
-  padding:7px 9px 8px!important;
-  align-items:center!important;
-}
-body.mobile-lab-enabled .brand{
-  display:flex!important;
-  width:100%!important;
-  min-width:0!important;
-  align-items:center!important;
-  justify-content:flex-start!important;
-  gap:9px!important;
-}
-body.mobile-lab-enabled .k-logo{
-  width:42px!important;
-  height:42px!important;
-  min-width:42px!important;
-}
-body.mobile-lab-enabled .k-logo span{font-size:22px!important}
-body.mobile-lab-enabled .brand-copy{min-width:0!important;overflow:hidden!important}
-body.mobile-lab-enabled .brand h1{
-  max-width:100%!important;
-  font-size:16px!important;
-  line-height:1.05!important;
-  overflow:hidden!important;
-  text-overflow:ellipsis!important;
-}
-body.mobile-lab-enabled .top-actions{
-  display:grid!important;
-  grid-template-columns:minmax(0,.72fr) minmax(0,1.28fr) minmax(0,.78fr)!important;
-  width:100%!important;
-  min-width:0!important;
-  gap:5px!important;
-  align-items:stretch!important;
-}
-body.mobile-lab-enabled .top-actions>*{
-  min-width:0!important;
-  width:100%!important;
-  max-width:100%!important;
-}
-body.mobile-lab-enabled .top-actions button,
-body.mobile-lab-enabled .top-actions .btn,
-body.mobile-lab-enabled .cloud-account-btn{
-  min-width:0!important;
-  width:100%!important;
-  min-height:32px!important;
-  height:32px!important;
-  padding:4px 6px!important;
-  border-radius:10px!important;
-  font-size:8.5px!important;
-  line-height:1!important;
-  white-space:nowrap!important;
-  overflow:hidden!important;
-  text-overflow:ellipsis!important;
-}
-body.mobile-lab-enabled .version-link{font-size:8px!important;padding-inline:4px!important}
-body.mobile-lab-enabled .mobile-preview-toggle{font-size:8px!important;padding-inline:4px!important}
-body.mobile-lab-enabled .cloud-account{display:flex!important;width:100%!important;min-width:0!important}
-body.mobile-lab-enabled .cloud-popover{top:92px!important}
-
-/* Mobile live-page navigation: arrows never move; only compact page chips scroll. */
-body.mobile-lab-enabled .editor-page-nav{
-  display:grid!important;
-  grid-template-columns:30px minmax(0,1fr) 30px!important;
-  align-items:center!important;
-  width:100%!important;
-  max-width:282px!important;
-  gap:4px!important;
-  overflow:hidden!important;
-}
-body.mobile-lab-enabled .editor-page-nav .page-arrow{
-  position:relative!important;
-  z-index:2!important;
-  display:grid!important;
-  place-items:center!important;
-  width:30px!important;
-  min-width:30px!important;
-  height:30px!important;
-  min-height:30px!important;
-  padding:0!important;
-  border-radius:9px!important;
-  font-size:16px!important;
-  line-height:1!important;
-}
-body.mobile-lab-enabled .editor-page-nav .page-numbers{
-  display:flex!important;
-  align-items:center!important;
-  gap:4px!important;
-  min-width:0!important;
-  width:100%!important;
-  overflow-x:auto!important;
-  overflow-y:hidden!important;
-  padding:1px!important;
-  scroll-snap-type:x proximity;
-  scrollbar-width:none!important;
-  overscroll-behavior-x:contain!important;
-}
-body.mobile-lab-enabled .editor-page-nav .page-numbers::-webkit-scrollbar{display:none!important}
-body.mobile-lab-enabled .editor-page-nav .page-number{
-  flex:0 0 28px!important;
-  width:28px!important;
-  min-width:28px!important;
-  height:28px!important;
-  min-height:28px!important;
-  padding:0!important;
-  border-radius:9px!important;
-  font-size:9px!important;
-  line-height:1!important;
-  scroll-snap-align:center;
-}
-body.mobile-lab-enabled .binder-heading-module{overflow:hidden!important}
-body.mobile-lab-enabled .binder-heading-module .canvashead .status{
-  display:block!important;
-  width:100%!important;
-  max-width:100%!important;
-  overflow:hidden!important;
-  white-space:nowrap!important;
-  text-overflow:ellipsis!important;
-}
-
-@media(max-width:560px){
-  .page-card-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}
-  .page-card-actions button{font-size:11px!important;height:34px!important;min-height:34px!important}
-  .page-card-actions .danger{font-size:10.5px!important}
-  .artwork-hover-preview{display:none!important}
-}
-@media(max-width:360px){
-  body.mobile-lab-enabled .top-actions{grid-template-columns:minmax(0,.68fr) minmax(0,1.22fr) minmax(0,.72fr)!important}
-  body.mobile-lab-enabled .top-actions button,body.mobile-lab-enabled .cloud-account-btn{font-size:7.8px!important;padding-inline:3px!important}
-  body.mobile-lab-enabled .brand h1{font-size:14px!important}
-}
-@media(prefers-reduced-motion:reduce){
-  .k-logo::after,.k-logo span,.brand-copy h1.brand-animated .brand-char{animation:none!important}
-}
+@media(max-width:560px){.page-card-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}.page-card-actions button{font-size:11px!important;height:34px!important;min-height:34px!important}.page-card-actions .danger{font-size:10.5px!important}.artwork-hover-preview{display:none!important}}
+@media(max-width:360px){body.mobile-lab-enabled .top-actions{grid-template-columns:minmax(0,.68fr) minmax(0,1.22fr) minmax(0,.72fr)!important}body.mobile-lab-enabled .top-actions button,body.mobile-lab-enabled .cloud-account-btn{font-size:7.8px!important;padding-inline:3px!important}body.mobile-lab-enabled .brand h1{font-size:14px!important}}
+@media(prefers-reduced-motion:reduce){.k-logo::after,.k-logo span,.brand-copy h1.brand-animated .brand-char,.binder-heading-module .page-number.page-switch-pop{animation:none!important}}
