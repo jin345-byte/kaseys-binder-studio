@@ -1,0 +1,62 @@
+name: Artwork Height v2.8.13 Check
+
+on:
+  push:
+    branches: [fix-artwork-column-height]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  layout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix-artwork-column-height
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: |
+          node --check public/features/staging-v287.js
+          node --check public/features/artwork-height-sync.js
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null
+      - name: Serve branch
+        run: |
+          python3 -m http.server 4173 --directory public >/tmp/kbs-http.log 2>&1 &
+          sleep 1
+      - name: Verify live-hook height chain
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1440,height:1100}});
+            await page.goto('http://127.0.0.1:4173/?v213='+Date.now(),{waitUntil:'domcontentloaded',timeout:30000});
+            /* Production HTML does not contain this staging-only injected hook, so load it exactly as the Worker does. */
+            await page.addScriptTag({url:'http://127.0.0.1:4173/features/staging-v287.js?v=2.8.13'});
+            await page.waitForFunction(()=>document.documentElement.dataset.artworkHeightSync==='ready',null,{timeout:10000});
+            await page.click('#libraryArtworkTab');
+            await page.waitForTimeout(350);
+            const m=await page.evaluate(()=>{
+              const l=document.querySelector('.library').getBoundingClientRect();
+              const c=document.querySelector('.canvas').getBoundingClientRect();
+              const p=document.querySelector('.artwork-pane').getBoundingClientRect();
+              const r=document.querySelector('#autoArtworkSection').getBoundingClientRect();
+              const a=document.querySelector('#arts').getBoundingClientRect();
+              return {library:{top:l.top,bottom:l.bottom,height:l.height},canvas:{top:c.top,bottom:c.bottom,height:c.height},paneBottom:p.bottom,resultsHeight:r.height,trayBottom:a.bottom,sync:document.querySelector('.library').dataset.canvasHeightSync||'',hook:!!document.querySelector('script[data-kbs-artwork-height-sync]')};
+            });
+            console.log('V213_ARTWORK_METRICS',JSON.stringify(m));
+            if(!m.hook||!m.sync)throw new Error('v2.8.13 height hook did not initialize');
+            if(Math.abs(m.library.bottom-m.canvas.bottom)>6)throw new Error('bottom mismatch '+JSON.stringify(m));
+            if(Math.abs(m.library.height-m.canvas.height)>6)throw new Error('height mismatch '+JSON.stringify(m));
+            if(m.paneBottom>m.library.bottom+2||m.trayBottom>m.library.bottom+2)throw new Error('artwork content overflow '+JSON.stringify(m));
+            if(m.resultsHeight<300)throw new Error('results too short '+JSON.stringify(m));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
