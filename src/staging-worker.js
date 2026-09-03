@@ -2,7 +2,7 @@ import productionWorker from './worker.js';
 
 const CLOUD_CSS = '<link rel="stylesheet" href="/features/cloud-sync.css">';
 const CLOUD_JS = '<script src="/features/cloud-sync.js"></script>';
-const STAGING_BUILD = '2.8.2-safebooru-cache';
+const STAGING_BUILD = '2.8.3-unified-cleanup';
 
 function isHtmlRequest(request, response) {
   if (request.method !== 'GET') return false;
