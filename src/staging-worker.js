@@ -2,7 +2,9 @@ import productionWorker from './worker.js';
 
 const CLOUD_CSS = '<link rel="stylesheet" href="/features/cloud-sync.css">';
 const CLOUD_JS = '<script src="/features/cloud-sync.js"></script>';
-const STAGING_BUILD = '2.8.7-artofpkm-proxy';
+const STAGING_287_CSS = '<link rel="stylesheet" href="/styles/staging-v287.css">';
+const STAGING_287_JS = '<script src="/features/staging-v287.js"></script>';
+const STAGING_BUILD = '2.8.7-tour-layout-polish';
 const ART_IMAGE_HOSTS = new Set(['cdn.donmai.us','safebooru.org','raw.githubusercontent.com','cdn.artofpkm.com']);
 
 function isHtmlRequest(request, response) {
@@ -169,7 +171,10 @@ export default {
       url.pathname === '/features/mobile-lab.js' ||
       url.pathname === '/features/staging-fetch-shim.js' ||
       url.pathname === '/features/staging-polish.js' ||
-      url.pathname === '/styles/staging-polish.css'
+      url.pathname === '/features/help-lab.js' ||
+      url.pathname === '/features/staging-v287.js' ||
+      url.pathname === '/styles/staging-polish.css' ||
+      url.pathname === '/styles/staging-v287.css'
     )) return noStoreResponse(await env.ASSETS.fetch(request));
 
     const response = await productionWorker.fetch(request, env, ctx);
@@ -177,7 +182,9 @@ export default {
 
     let html = await response.text();
     if (!html.includes('features/cloud-sync.css')) html = html.replace('</head>', `  ${CLOUD_CSS}\n</head>`);
+    if (!html.includes('styles/staging-v287.css')) html = html.replace('</head>', `  ${STAGING_287_CSS}\n</head>`);
     if (!html.includes('features/cloud-sync.js')) html = html.replace('</body>', `  ${CLOUD_JS}\n</body>`);
+    if (!html.includes('features/staging-v287.js')) html = html.replace('</body>', `  ${STAGING_287_JS}\n</body>`);
 
     const headers = new Headers(response.headers);
     headers.delete('content-length');
