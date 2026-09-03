@@ -41,7 +41,7 @@
       const u=new URL(raw);
       if(u.origin===location.origin&&u.pathname==='/api/art-image')return u.href;
       const host=u.hostname.toLowerCase();
-      if(host==='cdn.donmai.us'||host==='raw.githubusercontent.com')return `${location.origin}/api/art-image?url=${encodeURIComponent(u.href)}`;
+      if(host==='cdn.donmai.us'||host==='safebooru.org'||host==='raw.githubusercontent.com')return `${location.origin}/api/art-image?url=${encodeURIComponent(u.href)}`;
       return u.href;
     }catch{return raw}
   }
