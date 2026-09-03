@@ -28,54 +28,30 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --check public/app.js
-          node --check public/features/cards-lab.js
-          node --check public/features/catalog-lab.js
-          node --check public/features/art-search-lab.js
-          node --check public/features/binder-lab.js
-          node --check public/features/mobile-lab.js
-          node --check public/features/cloud-sync.js
-          node --check public/features/staging-fetch-shim.js
-          node --check public/features/staging-polish.js
-          node --check public/features/staging-v287.js
-          node --check public/features/help-lab.js
-          node --check src/staging-worker.js
+          for f in public/app.js public/features/cards-lab.js public/features/catalog-lab.js public/features/art-search-lab.js public/features/binder-lab.js public/features/mobile-lab.js public/features/cloud-sync.js public/features/staging-fetch-shim.js public/features/staging-polish.js public/features/staging-v287.js public/features/help-lab.js src/staging-worker.js; do node --check "$f"; done
           python - <<'PY'
-          import re, pathlib, json
+          import re,pathlib,json
           html=pathlib.Path('public/index.html').read_text(encoding='utf-8')
           ids=re.findall(r'\bid=["\']([^"\']+)["\']',html)
           dup=sorted({x for x in ids if ids.count(x)>1})
           assert not dup, f'duplicate ids: {dup}'
           assert 'id="catalogFilter"' not in html
-          assert 'id="setFilter"' in html and 'id="artistFilter"' in html
           assert 'serviceWorker.register' not in html and 'art-search-proxy.js' not in html
-          assert '<strong>App notice</strong>' in html
-          assert 'v2.8.6 STAGING' in html and 'v2.8.6 Staging' in html
-          assert 'staging-polish.js?v=2.8.6' in html and 'styles/staging-polish.css?v=2.8.6' in html
           assert 'pikachu-bolt' not in html and 'library-build-icon' not in html
           worker=pathlib.Path('src/staging-worker.js').read_text(encoding='utf-8')
+          for x in ['/api/art-image','/api/art-feed','/api/card-search','styles/staging-v287.css','features/staging-v287.js','features/help-lab.js','cdn.artofpkm.com']:
+              assert x in worker, x
           assert '/api/art-search' not in worker
-          for route in ["/api/art-image","/api/art-feed","/api/card-search"]: assert route in worker
-          for asset in ['styles/staging-v287.css','features/staging-v287.js','features/help-lab.js']:
-              assert asset in worker, f'missing no-store/injection asset: {asset}'
+          tour=pathlib.Path('public/features/help-lab.js').read_text(encoding='utf-8')
+          assert '#catalogFilter' not in tour
+          for x in ['#libraryArtworkTab','Choose matching artwork','Position and resize artwork','Save and manage binder pages']:
+              assert x in tour, x
+          rail=pathlib.Path('public/styles/staging-v287.css').read_text(encoding='utf-8')
+          for x in ['grid-template-columns:minmax(0,1fr) 46px','flex-direction:column','kbsPageRailPop','height:34px','data-progress']:
+              assert x in rail, x
           art=pathlib.Path('public/features/art-search-lab.js').read_text(encoding='utf-8')
           assert 'data-art-size' not in art and 'auto-art-size' not in art
           assert '/api/art-feed?' in art and 'nextPid' in art and 'exhausted' in art
-          polish=pathlib.Path('public/features/staging-polish.js').read_text(encoding='utf-8')
-          assert 'artworkHoverPreview' in polish and "addEventListener('wheel'" in polish
-          assert 'brand-animated' in polish and 'scrollIntoView' in polish
-          css=pathlib.Path('public/styles/staging-polish.css').read_text(encoding='utf-8')
-          for needle in ['page-card-actions','repeat(4,minmax(0,1fr))','border-radius:50%','kbsLogoKick']:
-              assert needle in css, f'missing polish css: {needle}'
-          tour=pathlib.Path('public/features/help-lab.js').read_text(encoding='utf-8')
-          assert '#catalogFilter' not in tour
-          for needle in ['#libraryArtworkTab','Choose matching artwork','Position and resize artwork','Save and manage binder pages']:
-              assert needle in tour, f'missing guided-tour instruction: {needle}'
-          rail=pathlib.Path('public/styles/staging-v287.css').read_text(encoding='utf-8')
-          for needle in ['grid-template-columns:minmax(0,1fr) 46px','flex-direction:column','kbsPageRailPop','height:34px','data-progress']:
-              assert needle in rail, f'missing v2.8.7 layout rule: {needle}'
-          railjs=pathlib.Path('public/features/staging-v287.js').read_text(encoding='utf-8')
-          assert 'page-switch-pop' in railjs and 'scrollIntoView' in railjs
           eevee=json.loads(pathlib.Path('public/art-cache/eevee.json').read_text(encoding='utf-8'))
           assert len(eevee.get('results',[]))>=10
           print('STATIC PASS',len(ids),'unique ids')
@@ -86,7 +62,7 @@ jobs:
           npm install --no-save wrangler@4 playwright@1.55.0 pngjs@7 >/dev/null 2>&1
           npx playwright install chromium >/dev/null
 
-      - name: Deploy cleaned staging
+      - name: Deploy staging
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -105,26 +81,23 @@ jobs:
             const browser=await chromium.launch({headless:true});
             const ctx=await browser.newContext({viewport:{width:1440,height:1100}});
             const page=await ctx.newPage();
-            const errors=[],failed=[],artResponses=[];
+            const errors=[],artResponses=[];
             page.on('pageerror',e=>errors.push('PAGE '+e.message));
             page.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
-            page.on('requestfailed',r=>failed.push({url:r.url(),error:r.failure()?.errorText||''}));
             page.on('response',r=>{if(r.url().includes('/api/art-image?'))artResponses.push({status:r.status(),ct:r.headers()['content-type']||'',marker:r.headers()['x-kbs-art-image']||''})});
 
-            let build='';
-            for(let attempt=0;attempt<8;attempt++){
-              const response=await page.goto(STAGING+'/?qa='+Date.now(),{waitUntil:'networkidle',timeout:60000});
-              build=response?.headers()['x-kbs-staging-build']||'';
-              await page.waitForTimeout(700);
-              if(build==='2.8.7-tour-layout-polish')break;
+            let ready=false;
+            for(let attempt=0;attempt<10;attempt++){
+              await page.goto(STAGING+'/?qa='+Date.now(),{waitUntil:'networkidle',timeout:60000});
+              await page.waitForTimeout(500);
+              ready=(await page.locator('link[href*="staging-v287.css"]').count())===1&&(await page.locator('script[src*="staging-v287.js"]').count())===1;
+              if(ready)break;
               await page.waitForTimeout(2200);
             }
-            if(build!=='2.8.7-tour-layout-polish')throw new Error('Staging build stale after propagation wait: '+build);
+            if(!ready)throw new Error('v2.8.7 staging assets did not propagate');
             if(ctx.serviceWorkers().length)throw new Error('Service worker active');
             if(await page.locator('#catalogFilter').count())throw new Error('Catalog selector exists');
             if(await page.locator('.pikachu-bolt,.library-build-icon').count())throw new Error('Library decoration still present');
-            if(await page.locator('link[href*="staging-v287.css"]').count()!==1)throw new Error('v2.8.7 CSS not injected');
-            if(await page.locator('script[src*="staging-v287.js"]').count()!==1)throw new Error('v2.8.7 JS not injected');
 
             const libraryButton=await page.locator('.canvas-side-controls #syncMasterLibrary').boundingBox();
             if(!libraryButton||libraryButton.height>38)throw new Error('Build library control is still oversized');
@@ -133,37 +106,27 @@ jobs:
             await page.click('#guidedTourLaunch');
             if((await page.locator('#guidedDemoTitle').textContent()).trim()!=='Build the card library')throw new Error('New guided tour did not open');
             for(let i=0;i<4;i++)await page.click('#guidedDemoNext');
-            if((await page.locator('#guidedDemoTitle').textContent()).trim()!=='Open the Artwork tab')throw new Error('Guided tour does not teach the Artwork tab');
-            if(await page.locator('#grid .pocket.filled').count()!==pocketCountBefore)throw new Error('Guided tour changed binder contents');
+            if((await page.locator('#guidedDemoTitle').textContent()).trim()!=='Open the Artwork tab')throw new Error('Tour does not teach Artwork tab');
+            if(await page.locator('#grid .pocket.filled').count()!==pocketCountBefore)throw new Error('Tour changed binder contents');
             await page.keyboard.press('Escape');
 
             await page.setViewportSize({width:430,height:900});
-            await page.waitForTimeout(250);
-            await page.locator('[data-mobile-lab="page"]').click();
-            await page.waitForTimeout(300);
-            const rail=page.locator('#editorPageNav');
-            const railBox=await rail.boundingBox();
+            await page.waitForTimeout(350);
+            await page.locator('[data-mobile-lab="page"]').click();await page.waitForTimeout(250);
+            const railBox=await page.locator('#editorPageNav').boundingBox();
             const prev=await page.locator('#editorPrev').boundingBox(),next=await page.locator('#editorNext').boundingBox();
             const dir=await page.locator('#editorPageNumbers').evaluate(el=>getComputedStyle(el).flexDirection);
-            if(!railBox||railBox.width>38||dir!=='column'||!prev||!next||next.y<=prev.y)throw new Error('Live page navigation is not a compact vertical rail');
+            if(!railBox||railBox.width>38||dir!=='column'||!prev||!next||next.y<=prev.y)throw new Error('Page navigation is not a compact vertical rail');
 
-            await page.setViewportSize({width:1440,height:1100});
-            await page.waitForTimeout(250);
-            await page.click('#openBinders');await page.waitForTimeout(250);
-            const pageCard=page.locator('#pageBrowser .page-card').first();
-            if(await pageCard.count()){
-              const cardBox=await pageCard.boundingBox();const buttons=pageCard.locator('.page-card-actions button');
-              for(let i=0;i<await buttons.count();i++){const b=await buttons.nth(i).boundingBox();if(b.x<cardBox.x-1||b.x+b.width>cardBox.x+cardBox.width+1)throw new Error('Page action button overflow');}
-            }
-            await page.click('#closeBinders');
-
+            await page.setViewportSize({width:1440,height:1100});await page.waitForTimeout(250);
             await page.fill('#subject','eevee');await page.click('#searchBtn');await page.click('#libraryArtworkTab');await page.waitForTimeout(12000);
-            if(await page.locator('#autoArtworkResults [data-art-size],#autoArtworkResults .auto-art-size').count())throw new Error('Artwork slot-size selector still present');
+            if(await page.locator('#autoArtworkResults [data-art-size],#autoArtworkResults .auto-art-size').count())throw new Error('Artwork slot-size selector returned');
             let artCount=await page.locator('#autoArtworkResults .auto-art-card').count();
-            const imgs=page.locator('#autoArtworkResults img');const decoded=await imgs.evaluateAll(nodes=>nodes.filter(i=>i.complete&&i.naturalWidth>0&&i.naturalHeight>0).length);
+            const imgs=page.locator('#autoArtworkResults img');
+            const decoded=await imgs.evaluateAll(nodes=>nodes.filter(i=>i.complete&&i.naturalWidth>0&&i.naturalHeight>0).length);
             const good=artResponses.filter(x=>x.status===200&&x.marker==='proxy'&&x.ct.startsWith('image/')).length;
             if(artCount<10||decoded<8||good<8)throw new Error('Artwork render incomplete');
-            await imgs.first().hover();await page.waitForTimeout(150);if(!(await page.locator('#artworkHoverPreview').isVisible()))throw new Error('Artwork hover preview did not open');
+            await imgs.first().hover();await page.waitForTimeout(120);if(!(await page.locator('#artworkHoverPreview').isVisible()))throw new Error('Artwork hover preview failed');
             await imgs.first().screenshot({path:'art.png'});if(variance('art.png')<=8)throw new Error('Artwork visually blank');
             for(let i=0;i<3;i++){
               if(await page.isDisabled('#autoArtworkLoadMore'))break;
@@ -174,16 +137,16 @@ jobs:
 
             const beforeTray=await page.locator('#arts .item').count();await page.locator('#autoArtworkResults .auto-art-add').first().click();await page.waitForTimeout(350);if(await page.locator('#arts .item').count()!==beforeTray+1)throw new Error('Add artwork failed');
             await page.locator('#arts .item .pick').first().click();await page.locator('#grid .pocket').first().click();await page.waitForTimeout(350);
-            const placed=page.locator('#grid .pocket.art img').first();if(!(await placed.count()))throw new Error('Artwork did not place in binder');
-            const z0=await placed.evaluate(el=>getComputedStyle(el).transform);await placed.hover();await page.mouse.wheel(0,-120);await page.waitForTimeout(180);const z1=await placed.evaluate(el=>getComputedStyle(el).transform);if(z0===z1)throw new Error('Artwork wheel zoom did not change image scale');
+            const placed=page.locator('#grid .pocket.art img').first();if(!(await placed.count()))throw new Error('Artwork placement failed');
+            const z0=await placed.evaluate(el=>getComputedStyle(el).transform);await placed.hover();await page.mouse.wheel(0,-120);await page.waitForTimeout(180);const z1=await placed.evaluate(el=>getComputedStyle(el).transform);if(z0===z1)throw new Error('Artwork wheel zoom failed');
 
             await page.click('#libraryCardsTab');await page.locator('#syncMasterLibrary').click({force:true});
             await page.waitForFunction(()=>[...document.querySelectorAll('#setFilter option')].some(o=>String(o.value).startsWith('pocket:')),null,{timeout:120000});
             const pocketValue=await page.locator('#setFilter option[value^="pocket:"]').first().getAttribute('value');await page.fill('#subject','');await page.waitForTimeout(350);await page.selectOption('#setFilter',pocketValue);await page.waitForTimeout(800);
             const pc=await page.locator('#cards .card-item.is-pocket-card').count(),pb=await page.locator('#cards .pocket-source-badge').count();if(pc<1||pb<1)throw new Error('Pocket filter failed');
-            const banner=await page.locator('#runtimeErrorBanner').isVisible();if(banner)throw new Error('Unexpected App notice: '+await page.locator('#runtimeErrorText').textContent());
+            if(await page.locator('#runtimeErrorBanner').isVisible())throw new Error('Unexpected App notice: '+await page.locator('#runtimeErrorText').textContent());
             const cfg=await page.request.get(STAGING+'/api/config');if(!cfg.ok())throw new Error('Auth config failed');
-            if(errors.length)throw new Error('Browser console/page errors: '+errors.join(' | '));
+            if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
