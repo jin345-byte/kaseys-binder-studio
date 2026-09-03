@@ -55,6 +55,18 @@ async function artworkImage(request) {
   }
 }
 
+function emptyCardSearch(upstreamStatus='') {
+  const headers = new Headers({
+    'content-type':'application/json; charset=utf-8',
+    'cache-control':'no-store',
+    'access-control-allow-origin':'*',
+    'x-content-type-options':'nosniff',
+    'x-kbs-card-search':'proxy-fallback'
+  });
+  if (upstreamStatus) headers.set('x-kbs-card-upstream-status', String(upstreamStatus));
+  return new Response(JSON.stringify({data:[],page:1,pageSize:250,count:0,totalCount:0}),{status:200,headers});
+}
+
 async function cardSearch(request) {
   const incoming = new URL(request.url);
   const target = new URL('https://api.pokemontcg.io/v2/cards');
@@ -67,19 +79,20 @@ async function cardSearch(request) {
       },
       cf:{cacheEverything:true,cacheTtl:300}
     });
+    if (!upstream.ok) {
+      try { await upstream.body?.cancel(); } catch {}
+      return emptyCardSearch(upstream.status);
+    }
     const headers = new Headers();
     headers.set('content-type', upstream.headers.get('content-type') || 'application/json; charset=utf-8');
-    headers.set('cache-control', upstream.ok ? 'public, max-age=300' : 'no-store');
+    headers.set('cache-control', 'public, max-age=300');
     headers.set('access-control-allow-origin','*');
     headers.set('x-content-type-options','nosniff');
     headers.set('x-kbs-card-search','proxy');
-    return new Response(upstream.body,{status:upstream.status,statusText:upstream.statusText,headers});
+    return new Response(upstream.body,{status:200,headers});
   } catch (e) {
-    console.error('Card search proxy failed', target.href, e);
-    return new Response(JSON.stringify({error:'Card search unavailable'}),{
-      status:502,
-      headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-kbs-card-search':'proxy'}
-    });
+    console.warn('Card search upstream unavailable; using empty staging fallback', e?.message || e);
+    return emptyCardSearch('network');
   }
 }
 
