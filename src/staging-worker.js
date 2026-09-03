@@ -2,8 +2,8 @@ import productionWorker from './worker.js';
 
 const CLOUD_CSS = '<link rel="stylesheet" href="/features/cloud-sync.css">';
 const CLOUD_JS = '<script src="/features/cloud-sync.js"></script>';
-const STAGING_BUILD = '2.8.5-artwork-polish';
-const ART_IMAGE_HOSTS = new Set(['cdn.donmai.us','safebooru.org','raw.githubusercontent.com']);
+const STAGING_BUILD = '2.8.7-artofpkm-proxy';
+const ART_IMAGE_HOSTS = new Set(['cdn.donmai.us','safebooru.org','raw.githubusercontent.com','cdn.artofpkm.com']);
 
 function isHtmlRequest(request, response) {
   if (request.method !== 'GET') return false;
@@ -23,31 +23,43 @@ function noStoreResponse(response) {
   return new Response(response.body, {status: response.status,statusText: response.statusText,headers});
 }
 
+function artworkRequestHeaders(hostname){
+  const host=String(hostname||'').toLowerCase();
+  const headers={
+    'accept':'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+    'user-agent':'Mozilla/5.0 Kaseys-Binder-Studio/2.8'
+  };
+  if(host==='safebooru.org')headers.referer='https://safebooru.org/';
+  else if(host==='cdn.donmai.us')headers.referer='https://safebooru.donmai.us/';
+  return headers;
+}
+
 async function artworkImage(request) {
   const source = new URL(request.url).searchParams.get('url') || '';
   let target;
   try { target = new URL(source); } catch { return new Response('Invalid image URL', {status:400}); }
-  if (target.protocol !== 'https:' || !ART_IMAGE_HOSTS.has(target.hostname.toLowerCase())) {
+  const host=target.hostname.toLowerCase();
+  if (target.protocol !== 'https:' || !ART_IMAGE_HOSTS.has(host)) {
     return new Response('Image host not allowed', {status:403});
   }
   try {
     const upstream = await fetch(target.href, {
-      headers: {
-        'accept':'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-        'user-agent':'Mozilla/5.0 Kaseys-Binder-Studio/2.8',
-        'referer': target.hostname.toLowerCase()==='safebooru.org' ? 'https://safebooru.org/' : 'https://safebooru.donmai.us/'
-      },
-      cf:{cacheEverything:true,cacheTtl:86400}
+      headers: artworkRequestHeaders(host),
+      redirect:'follow',
+      cf:{cacheEverything:true,cacheTtl:host==='cdn.artofpkm.com'?3600:86400}
     });
     if (!upstream.ok) return new Response(`Artwork upstream ${upstream.status}`, {status:502});
     const type = upstream.headers.get('content-type') || '';
-    if (!type.startsWith('image/')) return new Response('Artwork upstream was not an image', {status:502});
+    if (!type.toLowerCase().startsWith('image/')) return new Response('Artwork upstream was not an image', {status:502});
+    const length=upstream.headers.get('content-length')||'';
     const headers = new Headers();
     headers.set('content-type', type);
-    headers.set('cache-control','public, max-age=86400, stale-while-revalidate=604800');
+    headers.set('cache-control',host==='cdn.artofpkm.com'?'public, max-age=3600, stale-while-revalidate=86400':'public, max-age=86400, stale-while-revalidate=604800');
     headers.set('access-control-allow-origin','*');
     headers.set('x-content-type-options','nosniff');
     headers.set('x-kbs-art-image','proxy');
+    headers.set('x-kbs-art-source',host);
+    if(length)headers.set('x-kbs-art-upstream-length',length);
     return new Response(upstream.body,{status:200,headers});
   } catch (e) {
     console.error('Artwork image proxy failed', target.href, e);
