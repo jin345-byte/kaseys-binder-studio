@@ -1,4 +1,4 @@
-/* v2.7.6 shared Cards / Artwork browser */
+/* v2.8.10 shared Cards / Artwork browser */
 .library.has-browser-tabs{
   position:relative;
   display:block!important;
@@ -66,14 +66,48 @@
     overflow:auto!important;
   }
   .library[data-library-tab="artwork"] .artwork-pane{
-    grid-template-rows:auto minmax(0,1.15fr) auto minmax(120px,.55fr)!important;
+    grid-template-rows:auto minmax(0,1.2fr) auto minmax(120px,.5fr)!important;
   }
+}
+
+/* Independent artwork search */
+.art-search-tools{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:8px;
+  align-items:end;
+  margin:0 0 8px;
+  padding:8px;
+  border:1px solid color-mix(in srgb,var(--accent) 24%,var(--line));
+  border-radius:11px;
+  background:color-mix(in srgb,var(--surface2) 82%,transparent);
+}
+.art-search-tools label{
+  display:grid;
+  gap:4px;
+  min-width:0;
+}
+.art-search-tools label>span{
+  color:var(--accent);
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.art-search-tools input{
+  width:100%;
+  min-width:0;
+  min-height:38px;
+}
+.art-search-submit{
+  min-height:38px!important;
+  white-space:nowrap;
 }
 
 /* Matching artwork results */
 .auto-artwork-results-wrap{
   display:grid;
-  grid-template-rows:auto minmax(0,1fr);
+  grid-template-rows:auto auto minmax(0,1fr);
   gap:6px;
   min-height:0;
   padding:7px 0 8px;
@@ -218,30 +252,25 @@
   font-size:10px;
 }
 
-/* Give direct artwork placement controls enough room for full size labels. */
-.library[data-library-tab="artwork"] .artadd{
+/* Direct-link controls: URL gets a full row; size selector gets room to show full labels. */
+.artwork-pane .artadd{
   display:grid!important;
-  grid-template-columns:minmax(0,1fr) auto auto!important;
+  grid-template-columns:minmax(220px,1.8fr) minmax(88px,.55fr) minmax(108px,.65fr)!important;
   gap:8px!important;
   align-items:center;
-  padding-top:9px;
 }
-.library[data-library-tab="artwork"] .artadd #artUrl{
+.artwork-pane .artadd #artUrl{
   grid-column:1 / -1;
   width:100%!important;
   min-width:0!important;
 }
-.library[data-library-tab="artwork"] .artadd #newArtSize{
-  min-width:240px!important;
+.artwork-pane .artadd #newArtSize{
+  grid-column:1;
   width:100%!important;
-  font-size:12px!important;
-  padding-left:12px!important;
-  padding-right:34px!important;
+  min-width:220px!important;
 }
-.library[data-library-tab="artwork"] .artadd #addUrl,
-.library[data-library-tab="artwork"] .artadd .upload{
-  white-space:nowrap;
-}
+.artwork-pane .artadd #addUrl{grid-column:2}
+.artwork-pane .artadd .upload{grid-column:3}
 
 /* Mobile / forced preview uses the same shared tabs instead of stacking panes. */
 body.mobile-lab-enabled .library.has-browser-tabs{
@@ -263,6 +292,13 @@ body.mobile-lab-enabled .library-browser-tab{
 body.mobile-lab-enabled .library.has-browser-tabs>.browser-pane{
   height:auto!important;
   min-height:0!important;
+}
+body.mobile-lab-enabled .art-search-tools{
+  grid-template-columns:1fr;
+}
+body.mobile-lab-enabled .art-search-submit{
+  width:100%;
+  min-height:40px!important;
 }
 body.mobile-lab-enabled .auto-artwork-scroll{
   max-height:58vh;
@@ -292,16 +328,15 @@ body.mobile-lab-enabled .auto-art-size{
 body.mobile-lab-enabled .auto-art-add{
   min-height:31px!important;
 }
-body.mobile-lab-enabled .library[data-library-tab="artwork"] .artadd{
-  grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+body.mobile-lab-enabled .artwork-pane .artadd{
+  grid-template-columns:1fr 1fr!important;
 }
-body.mobile-lab-enabled .library[data-library-tab="artwork"] .artadd #artUrl,
-body.mobile-lab-enabled .library[data-library-tab="artwork"] .artadd #newArtSize{
-  grid-column:1 / -1;
+body.mobile-lab-enabled .artwork-pane .artadd #artUrl{
+  grid-column:1 / -1!important;
+}
+body.mobile-lab-enabled .artwork-pane .artadd #newArtSize{
+  grid-column:1 / -1!important;
   min-width:0!important;
 }
-body.mobile-lab-enabled .library[data-library-tab="artwork"] .artadd #addUrl,
-body.mobile-lab-enabled .library[data-library-tab="artwork"] .artadd .upload{
-  width:100%;
-  justify-content:center;
-}
+body.mobile-lab-enabled .artwork-pane .artadd #addUrl{grid-column:1!important}
+body.mobile-lab-enabled .artwork-pane .artadd .upload{grid-column:2!important}
