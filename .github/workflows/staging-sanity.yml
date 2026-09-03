@@ -128,6 +128,7 @@ jobs:
             await page.waitForFunction(()=>[...document.querySelectorAll('#setFilter option')].some(o=>String(o.value).startsWith('pocket:')),null,{timeout:120000});
             const pocketValue=await page.locator('#setFilter option[value^="pocket:"]').first().getAttribute('value');
             if(!pocketValue)throw new Error('Pocket set option did not appear');
+            await page.fill('#subject','');await page.waitForTimeout(350);
             await page.selectOption('#setFilter',pocketValue);await page.waitForTimeout(800);
             const pocketRows=page.locator('#cards .card-item.is-pocket-card');
             const pocketCount=await pocketRows.count();
