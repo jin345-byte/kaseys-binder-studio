@@ -1,4 +1,4 @@
-/* Kasey's Binder Studio v2.8.0 — unified English TCG + Pokémon TCG Pocket library */
+/* Kasey's Binder Studio v2.8.3 — one unified English TCG + Pokémon TCG Pocket library */
 const KBSCatalogLab=(()=>{
   const DB_NAME='kaseyPocketCardCatalogV1';
   const DB_VERSION=1;
@@ -98,12 +98,13 @@ const KBSCatalogLab=(()=>{
       const sets=Array.isArray(series?.sets)?series.sets:[];
       if(!sets.length)throw new Error('Pocket set catalog was empty');
       const chunks=new Array(sets.length);let next=0,done=0,failed=0;
-      const workers=Array.from({length:Math.min(4,sets.length)},async()=>{
+      const workers=Array.from({length:Math.min(3,sets.length)},async()=>{
         while(next<sets.length){
           const i=next++;
           try{chunks[i]=await fetchPocketSet(sets[i]);}
           catch(e){failed++;chunks[i]=[];console.warn('Pocket set skipped',sets[i]?.id,e?.message||e);}
           done++;
+          setMasterStatus(`Adding TCG Pocket… ${done}/${sets.length} sets`,`${masterCards.length.toLocaleString()} English cards cached`);
           const health=document.querySelector('#masterLibraryHealth');
           if(health)health.textContent=`Unified library · Pocket ${done}/${sets.length} sets${failed?` · ${failed} skipped`:''}`;
         }
@@ -119,6 +120,8 @@ const KBSCatalogLab=(()=>{
     return buildPromise;
   }
 
+  function englishCards(){return masterCards.filter(c=>c?.catalog!=='pocket'&&c?.source!=='tcgdex-pocket')}
+
   function rebuildUnifiedFilters(){
     const sets=new Map();
     for(const c of masterCards)if(c?.setId&&!sets.has(c.setId))sets.set(c.setId,c.setName||c.setId);
@@ -128,14 +131,13 @@ const KBSCatalogLab=(()=>{
   }
 
   function mergePocketIntoMaster(){
-    const english=masterCards.filter(c=>c?.catalog!=='pocket'&&c?.source!=='tcgdex-pocket');
+    const english=englishCards();
     masterCards=[...english,...pocketCards];
     masterCardIndex=new Map(masterCards.map((c,i)=>[c.id,i]));
     globalThis.KBSCatalogCards=masterCards;
     masterReady=masterCards.length>0;
     rebuildUnifiedFilters();
     computeMasterHealth();
-    renderCards();
   }
 
   function decorateUnifiedCards(){
@@ -178,11 +180,41 @@ const KBSCatalogLab=(()=>{
     return result;
   };
 
+  const coreRunCardSearch=runCardSearch;
+  runCardSearch=async function(){
+    const name=document.querySelector('#subject')?.value.trim()||'';
+    const setId=document.querySelector('#setFilter')?.value||'';
+    const artist=document.querySelector('#artistFilter')?.value||'';
+    const hasFullEnglish=englishCards().length>5000;
+
+    // Once the unified local index is ready, never send set/artist searches to an
+    // English-only live API. Pocket sets and artists are first-class local records.
+    if(hasFullEnglish || setId.startsWith('pocket:')){
+      cards=localMasterMatches().slice(0,MASTER_PAGE_SIZE).map(c=>({...c}));
+      renderCards();
+      const h=document.querySelector('#masterLibraryHealth');
+      if(h)h.textContent=`${masterCards.length.toLocaleString()} unified cards · ${cards.length.toLocaleString()} shown`;
+      return;
+    }
+
+    await coreRunCardSearch.apply(this,arguments);
+    // Before first full build, merge any already-cached Pocket matches into live English results.
+    if(pocketCards.length&&(name.length>=2||setId||artist)){
+      const pocketMatches=localMasterMatches().filter(c=>c.catalog==='pocket');
+      cards=mergeUniqueRows(cards,pocketMatches).slice(0,MASTER_PAGE_SIZE);
+      renderCards();
+    }
+  };
+
   const coreBuildMasterLibrary=buildMasterLibrary;
   buildMasterLibrary=async function(){
     await coreBuildMasterLibrary();
     try{await buildPocket();}
-    catch(e){pocketState={ready:false,count:pocketCards.length,error:e?.message||String(e)};console.warn('Pocket catalog build deferred:',pocketState.error);}
+    catch(e){
+      pocketState={ready:false,count:pocketCards.length,error:e?.message||String(e)};
+      console.warn('Pocket catalog build deferred:',pocketState.error);
+      // Pocket outages are non-fatal; English remains usable and no global error banner is raised.
+    }
     if(pocketCards.length)mergePocketIntoMaster();
     await updateLibrarySetupButton().catch(()=>{});
   };
@@ -191,13 +223,13 @@ const KBSCatalogLab=(()=>{
   updateLibrarySetupButton=async function(){
     await coreUpdateButton.apply(this,arguments);
     const label=document.querySelector('#libraryBuildLabel'),hint=document.querySelector('#libraryBuildHint');
-    const englishCount=masterCards.filter(c=>c?.catalog!=='pocket'&&c?.source!=='tcgdex-pocket').length;
+    const englishCount=englishCards().length;
     const total=englishCount+pocketCards.length;
     const englishReady=englishCount>5000;
     if(label)label.textContent=englishReady&&pocketState.ready?'Unified Library Ready':'Build Card Library';
     if(hint){
       if(englishReady&&pocketState.ready)hint.textContent=`${total.toLocaleString()} cards · English + Pocket`;
-      else if(englishReady&&pocketState.error)hint.textContent='English ready · Pocket will retry later';
+      else if(englishReady&&pocketState.error)hint.textContent='English ready · Pocket retry available';
       else hint.textContent=`English ${englishCount.toLocaleString()} · Pocket ${pocketCards.length.toLocaleString()}`;
     }
   };
