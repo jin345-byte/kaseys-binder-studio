@@ -1,4 +1,4 @@
-/* v2.8.10 shared Cards / Artwork browser */
+/* v2.8.11 shared Cards / Artwork browser */
 .library.has-browser-tabs{
   position:relative;
   display:block!important;
@@ -47,11 +47,11 @@
   display:grid!important;
 }
 
-/* Active pane occupies the same browser footprint. */
+/* Active pane occupies the same browser footprint. Artwork deliberately gets more visual room. */
 @media(min-width:821px){
   .library.has-browser-tabs{
-    height:calc(100vh - 166px)!important;
-    min-height:680px!important;
+    height:calc(100vh - 150px)!important;
+    min-height:760px!important;
   }
   .library.has-browser-tabs>.browser-pane{
     height:calc(100% - 54px)!important;
@@ -66,7 +66,10 @@
     overflow:auto!important;
   }
   .library[data-library-tab="artwork"] .artwork-pane{
-    grid-template-rows:auto minmax(0,1.2fr) auto minmax(120px,.5fr)!important;
+    grid-template-rows:auto minmax(430px,2.1fr) auto minmax(76px,.28fr)!important;
+  }
+  .library[data-library-tab="artwork"] .auto-artwork-scroll{
+    min-height:390px!important;
   }
 }
 
@@ -94,13 +97,34 @@
   letter-spacing:.08em;
   text-transform:uppercase;
 }
-.art-search-tools input{
-  width:100%;
-  min-width:0;
-  min-height:38px;
+.art-search-tools input,
+#artSearchInput{
+  width:100%!important;
+  min-width:0!important;
+  min-height:40px!important;
+  border:1px solid var(--line)!important;
+  border-radius:10px!important;
+  background:var(--surface)!important;
+  color:var(--text)!important;
+  caret-color:var(--accent)!important;
+  -webkit-text-fill-color:var(--text)!important;
+  box-shadow:none!important;
+  opacity:1!important;
+}
+.art-search-tools input::placeholder,
+#artSearchInput::placeholder{
+  color:var(--muted)!important;
+  -webkit-text-fill-color:var(--muted)!important;
+  opacity:.9!important;
+}
+.art-search-tools input:focus,
+#artSearchInput:focus{
+  outline:none!important;
+  border-color:color-mix(in srgb,var(--accent) 72%,var(--line))!important;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 14%,transparent)!important;
 }
 .art-search-submit{
-  min-height:38px!important;
+  min-height:40px!important;
   white-space:nowrap;
 }
 
@@ -108,9 +132,9 @@
 .auto-artwork-results-wrap{
   display:grid;
   grid-template-rows:auto auto minmax(0,1fr);
-  gap:6px;
+  gap:8px;
   min-height:0;
-  padding:7px 0 8px;
+  padding:8px 0 10px;
   border-bottom:1px solid color-mix(in srgb,var(--line) 78%,transparent);
 }
 .auto-artwork-head{
@@ -139,8 +163,8 @@
   flex:0 0 auto;
 }
 .auto-artwork-more{
-  min-height:28px;
-  padding:3px 8px;
+  min-height:30px;
+  padding:3px 9px;
   border:1px solid color-mix(in srgb,var(--accent) 42%,var(--line));
   border-radius:8px;
   background:color-mix(in srgb,var(--accent) 10%,var(--surface2));
@@ -154,20 +178,21 @@
   overflow:auto;
   overscroll-behavior:contain;
   scrollbar-gutter:stable;
+  padding-right:3px;
 }
 .auto-artwork-results{
   display:grid;
-  grid-template-columns:repeat(4,minmax(0,1fr));
-  gap:7px;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
 }
 .auto-art-card{
   display:grid;
   grid-template-rows:auto auto auto auto auto;
-  gap:4px;
+  gap:5px;
   min-width:0;
-  padding:5px;
+  padding:6px;
   border:1px solid var(--line);
-  border-radius:11px;
+  border-radius:12px;
   background:color-mix(in srgb,var(--surface2) 88%,transparent);
 }
 .auto-art-card.added{
@@ -185,7 +210,7 @@
   display:block;
   aspect-ratio:1/1;
   overflow:hidden;
-  border-radius:8px;
+  border-radius:9px;
   background:#080b10;
 }
 .auto-art-image img{
@@ -196,23 +221,23 @@
 }
 .auto-art-source{
   position:absolute;
-  left:4px;top:4px;
-  padding:2px 4px;
+  left:5px;top:5px;
+  padding:2px 5px;
   border-radius:5px;
   background:#000b;
   color:white;
-  font-size:6.5px;
+  font-size:7px;
   font-weight:900;
 }
 .auto-art-card>strong{
-  font-size:8px;
+  font-size:9px;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
 }
 .auto-art-card>small{
   color:var(--muted);
-  font-size:7px;
+  font-size:8px;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
@@ -239,10 +264,10 @@
   font-size:9px!important;
 }
 .auto-art-add{
-  min-height:28px!important;
-  height:28px;
+  min-height:31px!important;
+  height:31px;
   padding:2px 5px!important;
-  font-size:8px!important;
+  font-size:9px!important;
 }
 .auto-art-empty{
   grid-column:1/-1;
@@ -272,7 +297,7 @@
 .artwork-pane .artadd #addUrl{grid-column:2}
 .artwork-pane .artadd .upload{grid-column:3}
 
-/* Mobile / forced preview uses the same shared tabs instead of stacking panes. */
+/* Mobile / forced preview uses larger two-column art cards with a readable themed search field. */
 body.mobile-lab-enabled .library.has-browser-tabs{
   height:auto!important;
   min-height:0!important;
@@ -298,15 +323,16 @@ body.mobile-lab-enabled .art-search-tools{
 }
 body.mobile-lab-enabled .art-search-submit{
   width:100%;
-  min-height:40px!important;
+  min-height:42px!important;
 }
 body.mobile-lab-enabled .auto-artwork-scroll{
-  max-height:58vh;
+  max-height:72vh;
+  min-height:440px;
   overflow:auto!important;
 }
 body.mobile-lab-enabled .auto-artwork-results{
   grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:6px;
+  gap:8px;
 }
 body.mobile-lab-enabled .auto-artwork-head{
   align-items:flex-start;
@@ -319,14 +345,14 @@ body.mobile-lab-enabled .auto-artwork-head small{
   max-width:230px;
 }
 body.mobile-lab-enabled .auto-art-card{
-  padding:4px;
+  padding:5px;
 }
 body.mobile-lab-enabled .auto-art-size{
   grid-template-columns:1fr;
   gap:2px;
 }
 body.mobile-lab-enabled .auto-art-add{
-  min-height:31px!important;
+  min-height:34px!important;
 }
 body.mobile-lab-enabled .artwork-pane .artadd{
   grid-template-columns:1fr 1fr!important;
