@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "version": "ed358d31fd52",
+  "contentHash": "ed358d31fd52de8f2677c5956645b1532b05eb75afb6df18309f70875115381e",
+  "generatedAt": "2026-09-03T18:15:51.660Z",
+  "cards": 22924,
+  "english": 20444,
+  "pocket": 2480,
+  "sets": 189,
+  "chunkSize": 4000,
+  "chunks": [
+    {
+      "file": "cards-001.json",
+      "count": 4000,
+      "sha256": "3f05bb7ec1968282c677dc78e4dde77380bdd4486bcca5a922fa2e5972fa7b10"
+    },
+    {
+      "file": "cards-002.json",
+      "count": 4000,
+      "sha256": "2d3c7f05b0c76b89794fcb01e39071d20833a77d65395630e7ebd6ac8229bfdf"
+    },
+    {
+      "file": "cards-003.json",
+      "count": 4000,
+      "sha256": "d481f2786cf8ba433981ae61380c204857b9796b9e032f279933f1195e87e845"
+    },
+    {
+      "file": "cards-004.json",
+      "count": 4000,
+      "sha256": "87fd07fbac053d8b69aa767eac15770caf68d711faf179575b2f67c927c8a6fe"
+    },
+    {
+      "file": "cards-005.json",
+      "count": 4000,
+      "sha256": "07ee9f2388519445e265281dc8129f359949c73eee2e8429746ac20d0f262d0c"
+    },
+    {
+      "file": "cards-006.json",
+      "count": 2924,
+      "sha256": "3485bce0b5ea996701be6ca118a7a5af345cc80073f1fb25d8f04c30d377a8a5"
+    }
+  ]
+}
