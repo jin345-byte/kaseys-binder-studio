@@ -1,0 +1,135 @@
+/* v2.8.8 — Live Binder page rail fix. Explicitly loaded by staging index. */
+
+/* The side controls are always a two-column composition: controls + persistent page rail. */
+.canvas-side-controls{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 44px!important;
+  grid-auto-rows:auto!important;
+  align-items:start!important;
+  justify-items:stretch!important;
+  column-gap:7px!important;
+  row-gap:7px!important;
+  width:100%!important;
+  min-width:0!important;
+}
+.canvas-side-controls>.control-module{width:100%!important;max-width:none!important;margin:0!important;min-width:0!important}
+
+/* The old wide Live Binder header becomes the permanent right-hand page rail. */
+.canvas-side-controls>.binder-heading-module{
+  grid-column:2!important;
+  grid-row:1 / span 5!important;
+  align-self:start!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  width:44px!important;
+  min-width:44px!important;
+  max-width:44px!important;
+  padding:5px!important;
+  gap:5px!important;
+  border-radius:15px!important;
+  overflow:visible!important;
+  position:sticky!important;
+  top:8px!important;
+  z-index:3!important;
+}
+.canvas-side-controls>.binder-heading-module .canvashead{display:none!important}
+.canvas-side-controls>.binder-heading-module .editor-page-nav{
+  display:grid!important;
+  visibility:visible!important;
+  opacity:1!important;
+  grid-template-columns:1fr!important;
+  grid-template-rows:30px minmax(34px,1fr) 30px!important;
+  width:34px!important;
+  min-width:34px!important;
+  min-height:150px!important;
+  max-height:min(52vh,360px)!important;
+  gap:4px!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+}
+.canvas-side-controls>.binder-heading-module .page-arrow{
+  display:grid!important;
+  visibility:visible!important;
+  opacity:1!important;
+  place-items:center!important;
+  width:30px!important;
+  min-width:30px!important;
+  height:30px!important;
+  min-height:30px!important;
+  padding:0!important;
+  margin:0 auto!important;
+  border-radius:10px!important;
+  font-size:16px!important;
+  line-height:1!important;
+  transition:transform .18s cubic-bezier(.2,.8,.25,1),border-color .18s ease,background .18s ease!important;
+}
+.canvas-side-controls>.binder-heading-module .page-numbers{
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  gap:4px!important;
+  width:34px!important;
+  min-width:34px!important;
+  min-height:34px!important;
+  height:100%!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  padding:1px 2px!important;
+  scrollbar-width:none!important;
+  scroll-snap-type:y proximity!important;
+  overscroll-behavior-y:contain!important;
+}
+.canvas-side-controls>.binder-heading-module .page-numbers::-webkit-scrollbar{display:none!important}
+.canvas-side-controls>.binder-heading-module .page-number{
+  display:grid!important;
+  visibility:visible!important;
+  opacity:1!important;
+  place-items:center!important;
+  flex:0 0 28px!important;
+  width:28px!important;
+  min-width:28px!important;
+  height:28px!important;
+  min-height:28px!important;
+  padding:0!important;
+  border-radius:9px!important;
+  font-size:9px!important;
+  line-height:1!important;
+  scroll-snap-align:center!important;
+  transform-origin:center!important;
+  transition:transform .18s cubic-bezier(.2,.8,.25,1),background .18s ease,border-color .18s ease,box-shadow .18s ease!important;
+}
+.canvas-side-controls>.binder-heading-module .page-number:hover{
+  transform:translateX(-3px) scale(1.08)!important;
+  border-color:var(--accent)!important;
+}
+.canvas-side-controls>.binder-heading-module .page-number.active,
+.canvas-side-controls>.binder-heading-module .page-number[aria-current="page"]{
+  transform:scale(1.12)!important;
+  background:color-mix(in srgb,var(--accent) 22%,var(--surface2))!important;
+  border-color:var(--accent)!important;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 14%,transparent),0 5px 16px color-mix(in srgb,var(--accent) 20%,transparent)!important;
+}
+.canvas-side-controls>.binder-heading-module .page-number.page-switch-pop{animation:kbsV288PagePop .34s cubic-bezier(.18,.88,.28,1.35)!important}
+.canvas-side-controls>.binder-heading-module .page-arrow:hover{transform:scale(1.08)!important;border-color:var(--accent)!important}
+@keyframes kbsV288PagePop{0%{transform:scale(.72) rotate(-10deg)}58%{transform:scale(1.18) rotate(4deg)}100%{transform:scale(1.12) rotate(0)}}
+
+/* Pull the useful controls up into the space where the wide page header used to be. */
+.canvas-side-controls>.library-module{grid-column:1!important;grid-row:1!important}
+.canvas-side-controls>.mobile-page-actions{grid-column:1!important;grid-row:2!important}
+.canvas-side-controls>.selected-module{grid-column:1!important;grid-row:3!important}
+.canvas-side-controls>.appearance-module{grid-column:1!important;grid-row:4!important}
+
+/* On desktop the mobile action row stays out of the way; on mobile its existing rules can show it. */
+body:not(.mobile-lab-enabled) .canvas-side-controls>.mobile-page-actions{display:none!important}
+body:not(.mobile-lab-enabled) .canvas-side-controls>.selected-module{grid-row:2!important}
+body:not(.mobile-lab-enabled) .canvas-side-controls>.appearance-module{grid-row:3!important}
+
+@media(max-width:430px){
+  .canvas-side-controls{grid-template-columns:minmax(0,1fr) 40px!important;column-gap:5px!important}
+  .canvas-side-controls>.binder-heading-module{width:40px!important;min-width:40px!important;max-width:40px!important;padding:4px!important}
+}
+@media(prefers-reduced-motion:reduce){.canvas-side-controls>.binder-heading-module .page-number.page-switch-pop{animation:none!important}}
