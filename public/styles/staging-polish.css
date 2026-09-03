@@ -1,0 +1,92 @@
+/* Binder Studio staging polish — page actions, artwork preview, logo, zoom affordance */
+
+/* Saved-binder page cards: keep every action inside its card in one clean row. */
+.page-card-actions{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:6px!important;
+  width:100%!important;
+  min-width:0!important;
+  align-items:stretch!important;
+}
+.page-card-actions button{
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  min-height:30px!important;
+  height:30px!important;
+  padding:4px 3px!important;
+  border-radius:999px!important;
+  font-size:10px!important;
+  line-height:1!important;
+  font-weight:800!important;
+  letter-spacing:-.015em!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:clip!important;
+}
+.page-card-actions .danger{font-size:9.5px!important}
+
+/* Match the primary Jolteon yellow rather than the older blue/purple logo treatment. */
+.k-logo{
+  background:#f5d52f!important;
+  border-color:#f5d52f!important;
+  color:#111820!important;
+  box-shadow:0 0 0 1px color-mix(in srgb,#f5d52f 72%,transparent),0 8px 24px color-mix(in srgb,#f5d52f 20%,transparent)!important;
+}
+.k-logo span{color:#111820!important}
+
+/* Build-library progress no longer uses the lightning-bolt decoration. */
+.pikachu-bolt{display:none!important}
+
+/* Matching-artwork cards no longer carry a per-result slot-size selector. */
+.auto-art-card{grid-template-rows:auto auto auto auto!important}
+.auto-art-size{display:none!important}
+.auto-art-add{
+  width:100%!important;
+  font-size:9px!important;
+  font-weight:900!important;
+}
+.auto-art-image{cursor:zoom-in}
+
+/* Large desktop artwork preview, parallel to the card-variant hover preview. */
+.artwork-hover-preview{
+  position:fixed;
+  z-index:12000;
+  width:min(340px,38vw);
+  max-height:min(480px,72vh);
+  padding:9px;
+  border:1px solid color-mix(in srgb,var(--accent) 44%,var(--line));
+  border-radius:16px;
+  background:color-mix(in srgb,var(--surface) 96%,transparent);
+  box-shadow:0 22px 70px rgba(0,0,0,.42);
+  pointer-events:none;
+  opacity:0;
+  transform:translateY(5px) scale(.985);
+  transition:opacity .11s ease,transform .11s ease;
+  backdrop-filter:blur(14px);
+}
+.artwork-hover-preview.visible{opacity:1;transform:none}
+.artwork-hover-preview img{
+  display:block;
+  width:100%;
+  max-height:min(430px,66vh);
+  object-fit:contain;
+  border-radius:11px;
+  background:#080b10;
+}
+
+/* Artwork wheel zoom is clipped to the pocket/sleeve, not the page. */
+.pocket.art .sleeve{overflow:hidden!important}
+.pocket.art img{
+  transform-origin:50% 50%;
+  will-change:transform,object-position;
+}
+.pocket.art:hover{cursor:grab}
+
+@media(max-width:560px){
+  .page-card-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .page-card-actions button{font-size:11px!important;height:34px!important;min-height:34px!important}
+  .page-card-actions .danger{font-size:10.5px!important}
+  .artwork-hover-preview{display:none!important}
+}
