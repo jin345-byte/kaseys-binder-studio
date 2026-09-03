@@ -106,7 +106,7 @@ jobs:
             let visible=-1;for(let i=0;i<imgCount;i++){const src=(await imgs.nth(i).getAttribute('src'))||'';if(src.includes('/api/art-image?')){visible=i;break;}}
             if(visible<0)throw new Error('No same-origin artwork image element');
             await imgs.nth(visible).screenshot({path:'art.png'});const v=variance('art.png');console.log('ART_PIXEL_VARIANCE',v);if(v<=8)throw new Error('Artwork visually blank');
-            const before=await page.locator('#arts > *').count();await page.locator('#autoArtworkResults .auto-art-add').nth(visible).click();await page.waitForTimeout(300);const after=await page.locator('#arts > *').count();if(after<=before)throw new Error('Add to Art Tray failed');
+            const before=await page.locator('#arts .item').count();await page.locator('#autoArtworkResults .auto-art-add').nth(visible).click();await page.waitForTimeout(400);const after=await page.locator('#arts .item').count();console.log('ART_TRAY',{before,after});if(after!==before+1)throw new Error(`Add to Art Tray failed before=${before} after=${after}`);
             if(!(await page.isDisabled('#autoArtworkLoadMore'))){const c0=cards;await page.click('#autoArtworkLoadMore');await page.waitForTimeout(700);const c1=await page.locator('#autoArtworkResults .auto-art-card').count();if(c1<=c0)throw new Error('More artwork failed');}
 
             await page.click('#libraryCardsTab');await page.locator('#syncMasterLibrary').click({force:true});await page.waitForTimeout(25000);
