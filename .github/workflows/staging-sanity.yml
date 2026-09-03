@@ -46,6 +46,8 @@ jobs:
           assert 'id="setFilter"' in html and 'id="artistFilter"' in html
           assert 'serviceWorker.register' not in html and 'art-search-proxy.js' not in html
           assert '<strong>App notice</strong>' in html
+          assert 'v2.8.4 STAGING' in html and 'v2.8.4 Staging' in html
+          assert 'catalog-lab.js?v=2.8.4' in html and 'art-search-lab.js?v=2.8.4' in html
           worker=pathlib.Path('src/staging-worker.js').read_text(encoding='utf-8')
           assert '/api/art-search' not in worker
           assert "url.pathname === '/api/art-image'" in worker
@@ -95,23 +97,35 @@ jobs:
             await page.goto(STAGING,{waitUntil:'networkidle',timeout:60000});await page.waitForTimeout(1000);
             if(await page.locator('#catalogFilter').count())throw new Error('Catalog selector exists');
             for(const s of ['#setFilter','#artistFilter','#libraryCardsTab','#libraryArtworkTab','.cloud-account'])if(await page.locator(s).count()!==1)throw new Error('Missing UI '+s);
+            if((await page.locator('#versionLink').textContent())?.trim()!=='v2.8.4 STAGING')throw new Error('Visible staging version is stale');
             if(ctx.serviceWorkers().length)throw new Error('Service worker still active');
             await page.click('#openBinders');await page.waitForTimeout(200);if(await page.locator('#binderModal').getAttribute('aria-hidden')!=='false')throw new Error('Binder modal failed');await page.click('#closeBinders');
 
             await page.fill('#subject','eevee');await page.click('#searchBtn');await page.click('#libraryArtworkTab');await page.waitForTimeout(12000);
             const cards=await page.locator('#autoArtworkResults .auto-art-card').count();const imgs=page.locator('#autoArtworkResults img');const imgCount=await imgs.count();
             const good=artResponses.filter(x=>x.status===200&&String(x.ct).startsWith('image/')&&x.marker==='proxy').length;
-            console.log('ARTWORK',{cards,imgCount,good});console.log('ART_RESPONSES',JSON.stringify(artResponses.slice(0,25),null,2));
-            if(cards<10||imgCount<10||good<8)throw new Error(`Artwork delivery incomplete cards=${cards} images=${imgCount} goodResponses=${good}`);
+            const decoded=await imgs.evaluateAll(nodes=>nodes.filter(img=>img.complete&&img.naturalWidth>0&&img.naturalHeight>0).length);
+            console.log('ARTWORK',{cards,imgCount,good,decoded});console.log('ART_RESPONSES',JSON.stringify(artResponses.slice(0,25),null,2));
+            if(cards<10||imgCount<10||good<8||decoded<8)throw new Error(`Artwork delivery incomplete cards=${cards} images=${imgCount} goodResponses=${good} decoded=${decoded}`);
             let visible=-1;for(let i=0;i<imgCount;i++){const src=(await imgs.nth(i).getAttribute('src'))||'';if(src.includes('/api/art-image?')){visible=i;break;}}
             if(visible<0)throw new Error('No same-origin artwork image element');
             await imgs.nth(visible).screenshot({path:'art.png'});const v=variance('art.png');console.log('ART_PIXEL_VARIANCE',v);if(v<=8)throw new Error('Artwork visually blank');
             const before=await page.locator('#arts .item').count();await page.locator('#autoArtworkResults .auto-art-add').nth(visible).click();await page.waitForTimeout(400);const after=await page.locator('#arts .item').count();console.log('ART_TRAY',{before,after});if(after!==before+1)throw new Error(`Add to Art Tray failed before=${before} after=${after}`);
             if(!(await page.isDisabled('#autoArtworkLoadMore'))){const c0=cards;await page.click('#autoArtworkLoadMore');await page.waitForTimeout(700);const c1=await page.locator('#autoArtworkResults .auto-art-card').count();if(c1<=c0)throw new Error('More artwork failed');}
 
-            await page.click('#libraryCardsTab');await page.locator('#syncMasterLibrary').click({force:true});await page.waitForTimeout(25000);
+            await page.click('#libraryCardsTab');await page.locator('#syncMasterLibrary').click({force:true});
+            await page.waitForFunction(()=>[...document.querySelectorAll('#setFilter option')].some(o=>String(o.value).startsWith('pocket:')),{timeout:120000});
+            const pocketValue=await page.locator('#setFilter option[value^="pocket:"]').first().getAttribute('value');
+            if(!pocketValue)throw new Error('Pocket set option did not appear');
+            await page.selectOption('#setFilter',pocketValue);await page.waitForTimeout(800);
+            const pocketRows=page.locator('#cards .card-item.is-pocket-card');
+            const pocketCount=await pocketRows.count();
+            const pocketBadges=await page.locator('#cards .pocket-source-badge').count();
+            console.log('POCKET_FILTER',{pocketValue,pocketCount,pocketBadges});
+            if(pocketCount<1||pocketBadges<1)throw new Error(`Pocket set filtering failed rows=${pocketCount} badges=${pocketBadges}`);
+            await page.selectOption('#setFilter','');
             const banner=await page.locator('#runtimeErrorBanner').isVisible();const txt=(await page.locator('#runtimeErrorText').textContent())||'';const libStatus=((await page.locator('#masterLibraryStatus').textContent())||'')+' '+((await page.locator('#libraryProgressText').textContent())||'');
-            console.log('LIBRARY',{banner,txt,libStatus});if(banner)throw new Error('Unexpected app notice: '+txt);if(!/Building|Library|catalog/i.test(libStatus))throw new Error('Library did not progress');
+            console.log('LIBRARY',{banner,txt,libStatus});if(banner)throw new Error('Unexpected app notice: '+txt);if(!/Building|Library|catalog|ready/i.test(libStatus))throw new Error('Library did not progress');
             await page.click('#mobilePreviewToggle');await page.waitForTimeout(200);const cls=(await page.locator('body').getAttribute('class'))||'';if(!cls.includes('mobile-lab-enabled'))throw new Error('Mobile preview failed');
             const cfg=await page.request.get(STAGING+'/api/config');if(!cfg.ok())throw new Error('Auth config failed');
             console.log('AUTH_CONFIG',cfg.status());console.log('FAILED_REQUESTS',JSON.stringify(failed.slice(0,25),null,2));console.log('CONSOLE_ERRORS',JSON.stringify(errors.slice(0,25),null,2));
