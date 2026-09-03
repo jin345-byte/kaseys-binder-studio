@@ -4,7 +4,8 @@ const CLOUD_CSS = '<link rel="stylesheet" href="/features/cloud-sync.css">';
 const CLOUD_JS = '<script src="/features/cloud-sync.js"></script>';
 const STAGING_287_CSS = '<link rel="stylesheet" href="/styles/staging-v287.css">';
 const STAGING_287_JS = '<script src="/features/staging-v287.js"></script>';
-const STAGING_BUILD = '2.8.7-tour-layout-polish';
+const GUIDED_TOUR_AUTO_LIBRARY_JS = '<script src="/features/guided-tour-auto-library.js"></script>';
+const STAGING_BUILD = '2.8.9-auto-library-tour';
 const ART_IMAGE_HOSTS = new Set(['cdn.donmai.us','safebooru.org','raw.githubusercontent.com','cdn.artofpkm.com']);
 
 function noStoreResponse(response) {
@@ -25,6 +26,7 @@ async function decorateHtml(response){
   if(!html.includes('styles/staging-v287.css'))html=html.replace('</head>',`  ${STAGING_287_CSS}\n</head>`);
   if(!html.includes('features/cloud-sync.js'))html=html.replace('</body>',`  ${CLOUD_JS}\n</body>`);
   if(!html.includes('features/staging-v287.js'))html=html.replace('</body>',`  ${STAGING_287_JS}\n</body>`);
+  if(!html.includes('features/guided-tour-auto-library.js'))html=html.replace('</body>',`  ${GUIDED_TOUR_AUTO_LIBRARY_JS}\n</body>`);
   const headers=new Headers(response.headers);
   headers.delete('content-length');
   headers.set('cache-control','no-store, no-cache, must-revalidate, max-age=0');
@@ -84,7 +86,7 @@ export default {
     if(request.method==='GET'&&url.pathname==='/api/art-feed')return artworkFeed(request);
     if(request.method==='GET'&&url.pathname==='/api/card-search')return cardSearch(request);
 
-    const noStorePaths=new Set(['/features/art-search-lab.js','/features/catalog-lab.js','/features/mobile-lab.js','/features/staging-fetch-shim.js','/features/staging-polish.js','/features/help-lab.js','/features/staging-v287.js','/styles/staging-polish.css','/styles/staging-v287.css']);
+    const noStorePaths=new Set(['/features/art-search-lab.js','/features/catalog-lab.js','/features/mobile-lab.js','/features/staging-fetch-shim.js','/features/staging-polish.js','/features/help-lab.js','/features/staging-v287.js','/features/guided-tour-auto-library.js','/styles/staging-polish.css','/styles/staging-v287.css']);
     if(request.method==='GET'&&noStorePaths.has(url.pathname))return noStoreResponse(await env.ASSETS.fetch(request));
 
     // Staging root is served directly from the asset binding so staging-only CSS/JS
