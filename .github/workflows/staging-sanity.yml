@@ -66,6 +66,7 @@ jobs:
           polish=pathlib.Path('public/features/staging-polish.js').read_text(encoding='utf-8')
           assert 'staging-v288-fix.css?v=2.8.8' in polish
           assert 'page-switch-pop' in polish and 'scrollIntoView' in polish
+          assert 'canvasHeightSync' in polish and 'ResizeObserver' in polish
 
           worker=pathlib.Path('src/staging-worker.js').read_text(encoding='utf-8')
           for route in ['/api/art-image','/api/art-feed','/api/card-search']:
@@ -84,7 +85,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler deploy --config=wrangler.staging.jsonc
 
-      - name: Guided tour and page rail browser sanity
+      - name: Guided tour, artwork height, and page rail browser sanity
         shell: bash
         run: |
           node <<'JS'
@@ -99,13 +100,28 @@ jobs:
             page.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
 
             await page.goto(STAGING+'/?qa='+Date.now(),{waitUntil:'networkidle',timeout:60000});
-            await page.waitForTimeout(900);
+            await page.waitForTimeout(1100);
 
             if(ctx.serviceWorkers().length)throw new Error('Service worker active');
             if(await page.locator('#catalogFilter').count())throw new Error('Removed Catalog selector returned');
 
             const compact=await page.locator('#syncMasterLibrary').boundingBox();
             if(!compact||compact.height>38)throw new Error('Build Card Library is not compact');
+
+            /* Regression check for the large dead space formerly below Artwork. */
+            await page.click('#libraryArtworkTab');
+            await page.waitForFunction(()=>!!document.querySelector('.library')?.dataset?.canvasHeightSync,null,{timeout:10000});
+            await page.waitForTimeout(250);
+            const artLayout=await page.evaluate(()=>{
+              const lib=document.querySelector('.library'),canvas=document.querySelector('.canvas'),pane=document.querySelector('.artwork-pane'),results=document.querySelector('#autoArtworkSection'),arts=document.querySelector('#arts');
+              const lr=lib.getBoundingClientRect(),cr=canvas.getBoundingClientRect(),pr=pane.getBoundingClientRect(),rr=results.getBoundingClientRect(),ar=arts.getBoundingClientRect();
+              return {library:{bottom:lr.bottom,height:lr.height},canvas:{bottom:cr.bottom,height:cr.height},pane:{bottom:pr.bottom},results:{height:rr.height},tray:{bottom:ar.bottom},sync:lib.dataset.canvasHeightSync||''};
+            });
+            console.log('ARTWORK_LAYOUT',JSON.stringify(artLayout));
+            if(Math.abs(artLayout.library.bottom-artLayout.canvas.bottom)>6)throw new Error('Artwork library does not reach canvas bottom: '+JSON.stringify(artLayout));
+            if(Math.abs(artLayout.library.height-artLayout.canvas.height)>6)throw new Error('Artwork library/canvas height mismatch: '+JSON.stringify(artLayout));
+            if(artLayout.pane.bottom>artLayout.library.bottom+2||artLayout.tray.bottom>artLayout.library.bottom+2)throw new Error('Artwork content overflows its panel: '+JSON.stringify(artLayout));
+            if(artLayout.results.height<300)throw new Error('Matching Artwork area is too short: '+JSON.stringify(artLayout));
 
             await page.waitForFunction(()=>!!document.querySelector('link[data-kbs-v288-rail]'),null,{timeout:10000});
             const rail=page.locator('#editorPageNav');
