@@ -1,4 +1,4 @@
-/* Binder Studio staging polish — artwork hover preview, wheel zoom, animated brand, mobile page nav */
+/* Binder Studio staging polish — artwork hover preview, wheel zoom, animated brand, mobile page nav, Art of Pokemon proxy */
 (function(){
   const artGrid=document.querySelector('#autoArtworkResults');
   const binderGrid=document.querySelector('#grid');
@@ -100,5 +100,59 @@
     document.querySelector('#editorPrev')?.addEventListener('click',()=>setTimeout(revealActivePage,80));
     document.querySelector('#editorNext')?.addEventListener('click',()=>setTimeout(revealActivePage,80));
     setTimeout(revealActivePage,250);
+  }
+
+  /* Art of Pokemon now goes through the same-origin artwork delivery endpoint. */
+  const addUrlButton=document.querySelector('#addUrl');
+  const artUrlInput=document.querySelector('#artUrl');
+  const artSize=document.querySelector('#newArtSize');
+  function artOfPkmProxy(raw){
+    try{
+      const u=new URL(raw);
+      if(u.protocol!=='https:')return raw;
+      if(u.hostname.toLowerCase()==='cdn.artofpkm.com')return `/api/art-image?url=${encodeURIComponent(u.href)}`;
+      return raw;
+    }catch{return raw}
+  }
+  async function decodedImage(url){
+    const img=new Image();
+    img.decoding='async';
+    img.src=url;
+    await new Promise((resolve,reject)=>{
+      img.onload=resolve;
+      img.onerror=()=>reject(new Error('Image could not be decoded'));
+    });
+    if(!img.naturalWidth||!img.naturalHeight)throw new Error('Image had no usable dimensions');
+    return {width:img.naturalWidth,height:img.naturalHeight};
+  }
+  if(addUrlButton&&artUrlInput){
+    addUrlButton.onclick=async()=>{
+      const raw=artUrlInput.value.trim();
+      if(!/^https:\/\//i.test(raw))return typeof toast==='function'&&toast('Paste a direct HTTPS image link');
+      const proxied=artOfPkmProxy(raw);
+      const isArtOfPkm=proxied!==raw;
+      const oldText=addUrlButton.textContent;
+      try{
+        addUrlButton.disabled=true;
+        if(isArtOfPkm)addUrlButton.textContent='Checking image…';
+        if(isArtOfPkm){
+          const response=await fetch(proxied,{cache:'no-store'});
+          if(!response.ok)throw new Error(`Art of Pokémon image unavailable (${response.status})`);
+          if(!(response.headers.get('content-type')||'').toLowerCase().startsWith('image/'))throw new Error('Art of Pokémon returned something other than an image');
+          await response.body?.cancel().catch(()=>{});
+          await decodedImage(proxied);
+        }
+        if(typeof addArt!=='function')throw new Error('Artwork tray is not ready');
+        addArt(proxied,'Artwork',isArtOfPkm?`Art of Pokémon · ${raw}`:'',artSize?.value||'1x1');
+        artUrlInput.value='';
+        if(typeof toast==='function')toast(isArtOfPkm?'Art of Pokémon image added through Binder Studio':'Artwork added');
+      }catch(e){
+        console.warn('Artwork link could not be added',e);
+        if(typeof toast==='function')toast(e?.message||'Artwork could not be loaded');
+      }finally{
+        addUrlButton.disabled=false;
+        addUrlButton.textContent=oldText||'Add link';
+      }
+    };
   }
 })();
