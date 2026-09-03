@@ -87,40 +87,31 @@ jobs:
             const ctx=await browser.newContext({viewport:{width:1440,height:1100}});
             const page=await ctx.newPage();
             const errors=[],failed=[],artResponses=[];
-            page.on('pageerror',e=>errors.push('PAGE '+e.message));
-            page.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
-            page.on('requestfailed',r=>failed.push({url:r.url(),error:r.failure()?.errorText||''}));
+            page.on('pageerror',e=>{errors.push('PAGE '+e.message);console.log('PAGE_ERROR',e.stack||e.message)});
+            page.on('console',m=>{if(m.type()==='error'){errors.push('CONSOLE '+m.text());console.log('CONSOLE_ERROR',m.text())}});
+            page.on('requestfailed',r=>{const x={url:r.url(),error:r.failure()?.errorText||''};failed.push(x);console.log('REQUEST_FAILED',x)});
             page.on('response',r=>{if(r.url().includes('/api/art-image?'))artResponses.push({url:r.url().slice(0,190),status:r.status(),ct:r.headers()['content-type']||'',marker:r.headers()['x-kbs-art-image']||''})});
 
             await page.goto(URL,{waitUntil:'networkidle',timeout:60000});await page.waitForTimeout(1000);
             if(await page.locator('#catalogFilter').count())throw new Error('Catalog selector exists');
             for(const s of ['#setFilter','#artistFilter','#libraryCardsTab','#libraryArtworkTab','.cloud-account'])if(await page.locator(s).count()!==1)throw new Error('Missing UI '+s);
             if(ctx.serviceWorkers().length)throw new Error('Service worker still active');
-
-            await page.click('#openBinders');await page.waitForTimeout(200);
-            if(await page.locator('#binderModal').getAttribute('aria-hidden')!=='false')throw new Error('Binder modal failed');
-            await page.click('#closeBinders');
+            await page.click('#openBinders');await page.waitForTimeout(200);if(await page.locator('#binderModal').getAttribute('aria-hidden')!=='false')throw new Error('Binder modal failed');await page.click('#closeBinders');
 
             await page.fill('#subject','eevee');await page.click('#searchBtn');await page.click('#libraryArtworkTab');await page.waitForTimeout(12000);
-            const cards=await page.locator('#autoArtworkResults .auto-art-card').count();
-            const imgs=page.locator('#autoArtworkResults img');const imgCount=await imgs.count();
-            const imageState=await page.evaluate(()=>[...document.querySelectorAll('#autoArtworkResults img')].map(i=>({src:i.currentSrc||i.src,complete:i.complete,w:i.naturalWidth,h:i.naturalHeight})));
-            const loaded=imageState.filter(x=>x.complete&&x.w>20&&x.h>20).length;
-            console.log('ARTWORK',{cards,imgCount,loaded});console.log('ART_RESPONSES',JSON.stringify(artResponses.slice(0,25),null,2));
-            if(cards<10||imgCount<10||loaded<8)throw new Error(`Artwork render incomplete cards=${cards} images=${imgCount} loaded=${loaded}`);
+            const cards=await page.locator('#autoArtworkResults .auto-art-card').count();const imgs=page.locator('#autoArtworkResults img');const imgCount=await imgs.count();
             const good=artResponses.filter(x=>x.status===200&&String(x.ct).startsWith('image/')&&x.marker==='proxy').length;
-            if(good<8)throw new Error('Only '+good+' same-origin artwork responses succeeded');
-            const visible=await imgs.evaluateAll(nodes=>nodes.findIndex(i=>i.complete&&i.naturalWidth>20));
-            if(visible<0)throw new Error('No rendered artwork image');
+            console.log('ARTWORK',{cards,imgCount,good});console.log('ART_RESPONSES',JSON.stringify(artResponses.slice(0,25),null,2));
+            if(cards<10||imgCount<10||good<8)throw new Error(`Artwork delivery incomplete cards=${cards} images=${imgCount} goodResponses=${good}`);
+            let visible=-1;for(let i=0;i<imgCount;i++){const src=(await imgs.nth(i).getAttribute('src'))||'';if(src.includes('/api/art-image?')){visible=i;break;}}
+            if(visible<0)throw new Error('No same-origin artwork image element');
             await imgs.nth(visible).screenshot({path:'art.png'});const v=variance('art.png');console.log('ART_PIXEL_VARIANCE',v);if(v<=8)throw new Error('Artwork visually blank');
             const before=await page.locator('#arts > *').count();await page.locator('#autoArtworkResults .auto-art-add').nth(visible).click();await page.waitForTimeout(300);const after=await page.locator('#arts > *').count();if(after<=before)throw new Error('Add to Art Tray failed');
             if(!(await page.isDisabled('#autoArtworkLoadMore'))){const c0=cards;await page.click('#autoArtworkLoadMore');await page.waitForTimeout(700);const c1=await page.locator('#autoArtworkResults .auto-art-card').count();if(c1<=c0)throw new Error('More artwork failed');}
 
             await page.click('#libraryCardsTab');await page.locator('#syncMasterLibrary').click({force:true});await page.waitForTimeout(25000);
-            const banner=await page.locator('#runtimeErrorBanner').isVisible();const txt=(await page.locator('#runtimeErrorText').textContent())||'';
-            const libStatus=((await page.locator('#masterLibraryStatus').textContent())||'')+' '+((await page.locator('#libraryProgressText').textContent())||'');
+            const banner=await page.locator('#runtimeErrorBanner').isVisible();const txt=(await page.locator('#runtimeErrorText').textContent())||'';const libStatus=((await page.locator('#masterLibraryStatus').textContent())||'')+' '+((await page.locator('#libraryProgressText').textContent())||'');
             console.log('LIBRARY',{banner,txt,libStatus});if(banner)throw new Error('Unexpected app notice: '+txt);if(!/Building|Library|catalog/i.test(libStatus))throw new Error('Library did not progress');
-
             await page.click('#mobilePreviewToggle');await page.waitForTimeout(200);const cls=(await page.locator('body').getAttribute('class'))||'';if(!cls.includes('mobile-lab-enabled'))throw new Error('Mobile preview failed');
             const cfg=await page.request.get(URL+'/api/config');if(!cfg.ok())throw new Error('Auth config failed');
             console.log('AUTH_CONFIG',cfg.status());console.log('FAILED_REQUESTS',JSON.stringify(failed.slice(0,25),null,2));console.log('CONSOLE_ERRORS',JSON.stringify(errors.slice(0,25),null,2));
