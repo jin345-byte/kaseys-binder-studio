@@ -97,8 +97,16 @@ jobs:
             page.on('requestfailed',r=>failed.push({url:r.url(),error:r.failure()?.errorText||''}));
             page.on('response',r=>{if(r.url().includes('/api/art-image?'))artResponses.push({status:r.status(),ct:r.headers()['content-type']||'',marker:r.headers()['x-kbs-art-image']||''})});
 
-            await page.goto(STAGING,{waitUntil:'networkidle',timeout:60000});await page.waitForTimeout(700);
-            if((await page.locator('#versionLink').textContent())?.trim()!=='v2.8.5 STAGING')throw new Error('Visible version stale');
+            let version='';
+            for(let attempt=0;attempt<6;attempt++){
+              await page.goto(STAGING+'/?qa='+Date.now(),{waitUntil:'networkidle',timeout:60000});
+              await page.waitForTimeout(900);
+              version=((await page.locator('#versionLink').textContent().catch(()=>''))||'').trim();
+              if(version==='v2.8.5 STAGING')break;
+              console.log('WAITING_FOR_DEPLOYMENT',{attempt,version});
+              await page.waitForTimeout(2500);
+            }
+            if(version!=='v2.8.5 STAGING')throw new Error('Visible version stale after propagation wait: '+version);
             if(ctx.serviceWorkers().length)throw new Error('Service worker active');
             if(await page.locator('#catalogFilter').count())throw new Error('Catalog selector exists');
             if(await page.locator('.pikachu-bolt').count())throw new Error('Lightning bolt still present');
