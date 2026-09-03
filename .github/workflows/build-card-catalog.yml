@@ -67,7 +67,7 @@ jobs:
           echo "Catalog $version · $cards cards · changed=$changed"
 
       - name: Validate generated catalog
-        if: steps.gate.outputs.run == 'true' && steps.result.outputs.changed == 'true'
+        if: steps.gate.outputs.run == 'true'
         shell: bash
         run: |
           node <<'JS'
@@ -96,32 +96,45 @@ jobs:
           git commit -m "Update unified card catalog ${{ steps.result.outputs.version }}"
           git push origin HEAD:staging-ui-auth-test
 
-      - name: Deploy updated catalog to staging Cloudflare
-        if: steps.gate.outputs.run == 'true' && steps.result.outputs.changed == 'true'
+      - name: Deploy catalog to staging Cloudflare
+        if: steps.gate.outputs.run == 'true' && (steps.result.outputs.changed == 'true' || github.event_name != 'schedule')
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         shell: bash
         run: |
+          # If this run just pushed a new catalog commit, refresh checkout to the current branch head
+          # so the deployment also includes any staging UI commits that landed while the catalog built.
+          git fetch origin staging-ui-auth-test
+          git reset --hard origin/staging-ui-auth-test
           npm install --no-save wrangler@4 >/dev/null 2>&1
           npx wrangler deploy --config=wrangler.staging.jsonc
 
       - name: Smoke-test deployed manifest
-        if: steps.gate.outputs.run == 'true' && steps.result.outputs.changed == 'true'
+        if: steps.gate.outputs.run == 'true'
         shell: bash
         run: |
-          sleep 3
           node <<'JS'
-          const expected=require('./catalog-build-result.json');
-          const url='https://kaseys-binder-studio-staging.jin345.workers.dev/catalog/manifest.json?t='+Date.now();
-          const r=await fetch(url,{cache:'no-store'});
-          if(!r.ok)throw new Error('Manifest HTTP '+r.status);
-          const m=await r.json();
-          if(m.version!==expected.version)throw new Error(`Wrong deployed catalog ${m.version}/${expected.version}`);
-          if(m.cards!==expected.cards)throw new Error(`Wrong deployed count ${m.cards}/${expected.cards}`);
-          console.log(`DEPLOYED ${m.version} · ${m.cards} cards`);
+          const expected=require('./public/catalog/manifest.json');
+          const base='https://kaseys-binder-studio-staging.jin345.workers.dev/catalog/manifest.json';
+          let last='';
+          for(let attempt=1;attempt<=12;attempt++){
+            try{
+              const r=await fetch(base+'?t='+Date.now(),{cache:'no-store'});
+              if(!r.ok){last='HTTP '+r.status;throw new Error(last)}
+              const m=await r.json();
+              if(m.version===expected.version&&m.cards===expected.cards){
+                console.log(`DEPLOYED ${m.version} · ${m.cards} cards · attempt ${attempt}`);
+                process.exit(0);
+              }
+              last=`got ${m.version}/${m.cards}, expected ${expected.version}/${expected.cards}`;
+            }catch(e){last=e.message||String(e)}
+            console.log(`Waiting for Cloudflare propagation (${attempt}/12): ${last}`);
+            await new Promise(r=>setTimeout(r,5000));
+          }
+          throw new Error('Catalog did not propagate: '+last);
           JS
 
       - name: No catalog changes
         if: steps.gate.outputs.run == 'true' && steps.result.outputs.changed == 'false'
-        run: echo "Unified card data is unchanged; no commit or Cloudflare deploy needed."
+        run: echo "Unified card data is unchanged; the existing catalog version remains current."
