@@ -1,4 +1,4 @@
-/* Binder Studio staging polish — artwork hover preview + wheel zoom */
+/* Binder Studio staging polish — artwork hover preview, wheel zoom, animated brand, mobile page nav */
 (function(){
   const artGrid=document.querySelector('#autoArtworkResults');
   const binderGrid=document.querySelector('#grid');
@@ -70,4 +70,35 @@
     pocket.title=`Artwork position · wheel to resize · ${Math.round(item.zoom*100)}%`;
     clearTimeout(saveTimer);saveTimer=setTimeout(persist,120);
   },{passive:false});
+
+  /* Native staggered title animation inspired by the supplied anime.js example. */
+  const brandTitle=document.querySelector('.brand-copy h1');
+  if(brandTitle&&!brandTitle.dataset.animatedBrand){
+    const text=brandTitle.textContent||'';
+    brandTitle.textContent='';
+    brandTitle.classList.add('brand-animated');
+    brandTitle.dataset.animatedBrand='1';
+    [...text].forEach((ch,i)=>{
+      const span=document.createElement('span');
+      span.className=ch===' '?'brand-char brand-space':'brand-char';
+      span.style.setProperty('--char-index',String(i));
+      span.textContent=ch===' '?'\u00a0':ch;
+      brandTitle.appendChild(span);
+    });
+  }
+
+  /* Keep the active page chip visible while the fixed arrows stay in place. */
+  const pageNumbers=document.querySelector('#editorPageNumbers');
+  function revealActivePage(){
+    if(!pageNumbers)return;
+    const active=pageNumbers.querySelector('.page-number.active,[aria-current="page"]');
+    if(active)active.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+  }
+  if(pageNumbers){
+    new MutationObserver(()=>requestAnimationFrame(revealActivePage)).observe(pageNumbers,{childList:true,subtree:true,attributes:true,attributeFilter:['class','aria-current']});
+    pageNumbers.addEventListener('click',()=>setTimeout(revealActivePage,40));
+    document.querySelector('#editorPrev')?.addEventListener('click',()=>setTimeout(revealActivePage,80));
+    document.querySelector('#editorNext')?.addEventListener('click',()=>setTimeout(revealActivePage,80));
+    setTimeout(revealActivePage,250);
+  }
 })();
