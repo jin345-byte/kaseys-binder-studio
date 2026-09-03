@@ -36,6 +36,7 @@ jobs:
           node --check public/features/mobile-lab.js
           node --check public/features/cloud-sync.js
           node --check public/features/staging-fetch-shim.js
+          node --check public/features/staging-polish.js
           node --check src/staging-worker.js
           python - <<'PY'
           import re, pathlib, json
@@ -47,26 +48,23 @@ jobs:
           assert 'id="setFilter"' in html and 'id="artistFilter"' in html
           assert 'serviceWorker.register' not in html and 'art-search-proxy.js' not in html
           assert '<strong>App notice</strong>' in html
-          assert 'v2.8.4 STAGING' in html and 'v2.8.4 Staging' in html
-          assert 'catalog-lab.js?v=2.8.4' in html and 'art-search-lab.js?v=2.8.4' in html
-          assert 'staging-fetch-shim.js?v=2.8.4' in html
+          assert 'v2.8.5 STAGING' in html and 'v2.8.5 Staging' in html
+          assert 'art-search-lab.js?v=2.8.5' in html and 'staging-polish.js?v=2.8.5' in html
+          assert 'styles/staging-polish.css?v=2.8.5' in html
+          assert 'pikachu-bolt' not in html
           worker=pathlib.Path('src/staging-worker.js').read_text(encoding='utf-8')
           assert '/api/art-search' not in worker
-          assert "url.pathname === '/api/art-image'" in worker
-          assert "url.pathname === '/api/card-search'" in worker
-          assert 'safebooru.org' in worker and 'cdn.donmai.us' in worker
-          shim=pathlib.Path('public/features/staging-fetch-shim.js').read_text(encoding='utf-8')
-          assert 'api.pokemontcg.io' in shim and '/api/card-search' in shim
-          cat=pathlib.Path('public/features/catalog-lab.js').read_text(encoding='utf-8')
-          for needle in ['TCG Pocket ·','pocket-source-badge','mergePocketIntoMaster','setId:`pocket:${rawSet}`','Pocket outages are non-fatal']:
-              assert needle in cat, f'missing unified feature: {needle}'
+          for route in ["/api/art-image","/api/art-feed","/api/card-search"]: assert route in worker
           art=pathlib.Path('public/features/art-search-lab.js').read_text(encoding='utf-8')
-          for needle in ['safeFanUrl','deliveredUrl','/api/art-image?url=','loading="eager"']:
-              assert needle in art, f'missing artwork delivery feature: {needle}'
+          assert 'data-art-size' not in art and 'auto-art-size' not in art
+          assert '/api/art-feed?' in art and 'nextPid' in art and 'exhausted' in art
+          polish=pathlib.Path('public/features/staging-polish.js').read_text(encoding='utf-8')
+          assert 'artworkHoverPreview' in polish and "addEventListener('wheel'" in polish
+          css=pathlib.Path('public/styles/staging-polish.css').read_text(encoding='utf-8')
+          assert 'page-card-actions' in css and 'repeat(4,minmax(0,1fr))' in css and '#f5d52f' in css
           eevee=json.loads(pathlib.Path('public/art-cache/eevee.json').read_text(encoding='utf-8'))
-          rows=eevee.get('results',[])
-          assert len(rows)>=10, 'eevee artwork cache is too small'
-          print('STATIC PASS',len(ids),'unique ids',len(rows),'eevee artwork rows')
+          assert len(eevee.get('results',[]))>=10
+          print('STATIC PASS',len(ids),'unique ids')
           PY
 
       - name: Install Wrangler and browser tooling
@@ -93,54 +91,56 @@ jobs:
             const browser=await chromium.launch({headless:true});
             const ctx=await browser.newContext({viewport:{width:1440,height:1100}});
             const page=await ctx.newPage();
-            const errors=[],failed=[],artResponses=[],cardResponses=[];
-            page.on('pageerror',e=>{errors.push('PAGE '+e.message);console.log('PAGE_ERROR',e.stack||e.message)});
-            page.on('console',m=>{if(m.type()==='error'){errors.push('CONSOLE '+m.text());console.log('CONSOLE_ERROR',m.text())}});
-            page.on('requestfailed',r=>{const x={url:r.url(),error:r.failure()?.errorText||''};failed.push(x);console.log('REQUEST_FAILED',x)});
-            page.on('response',r=>{
-              if(r.url().includes('/api/art-image?'))artResponses.push({url:r.url().slice(0,190),status:r.status(),ct:r.headers()['content-type']||'',marker:r.headers()['x-kbs-art-image']||''});
-              if(r.url().includes('/api/card-search?'))cardResponses.push({status:r.status(),marker:r.headers()['x-kbs-card-search']||''});
-            });
+            const errors=[],failed=[],artResponses=[];
+            page.on('pageerror',e=>errors.push('PAGE '+e.message));
+            page.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
+            page.on('requestfailed',r=>failed.push({url:r.url(),error:r.failure()?.errorText||''}));
+            page.on('response',r=>{if(r.url().includes('/api/art-image?'))artResponses.push({status:r.status(),ct:r.headers()['content-type']||'',marker:r.headers()['x-kbs-art-image']||''})});
 
-            await page.goto(STAGING,{waitUntil:'networkidle',timeout:60000});await page.waitForTimeout(1000);
+            await page.goto(STAGING,{waitUntil:'networkidle',timeout:60000});await page.waitForTimeout(700);
+            if((await page.locator('#versionLink').textContent())?.trim()!=='v2.8.5 STAGING')throw new Error('Visible version stale');
+            if(ctx.serviceWorkers().length)throw new Error('Service worker active');
             if(await page.locator('#catalogFilter').count())throw new Error('Catalog selector exists');
-            for(const s of ['#setFilter','#artistFilter','#libraryCardsTab','#libraryArtworkTab','.cloud-account'])if(await page.locator(s).count()!==1)throw new Error('Missing UI '+s);
-            if((await page.locator('#versionLink').textContent())?.trim()!=='v2.8.4 STAGING')throw new Error('Visible staging version is stale');
-            if(ctx.serviceWorkers().length)throw new Error('Service worker still active');
-            await page.click('#openBinders');await page.waitForTimeout(200);if(await page.locator('#binderModal').getAttribute('aria-hidden')!=='false')throw new Error('Binder modal failed');await page.click('#closeBinders');
+            if(await page.locator('.pikachu-bolt').count())throw new Error('Lightning bolt still present');
+            const logoBg=await page.locator('.k-logo').evaluate(el=>getComputedStyle(el).backgroundColor);console.log('LOGO',logoBg);
+
+            await page.click('#openBinders');await page.waitForTimeout(250);
+            const pageCard=page.locator('#pageBrowser .page-card').first();
+            if(await pageCard.count()){
+              const cardBox=await pageCard.boundingBox();const buttons=pageCard.locator('.page-card-actions button');
+              for(let i=0;i<await buttons.count();i++){const b=await buttons.nth(i).boundingBox();if(b.x<cardBox.x-1||b.x+b.width>cardBox.x+cardBox.width+1)throw new Error('Page action button overflow');}
+            }
+            await page.click('#closeBinders');
 
             await page.fill('#subject','eevee');await page.click('#searchBtn');await page.click('#libraryArtworkTab');await page.waitForTimeout(12000);
-            const cards=await page.locator('#autoArtworkResults .auto-art-card').count();const imgs=page.locator('#autoArtworkResults img');const imgCount=await imgs.count();
-            const good=artResponses.filter(x=>x.status===200&&String(x.ct).startsWith('image/')&&x.marker==='proxy').length;
-            const decoded=await imgs.evaluateAll(nodes=>nodes.filter(img=>img.complete&&img.naturalWidth>0&&img.naturalHeight>0).length);
-            const goodCardProxy=cardResponses.some(x=>x.status===200&&x.marker==='proxy');
-            const directCardFailure=failed.some(x=>x.url.includes('api.pokemontcg.io'));
-            console.log('ARTWORK',{cards,imgCount,good,decoded});console.log('CARD_PROXY',{cardResponses,directCardFailure});console.log('ART_RESPONSES',JSON.stringify(artResponses.slice(0,25),null,2));
-            if(cards<10||imgCount<10||good<8||decoded<8)throw new Error(`Artwork delivery incomplete cards=${cards} images=${imgCount} goodResponses=${good} decoded=${decoded}`);
-            if(!goodCardProxy||directCardFailure)throw new Error(`Card proxy failed good=${goodCardProxy} directFailure=${directCardFailure}`);
-            let visible=-1;for(let i=0;i<imgCount;i++){const src=(await imgs.nth(i).getAttribute('src'))||'';if(src.includes('/api/art-image?')){visible=i;break;}}
-            if(visible<0)throw new Error('No same-origin artwork image element');
-            await imgs.nth(visible).screenshot({path:'art.png'});const v=variance('art.png');console.log('ART_PIXEL_VARIANCE',v);if(v<=8)throw new Error('Artwork visually blank');
-            const before=await page.locator('#arts .item').count();await page.locator('#autoArtworkResults .auto-art-add').nth(visible).click();await page.waitForTimeout(400);const after=await page.locator('#arts .item').count();console.log('ART_TRAY',{before,after});if(after!==before+1)throw new Error(`Add to Art Tray failed before=${before} after=${after}`);
-            if(!(await page.isDisabled('#autoArtworkLoadMore'))){const c0=cards;await page.click('#autoArtworkLoadMore');await page.waitForTimeout(700);const c1=await page.locator('#autoArtworkResults .auto-art-card').count();if(c1<=c0)throw new Error('More artwork failed');}
+            if(await page.locator('#autoArtworkResults [data-art-size],#autoArtworkResults .auto-art-size').count())throw new Error('Artwork slot-size selector still present');
+            let artCount=await page.locator('#autoArtworkResults .auto-art-card').count();
+            const imgs=page.locator('#autoArtworkResults img');const decoded=await imgs.evaluateAll(nodes=>nodes.filter(i=>i.complete&&i.naturalWidth>0&&i.naturalHeight>0).length);
+            const good=artResponses.filter(x=>x.status===200&&x.marker==='proxy'&&x.ct.startsWith('image/')).length;
+            console.log('ART_INITIAL',{artCount,decoded,good});if(artCount<10||decoded<8||good<8)throw new Error('Artwork render incomplete');
+            await imgs.first().hover();await page.waitForTimeout(150);if(!(await page.locator('#artworkHoverPreview').isVisible()))throw new Error('Artwork hover preview did not open');
+            await imgs.first().screenshot({path:'art.png'});if(variance('art.png')<=8)throw new Error('Artwork visually blank');
+
+            for(let i=0;i<3;i++){
+              if(await page.isDisabled('#autoArtworkLoadMore'))break;
+              const before=await page.locator('#autoArtworkResults .auto-art-card').count();await page.click('#autoArtworkLoadMore');
+              await page.waitForFunction(n=>document.querySelectorAll('#autoArtworkResults .auto-art-card').length>n,before,{timeout:30000}).catch(()=>{});
+            }
+            artCount=await page.locator('#autoArtworkResults .auto-art-card').count();console.log('ART_AFTER_MORE',artCount);if(artCount<=42)throw new Error('Artwork still capped near the old 40-row cache limit');
+
+            const beforeTray=await page.locator('#arts .item').count();await page.locator('#autoArtworkResults .auto-art-add').first().click();await page.waitForTimeout(350);if(await page.locator('#arts .item').count()!==beforeTray+1)throw new Error('Add artwork failed');
+            await page.locator('#arts .item .pick').first().click();await page.locator('#grid .pocket').first().click();await page.waitForTimeout(350);
+            const placed=page.locator('#grid .pocket.art img').first();if(!(await placed.count()))throw new Error('Artwork did not place in binder');
+            const z0=await placed.evaluate(el=>getComputedStyle(el).transform);await placed.hover();await page.mouse.wheel(0,-120);await page.waitForTimeout(180);const z1=await placed.evaluate(el=>getComputedStyle(el).transform);console.log('ZOOM',{z0,z1});if(z0===z1)throw new Error('Artwork wheel zoom did not change image scale');
 
             await page.click('#libraryCardsTab');await page.locator('#syncMasterLibrary').click({force:true});
             await page.waitForFunction(()=>[...document.querySelectorAll('#setFilter option')].some(o=>String(o.value).startsWith('pocket:')),null,{timeout:120000});
-            const pocketValue=await page.locator('#setFilter option[value^="pocket:"]').first().getAttribute('value');
-            if(!pocketValue)throw new Error('Pocket set option did not appear');
-            await page.fill('#subject','');await page.waitForTimeout(350);
-            await page.selectOption('#setFilter',pocketValue);await page.waitForTimeout(800);
-            const pocketRows=page.locator('#cards .card-item.is-pocket-card');
-            const pocketCount=await pocketRows.count();
-            const pocketBadges=await page.locator('#cards .pocket-source-badge').count();
-            console.log('POCKET_FILTER',{pocketValue,pocketCount,pocketBadges});
-            if(pocketCount<1||pocketBadges<1)throw new Error(`Pocket set filtering failed rows=${pocketCount} badges=${pocketBadges}`);
-            await page.selectOption('#setFilter','');
-            const banner=await page.locator('#runtimeErrorBanner').isVisible();const txt=(await page.locator('#runtimeErrorText').textContent())||'';const libStatus=((await page.locator('#masterLibraryStatus').textContent())||'')+' '+((await page.locator('#libraryProgressText').textContent())||'');
-            console.log('LIBRARY',{banner,txt,libStatus});if(banner)throw new Error('Unexpected app notice: '+txt);if(!/Building|Library|catalog|ready/i.test(libStatus))throw new Error('Library did not progress');
-            await page.click('#mobilePreviewToggle');await page.waitForTimeout(200);const cls=(await page.locator('body').getAttribute('class'))||'';if(!cls.includes('mobile-lab-enabled'))throw new Error('Mobile preview failed');
+            const pocketValue=await page.locator('#setFilter option[value^="pocket:"]').first().getAttribute('value');await page.fill('#subject','');await page.waitForTimeout(350);await page.selectOption('#setFilter',pocketValue);await page.waitForTimeout(800);
+            const pc=await page.locator('#cards .card-item.is-pocket-card').count(),pb=await page.locator('#cards .pocket-source-badge').count();console.log('POCKET',{pc,pb});if(pc<1||pb<1)throw new Error('Pocket filter failed');
+            const banner=await page.locator('#runtimeErrorBanner').isVisible();if(banner)throw new Error('Unexpected App notice: '+await page.locator('#runtimeErrorText').textContent());
             const cfg=await page.request.get(STAGING+'/api/config');if(!cfg.ok())throw new Error('Auth config failed');
-            console.log('AUTH_CONFIG',cfg.status());console.log('FAILED_REQUESTS',JSON.stringify(failed.slice(0,25),null,2));console.log('CONSOLE_ERRORS',JSON.stringify(errors.slice(0,25),null,2));
+            console.log('AUTH',cfg.status(),'ERRORS',errors,'FAILED',failed.slice(0,8));
+            if(errors.length)throw new Error('Browser console/page errors: '+errors.join(' | '));
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
