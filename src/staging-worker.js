@@ -5,7 +5,7 @@ const CLOUD_JS = '<script src="/features/cloud-sync.js"></script>';
 const STAGING_287_CSS = '<link rel="stylesheet" href="/styles/staging-v287.css">';
 const STAGING_287_JS = '<script src="/features/staging-v287.js"></script>';
 const GUIDED_TOUR_AUTO_LIBRARY_JS = '<script src="/features/guided-tour-auto-library.js"></script>';
-const STAGING_BUILD = '2.8.9-auto-library-tour';
+const STAGING_BUILD = '2.8.11-artwork-visual-pass';
 const ART_IMAGE_HOSTS = new Set(['cdn.donmai.us','safebooru.org','raw.githubusercontent.com','cdn.artofpkm.com']);
 
 function noStoreResponse(response) {
@@ -86,7 +86,7 @@ export default {
     if(request.method==='GET'&&url.pathname==='/api/art-feed')return artworkFeed(request);
     if(request.method==='GET'&&url.pathname==='/api/card-search')return cardSearch(request);
 
-    const noStorePaths=new Set(['/features/art-search-lab.js','/features/catalog-lab.js','/features/mobile-lab.js','/features/staging-fetch-shim.js','/features/staging-polish.js','/features/help-lab.js','/features/staging-v287.js','/features/guided-tour-auto-library.js','/styles/staging-polish.css','/styles/staging-v287.css']);
+    const noStorePaths=new Set(['/art-search-lab.css','/features/art-search-lab.js','/features/catalog-lab.js','/features/mobile-lab.js','/features/staging-fetch-shim.js','/features/staging-polish.js','/features/help-lab.js','/features/staging-v287.js','/features/guided-tour-auto-library.js','/styles/staging-polish.css','/styles/staging-v287.css']);
     if(request.method==='GET'&&noStorePaths.has(url.pathname))return noStoreResponse(await env.ASSETS.fetch(request));
 
     // Staging root is served directly from the asset binding so staging-only CSS/JS
