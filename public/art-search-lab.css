@@ -1,7 +1,8 @@
-/* v2.8.11 shared Cards / Artwork browser */
+/* v2.8.12 shared Cards / Artwork browser */
 .library.has-browser-tabs{
   position:relative;
-  display:block!important;
+  display:grid!important;
+  grid-template-rows:auto minmax(0,1fr)!important;
   min-height:0!important;
 }
 .library-browser-tabs{
@@ -47,15 +48,20 @@
   display:grid!important;
 }
 
-/* Active pane occupies the same browser footprint. Artwork deliberately gets more visual room. */
+/* Desktop: the left library stretches to the real workspace row height instead of a viewport guess. */
 @media(min-width:821px){
+  .workspace{
+    align-items:stretch!important;
+  }
   .library.has-browser-tabs{
-    height:calc(100vh - 150px)!important;
+    height:auto!important;
     min-height:760px!important;
+    align-self:stretch!important;
   }
   .library.has-browser-tabs>.browser-pane{
-    height:calc(100% - 54px)!important;
+    height:100%!important;
     min-height:0!important;
+    align-self:stretch!important;
   }
   .library[data-library-tab="cards"] .variant-pane{
     grid-template-rows:auto auto minmax(0,1fr)!important;
@@ -66,10 +72,23 @@
     overflow:auto!important;
   }
   .library[data-library-tab="artwork"] .artwork-pane{
-    grid-template-rows:auto minmax(430px,2.1fr) auto minmax(76px,.28fr)!important;
+    grid-template-rows:auto minmax(0,1fr) auto minmax(120px,.24fr)!important;
+    min-height:0!important;
+    height:100%!important;
+  }
+  .library[data-library-tab="artwork"] .auto-artwork-results-wrap{
+    min-height:0!important;
+    height:100%!important;
   }
   .library[data-library-tab="artwork"] .auto-artwork-scroll{
-    min-height:390px!important;
+    min-height:0!important;
+    height:100%!important;
+  }
+  .library[data-library-tab="artwork"] #arts{
+    min-height:120px!important;
+    height:100%!important;
+    max-height:none!important;
+    overflow:auto!important;
   }
 }
 
@@ -277,12 +296,18 @@
   font-size:10px;
 }
 
-/* Direct-link controls: URL gets a full row; size selector gets room to show full labels. */
+/* Direct-link controls stay in their own protected row. */
 .artwork-pane .artadd{
   display:grid!important;
   grid-template-columns:minmax(220px,1.8fr) minmax(88px,.55fr) minmax(108px,.65fr)!important;
   gap:8px!important;
   align-items:center;
+  position:relative;
+  z-index:2;
+  padding:8px 0;
+  border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent);
+  border-bottom:1px solid color-mix(in srgb,var(--line) 70%,transparent);
+  background:var(--surface);
 }
 .artwork-pane .artadd #artUrl{
   grid-column:1 / -1;
@@ -296,9 +321,17 @@
 }
 .artwork-pane .artadd #addUrl{grid-column:2}
 .artwork-pane .artadd .upload{grid-column:3}
+.artwork-pane #arts{
+  position:relative;
+  z-index:1;
+  align-content:start;
+  padding-top:8px;
+}
 
 /* Mobile / forced preview uses larger two-column art cards with a readable themed search field. */
 body.mobile-lab-enabled .library.has-browser-tabs{
+  display:grid!important;
+  grid-template-rows:auto auto!important;
   height:auto!important;
   min-height:0!important;
 }
