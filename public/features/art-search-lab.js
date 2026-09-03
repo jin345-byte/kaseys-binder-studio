@@ -1,4 +1,4 @@
-/* Kasey's Binder Studio v2.8.5 — unified artwork browser with open-ended paging */
+/* Kasey's Binder Studio v2.8.10 — independent artwork search + open-ended paging */
 (function(){
   const subject=document.querySelector('#subject');
   const searchBtn=document.querySelector('#searchBtn');
@@ -13,13 +13,22 @@
   const count=document.querySelector('#autoArtworkCount');
   const tabCount=document.querySelector('#libraryArtworkTabCount');
   const moreBtn=document.querySelector('#autoArtworkLoadMore');
-  if(!subject||!library||!variantPane||!artworkPane||!tabs||!grid)return;
+  const artworkSection=document.querySelector('#autoArtworkSection');
+  if(!subject||!library||!variantPane||!artworkPane||!tabs||!grid||!artworkSection)return;
 
   const PAGE_SIZE=20;
-  const LIVE_PAGE_SIZE=40;
   const cache=new Map();
-  let controller=null,debounce=null,requestSerial=0,activeTab='cards',lastQuery='';
+  let controller=null,debounce=null,requestSerial=0,activeTab='cards',lastQuery='',activeRaw='';
   library.classList.add('has-browser-tabs');
+
+  /* Independent art search. This intentionally does not change the card-search subject. */
+  const artSearch=document.createElement('form');
+  artSearch.className='art-search-tools';
+  artSearch.setAttribute('role','search');
+  artSearch.setAttribute('aria-label','Search artwork');
+  artSearch.innerHTML='<label for="artSearchQuery"><span>Art search</span><input id="artSearchQuery" type="search" autocomplete="off" spellcheck="false" placeholder="Pokémon, anime character, series, or artwork term"></label><button class="btn art-search-submit" id="artSearchSubmit" type="submit">Search art</button>';
+  artworkSection.insertBefore(artSearch,artworkSection.firstChild);
+  const artSearchInput=artSearch.querySelector('#artSearchQuery');
 
   function cleanName(raw){return String(raw||'').trim().replace(/\s+(ex|gx|vmax|vstar|v-union|v|break|lv\.?\s*x|star)$/i,'').trim();}
   function booruTag(raw){return cleanName(raw).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[’']/g,'').replace(/[^a-z0-9♀♂._-]+/g,'_').replace(/^-+|-+$/g,'').replace(/^_+|_+$/g,'');}
@@ -41,7 +50,7 @@
       const u=new URL(raw);
       if(u.origin===location.origin&&u.pathname==='/api/art-image')return u.href;
       const host=u.hostname.toLowerCase();
-      if(host==='cdn.donmai.us'||host==='safebooru.org'||host==='raw.githubusercontent.com')return `${location.origin}/api/art-image?url=${encodeURIComponent(u.href)}`;
+      if(host==='cdn.donmai.us'||host==='safebooru.org'||host==='raw.githubusercontent.com'||host==='cdn.artofpkm.com')return `${location.origin}/api/art-image?url=${encodeURIComponent(u.href)}`;
       return u.href;
     }catch{return raw}
   }
@@ -118,7 +127,7 @@
   function render(rows,raw){
     const total=rows.length;count.textContent=String(total);tabCount.textContent=String(total);
     status.textContent=total?`${total} results for ${cleanName(raw)} · hover to preview, click Add to use it`:`No artwork found for ${cleanName(raw)}.`;
-    if(!total){grid.innerHTML='<div class="auto-art-empty">No matching artwork returned.</div>';return;}
+    if(!total){grid.innerHTML='<div class="auto-art-empty">No matching artwork returned. Try the exact character or series tag, such as “Gardevoir”, “Frieren”, or “Sailor Moon”.</div>';return;}
     grid.innerHTML=rows.map((a,i)=>`<article class="auto-art-card" data-auto-art="${i}"><button class="auto-art-pick" type="button" title="Add this artwork"><span class="auto-art-image"><img data-art-img src="${html(a.thumb||a.url)}" data-fallback-src="${html(a.url)}" loading="eager" decoding="async" alt="${html(a.title)}"><span class="auto-art-source">${html(a.source)}</span></span></button><strong>${html(a.title)}</strong><small>${html(a.artist||a.source)}</small><button class="btn auto-art-add" type="button">Add</button></article>`).join('');
     grid._rows=rows;
     grid.querySelectorAll('img[data-art-img]').forEach(img=>{
@@ -136,19 +145,30 @@
 
   grid.addEventListener('click',e=>{const add=e.target.closest('.auto-art-add,.auto-art-pick');if(!add)return;const article=e.target.closest('.auto-art-card');if(article)addResult(article);});
 
-  async function searchArtwork({force=false,more=false}={}){
-    const raw=subject.value.trim(),q=cleanName(raw).toLowerCase();
-    if(q.length<2){lastQuery='';grid.innerHTML='';count.textContent='0';tabCount.textContent='0';status.textContent='Search a Pokémon to load artwork automatically.';moreBtn.disabled=true;return;}
+  async function searchArtwork({force=false,more=false,rawOverride=null}={}){
+    let raw;
+    if(more)raw=activeRaw;
+    else if(rawOverride!==null)raw=String(rawOverride||'').trim();
+    else raw=subject.value.trim();
+    const q=cleanName(raw).toLowerCase();
+    if(q.length<2){activeRaw='';lastQuery='';grid.innerHTML='';count.textContent='0';tabCount.textContent='0';status.textContent='Search Pokémon, anime characters, series, or artwork terms.';moreBtn.disabled=true;return;}
+    activeRaw=raw;
     let entry=cache.get(q);
     if(!entry||force&&!more){entry={official:[],fan:[],visibleFan:0,loaded:false,tag:booruTag(raw),nextPid:1,exhausted:false};cache.set(q,entry);}
     if(!more&&!force&&q===lastQuery&&entry.loaded){render(dedupe([...entry.official,...entry.fan.slice(0,entry.visibleFan)]),raw);return;}
     lastQuery=q;controller?.abort();controller=new AbortController();const serial=++requestSerial;
-    moreBtn.disabled=true;moreBtn.textContent=more?'Loading…':'More';status.textContent=more?`Loading more ${cleanName(raw)} artwork…`:'Finding official and fan artwork…';
+    moreBtn.disabled=true;moreBtn.textContent=more?'Loading…':'More';status.textContent=more?`Loading more ${cleanName(raw)} artwork…`:'Searching artwork…';
     try{
       if(!entry.loaded){
         const [official,fanCache]=await Promise.all([fetchOfficial(raw,controller.signal),fetchFanCache(raw,controller.signal)]);
         if(serial!==requestSerial)return;
         entry.official=official;entry.fan=dedupe(fanCache.rows);entry.tag=fanCache.tag||booruTag(raw);entry.visibleFan=Math.min(PAGE_SIZE,entry.fan.length);entry.nextPid=1;entry.exhausted=false;entry.loaded=true;
+        /* Non-Pokémon/manual terms usually have no static cache, so fetch the first live page immediately. */
+        if(entry.fan.length===0){
+          const page=await fetchFanPage(raw,entry.tag,0,controller.signal);
+          if(serial!==requestSerial)return;
+          entry.fan=dedupe(page.rows);entry.visibleFan=Math.min(PAGE_SIZE,entry.fan.length);entry.nextPid=page.nextPid;entry.exhausted=page.done||(page.rows.length===0&&!page.error);
+        }
       }else if(more){
         if(entry.visibleFan<entry.fan.length){
           entry.visibleFan=Math.min(entry.fan.length,entry.visibleFan+PAGE_SIZE);
@@ -177,11 +197,22 @@
     }catch(e){if(e?.name==='AbortError')return;console.warn('Artwork search failed',e);status.textContent='Artwork search failed. Card results are unaffected.';moreBtn.disabled=false;moreBtn.textContent='Retry';}
   }
 
-  searchBtn?.addEventListener('click',()=>searchArtwork({force:true}));
-  subject.addEventListener('keydown',e=>{if(e.key==='Enter')searchArtwork({force:true});});
-  subject.addEventListener('input',()=>{clearTimeout(debounce);debounce=setTimeout(()=>searchArtwork(),650);});
+  function searchFromArtBox(){
+    const raw=artSearchInput.value.trim();
+    if(raw.length<2){status.textContent='Enter at least 2 characters to search artwork.';artSearchInput.focus();return;}
+    setTab('artwork');searchArtwork({force:true,rawOverride:raw});
+  }
+  artSearch.addEventListener('submit',e=>{e.preventDefault();searchFromArtBox();});
+
+  searchBtn?.addEventListener('click',()=>{
+    const raw=subject.value.trim();
+    if(raw.length>=2){artSearchInput.value=cleanName(raw);searchArtwork({force:true,rawOverride:raw});}
+  });
+  subject.addEventListener('keydown',e=>{if(e.key==='Enter'){const raw=subject.value.trim();if(raw.length>=2){artSearchInput.value=cleanName(raw);searchArtwork({force:true,rawOverride:raw});}}});
+  subject.addEventListener('input',()=>{clearTimeout(debounce);debounce=setTimeout(()=>{const raw=subject.value.trim();if(raw.length>=2){artSearchInput.value=cleanName(raw);searchArtwork({rawOverride:raw});}},650);});
   moreBtn?.addEventListener('click',()=>searchArtwork({more:true}));
   document.querySelector('#artPokemonLink')?.addEventListener('click',()=>setTab('artwork'));
-  setTab('cards',{syncMobile:false});moreBtn.disabled=true;if(subject.value.trim().length>=2)setTimeout(()=>searchArtwork(),700);
-  globalThis.KBSArtworkSearch={search:searchArtwork,showCards:()=>setTab('cards'),showArtwork:()=>setTab('artwork')};
+  setTab('cards',{syncMobile:false});moreBtn.disabled=true;
+  if(subject.value.trim().length>=2){artSearchInput.value=cleanName(subject.value);setTimeout(()=>searchArtwork({rawOverride:subject.value.trim()}),700);}
+  globalThis.KBSArtworkSearch={search:searchArtwork,searchTerm:(term)=>searchArtwork({force:true,rawOverride:term}),showCards:()=>setTab('cards'),showArtwork:()=>setTab('artwork')};
 })();
