@@ -1,4 +1,4 @@
-/* Kasey's Binder Studio v2.8.3 — unified tabbed artwork browser */
+/* Kasey's Binder Studio v2.8.4 — unified tabbed artwork browser */
 (function(){
   const subject=document.querySelector('#subject');
   const searchBtn=document.querySelector('#searchBtn');
@@ -34,6 +34,16 @@
       if(!/\.(?:jpe?g|png|webp|gif)$/i.test(u.pathname))return '';
       return u.href;
     }catch{return ''}
+  }
+  function deliveredUrl(v){
+    const raw=safeUrl(v);if(!raw)return '';
+    try{
+      const u=new URL(raw);
+      if(u.origin===location.origin&&u.pathname==='/api/art-image')return u.href;
+      const host=u.hostname.toLowerCase();
+      if(host==='cdn.donmai.us'||host==='raw.githubusercontent.com')return `${location.origin}/api/art-image?url=${encodeURIComponent(u.href)}`;
+      return u.href;
+    }catch{return raw}
   }
   function html(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   function fitFor(w,h){w=Number(w)||1;h=Number(h)||1;const r=w/h;if(r>=2.15)return '3x1';if(r>=1.35)return '2x1';if(r<=.62)return '1x2';return '1x1';}
@@ -71,7 +81,7 @@
       const d=await r.json();
       const official=d?.sprites?.other?.['official-artwork']||{};
       const candidates=[['Official artwork',official.front_default],['Official shiny artwork',official.front_shiny]];
-      return candidates.filter(([,u])=>safeUrl(u)).map(([label,url],i)=>({id:'official-'+slug+'-'+i,url,thumb:url,title:label,artist:'Official Pokémon artwork',source:'PokéAPI · Official artwork',width:475,height:475,fit:'1x1',official:true}));
+      return candidates.filter(([,u])=>safeUrl(u)).map(([label,original],i)=>{const url=deliveredUrl(original);return{id:'official-'+slug+'-'+i,url,thumb:url,title:label,artist:'Official Pokémon artwork',source:'PokéAPI · Official artwork',width:475,height:475,fit:'1x1',official:true};});
     }catch(e){if(e?.name==='AbortError')throw e;return [];}
   }
 
@@ -84,9 +94,10 @@
       const payload=await r.json();
       const rows=Array.isArray(payload)?payload:(Array.isArray(payload?.results)?payload.results:[]);
       return rows.map((p,i)=>{
-        const file=safeFanUrl(p.url||p.file_url||p.sample_url||p.preview_url);
-        const thumb=safeFanUrl(p.thumb||p.preview_url||p.sample_url||p.url)||file;
-        if(!file)return null;
+        const sourceFile=safeFanUrl(p.url||p.file_url||p.sample_url||p.preview_url);
+        const sourceThumb=safeFanUrl(p.thumb||p.preview_url||p.sample_url||p.url)||sourceFile;
+        if(!sourceFile)return null;
+        const file=deliveredUrl(sourceFile),thumb=deliveredUrl(sourceThumb)||file;
         return {id:'fan-'+(p.id||`${key}-${i}`),url:file,thumb,title:cleanName(raw)+' fan art',artist:p.artist||'Community artwork',source:p.source||'Community fan art',width:Number(p.width||p.image_width)||0,height:Number(p.height||p.image_height)||0,fit:fitFor(p.width||p.image_width,p.height||p.image_height),official:false};
       }).filter(Boolean);
     }catch(e){if(e?.name==='AbortError')throw e;console.warn('Fan-art cache load failed',key,e);return [];}
@@ -96,7 +107,7 @@
     const total=rows.length;count.textContent=String(total);tabCount.textContent=String(total);
     status.textContent=total?`${total} results for ${cleanName(raw)} · choose a slot size, then add to Art Tray`:`No artwork found for ${cleanName(raw)}.`;
     if(!total){grid.innerHTML='<div class="auto-art-empty">No matching artwork returned.</div>';return;}
-    grid.innerHTML=rows.map((a,i)=>`<article class="auto-art-card" data-auto-art="${i}"><button class="auto-art-pick" type="button" title="Add this artwork using the selected slot size"><span class="auto-art-image"><img data-art-img src="${html(a.thumb||a.url)}" data-fallback-src="${html(a.url)}" loading="eager" decoding="async" referrerpolicy="no-referrer" alt="${html(a.title)}"><span class="auto-art-source">${html(a.source)}</span></span></button><strong>${html(a.title)}</strong><small>${html(a.artist||a.source)}</small><label class="auto-art-size"><span>Slot</span><select data-art-size aria-label="Artwork slot size">${sizeOptions(a.fit||'1x1')}</select></label><button class="btn auto-art-add" type="button">Add</button></article>`).join('');
+    grid.innerHTML=rows.map((a,i)=>`<article class="auto-art-card" data-auto-art="${i}"><button class="auto-art-pick" type="button" title="Add this artwork using the selected slot size"><span class="auto-art-image"><img data-art-img src="${html(a.thumb||a.url)}" data-fallback-src="${html(a.url)}" loading="eager" decoding="async" alt="${html(a.title)}"><span class="auto-art-source">${html(a.source)}</span></span></button><strong>${html(a.title)}</strong><small>${html(a.artist||a.source)}</small><label class="auto-art-size"><span>Slot</span><select data-art-size aria-label="Artwork slot size">${sizeOptions(a.fit||'1x1')}</select></label><button class="btn auto-art-add" type="button">Add</button></article>`).join('');
     grid._rows=rows;
     grid.querySelectorAll('img[data-art-img]').forEach(img=>{
       img.addEventListener('error',()=>{const fallback=img.dataset.fallbackSrc||'';if(fallback&&img.src!==fallback){img.src=fallback;return}img.classList.add('image-unavailable');},{once:true});
