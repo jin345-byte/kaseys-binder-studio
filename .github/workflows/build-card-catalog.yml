@@ -103,8 +103,6 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         shell: bash
         run: |
-          # If this run just pushed a new catalog commit, refresh checkout to the current branch head
-          # so the deployment also includes any staging UI commits that landed while the catalog built.
           git fetch origin staging-ui-auth-test
           git reset --hard origin/staging-ui-auth-test
           npm install --no-save wrangler@4 >/dev/null 2>&1
@@ -115,24 +113,26 @@ jobs:
         shell: bash
         run: |
           node <<'JS'
-          const expected=require('./public/catalog/manifest.json');
-          const base='https://kaseys-binder-studio-staging.jin345.workers.dev/catalog/manifest.json';
-          let last='';
-          for(let attempt=1;attempt<=12;attempt++){
-            try{
-              const r=await fetch(base+'?t='+Date.now(),{cache:'no-store'});
-              if(!r.ok){last='HTTP '+r.status;throw new Error(last)}
-              const m=await r.json();
-              if(m.version===expected.version&&m.cards===expected.cards){
-                console.log(`DEPLOYED ${m.version} · ${m.cards} cards · attempt ${attempt}`);
-                process.exit(0);
-              }
-              last=`got ${m.version}/${m.cards}, expected ${expected.version}/${expected.cards}`;
-            }catch(e){last=e.message||String(e)}
-            console.log(`Waiting for Cloudflare propagation (${attempt}/12): ${last}`);
-            await new Promise(r=>setTimeout(r,5000));
-          }
-          throw new Error('Catalog did not propagate: '+last);
+          (async()=>{
+            const expected=require('./public/catalog/manifest.json');
+            const base='https://kaseys-binder-studio-staging.jin345.workers.dev/catalog/manifest.json';
+            let last='';
+            for(let attempt=1;attempt<=12;attempt++){
+              try{
+                const r=await fetch(base+'?t='+Date.now(),{cache:'no-store'});
+                if(!r.ok){last='HTTP '+r.status;throw new Error(last)}
+                const m=await r.json();
+                if(m.version===expected.version&&m.cards===expected.cards){
+                  console.log(`DEPLOYED ${m.version} · ${m.cards} cards · attempt ${attempt}`);
+                  return;
+                }
+                last=`got ${m.version}/${m.cards}, expected ${expected.version}/${expected.cards}`;
+              }catch(e){last=e.message||String(e)}
+              console.log(`Waiting for Cloudflare propagation (${attempt}/12): ${last}`);
+              await new Promise(r=>setTimeout(r,5000));
+            }
+            throw new Error('Catalog did not propagate: '+last);
+          })().catch(e=>{console.error(e);process.exit(1)});
           JS
 
       - name: No catalog changes
