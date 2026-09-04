@@ -1,4 +1,4 @@
-/* v2.8.22 shared Cards / Artwork browser */
+/* v2.8.23 shared Cards / Artwork browser */
 .library.has-browser-tabs{
   position:relative;
   display:grid!important;
@@ -54,8 +54,8 @@
   .library[data-library-tab="cards"] .variant-pane{grid-template-rows:auto auto minmax(0,1fr)!important}
   .library[data-library-tab="cards"] .cards-viewport{min-height:0!important;height:100%!important;overflow:auto!important}
 
-  /* Stable Artwork model. Both major content areas have the same real floor,
-     so neither can collapse when the outer library height changes. */
+  /* Three-row Artwork layout: matching results and Art Tray share the
+     flexible room equally, with the direct-link controls between them. */
   .library[data-library-tab="artwork"] .artwork-pane{
     grid-template-rows:minmax(220px,1fr) auto minmax(220px,1fr)!important;
     gap:8px!important;
@@ -72,9 +72,8 @@
     min-height:0!important;
     height:auto!important;
   }
-  .library[data-library-tab="artwork"] .art-tray-shell{
+  .library[data-library-tab="artwork"] #arts{
     min-height:220px!important;
-    height:auto!important;
   }
 }
 
@@ -139,39 +138,56 @@
 .artwork-pane .artadd #addUrl{grid-column:2}
 .artwork-pane .artadd .upload{grid-column:3}
 
-/* Dedicated Art Tray shell. This is the destination for artwork added above. */
-.art-tray-shell{
-  display:grid;
-  grid-template-rows:auto minmax(0,1fr);
-  gap:6px;
-  min-height:220px;
-  padding:7px;
-  border:1px solid color-mix(in srgb,var(--accent) 24%,var(--line));
-  border-radius:10px;
-  background:color-mix(in srgb,var(--surface2) 72%,transparent);
-  overflow:hidden;
-}
-.art-tray-head{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
-.art-tray-head .eyebrow{font-size:8px!important}
-.art-tray-head small{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:8px}
-.art-tray-shell #arts{
+/* Art Tray is the third grid row itself. Keep it visibly separate and never
+   let the legacy .arts max-height rule collapse/cap it. */
+.artwork-pane #arts{
   display:grid!important;
   grid-template-columns:repeat(3,minmax(0,1fr))!important;
   gap:8px!important;
-  min-height:0!important;
+  min-height:220px!important;
   height:auto!important;
   max-height:none!important;
   overflow:auto!important;
   align-content:start!important;
-  padding:0 3px 2px 0!important;
+  padding:7px!important;
   margin:0!important;
+  border:1px solid color-mix(in srgb,var(--accent) 24%,var(--line));
+  border-radius:10px;
+  background:color-mix(in srgb,var(--surface2) 72%,transparent);
   scrollbar-gutter:stable;
+  position:relative;
 }
-.art-tray-shell #arts .item{min-width:0}
-.art-tray-shell #arts .item .pick{padding-bottom:34px}
-.art-tray-shell #arts .art-size{height:26px!important;bottom:5px!important;font-size:9px!important;color:var(--text)!important}
-.art-tray-shell #arts .remove-art{height:26px!important;bottom:5px!important}
-.art-tray-shell #arts .empty{align-self:center;padding:22px 10px}
+.artwork-pane #arts::before{
+  content:'ART TRAY  ·  Added artwork — choose its size below the image';
+  grid-column:1/-1;
+  display:block;
+  padding:1px 2px 3px;
+  color:var(--accent);
+  font-size:8px;
+  line-height:1.2;
+  font-weight:900;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+.artwork-pane #arts .item{min-width:0!important}
+.artwork-pane #arts .item .pick{padding-bottom:36px!important}
+.artwork-pane #arts .art-size{
+  left:5px!important;
+  right:30px!important;
+  bottom:5px!important;
+  width:auto!important;
+  height:26px!important;
+  min-height:26px!important;
+  padding:2px 5px!important;
+  color:var(--text)!important;
+  background:var(--surface)!important;
+  border:1px solid var(--line)!important;
+  border-radius:7px!important;
+  font-size:9px!important;
+  z-index:3;
+}
+.artwork-pane #arts .remove-art{height:26px!important;min-height:26px!important;bottom:5px!important;z-index:4}
+.artwork-pane #arts .empty{grid-column:1/-1;align-self:center;padding:26px 10px!important;text-align:center}
 
 @media(max-width:1180px){
   .artwork-pane .artadd{grid-template-columns:minmax(0,1fr) auto auto!important}
@@ -201,5 +217,4 @@ body.mobile-lab-enabled .artwork-pane .artadd #artUrl{grid-column:1/-1!important
 body.mobile-lab-enabled .artwork-pane .artadd #newArtSize{grid-column:1!important;min-width:0!important}
 body.mobile-lab-enabled .artwork-pane .artadd #addUrl{grid-column:2!important;min-width:80px!important}
 body.mobile-lab-enabled .artwork-pane .artadd .upload{grid-column:3!important;min-width:100px!important}
-body.mobile-lab-enabled .art-tray-shell{min-height:230px}
-body.mobile-lab-enabled .art-tray-shell #arts{grid-template-columns:repeat(2,minmax(0,1fr))!important;max-height:420px!important}
+body.mobile-lab-enabled .artwork-pane #arts{grid-template-columns:repeat(2,minmax(0,1fr))!important;min-height:230px!important;max-height:420px!important}
