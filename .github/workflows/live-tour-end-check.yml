@@ -1,0 +1,57 @@
+name: Live Tour End Check
+on:
+  push:
+    branches: [guided-tour-finish-login]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null
+      - name: Verify live Step 16 and congratulations
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1440,height:1100}});
+            const errors=[];
+            page.on('pageerror',e=>errors.push(e.message));
+            await page.goto('https://kaseys-binder-studio-staging.jin345.workers.dev/?liveTourCheck='+Date.now(),{waitUntil:'networkidle',timeout:60000});
+            const info=await page.evaluate(()=>({
+              version:document.querySelector('#versionLink')?.textContent,
+              base:[...document.scripts].some(s=>s.src.includes('guided-tour-finish.js?v=2.8.16')),
+              fix:[...document.scripts].some(s=>s.src.includes('guided-tour-step16-fix.js?v=2.8.16')),
+              css:[...document.styleSheets].some(s=>s.href?.includes('guided-finish.css?v=2.8.16')),
+              shell:!!document.querySelector('#guidedTourCongrats')
+            }));
+            console.log('LOAD',JSON.stringify(info));
+            if(!info.version?.includes('2.8.16')||!info.base||!info.fix||!info.css||!info.shell)throw new Error('v2.8.16 finish assets not loaded directly');
+            await page.evaluate(()=>{
+              const demo=document.querySelector('#guidedDemo');
+              const next=document.querySelector('#guidedDemoNext');
+              demo.hidden=false;demo.setAttribute('aria-hidden','false');
+              document.body.classList.add('live-guided-demo-running');
+              next.hidden=false;next.disabled=false;next.textContent='Finish';
+            });
+            await page.waitForFunction(()=>document.querySelector('#guidedDemoStep')?.textContent==='STEP 16 OF 16',{timeout:5000});
+            await page.waitForFunction(()=>document.querySelector('#guidedDemoNext')?.textContent==='Continue'&&!document.querySelector('#guidedDemoNext')?.hidden,{timeout:5000});
+            const step16=await page.evaluate(()=>({title:document.querySelector('#guidedDemoTitle')?.textContent,button:document.querySelector('#guidedDemoNext')?.textContent}));
+            console.log('STEP16',JSON.stringify(step16));
+            await page.click('#guidedDemoNext');
+            await page.waitForFunction(()=>document.querySelector('#guidedTourCongrats')?.hidden===false,{timeout:5000});
+            const done=await page.evaluate(()=>({title:document.querySelector('#guidedCongratsTitle')?.textContent,finish:document.querySelector('#guidedCongratsFinish')?.textContent,confetti:document.querySelectorAll('.guided-confetti-piece').length}));
+            console.log('CONGRATS',JSON.stringify(done));
+            if(done.title!=='Congratulations!'||done.finish!=='Finish'||done.confetti<30)throw new Error('Congratulations screen failed');
+            if(errors.length)throw new Error('Page errors: '+errors.join(' | '));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
