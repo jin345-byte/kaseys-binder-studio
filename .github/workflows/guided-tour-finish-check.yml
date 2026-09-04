@@ -1,0 +1,107 @@
+name: Guided Tour Finish Check
+
+on:
+  push:
+    branches: [guided-tour-finish-login]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tour:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: guided-tour-finish-login
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: |
+          node --check public/features/guided-tour-finish.js
+          node --check public/features/staging-v287.js
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null
+      - name: Serve branch
+        run: |
+          python3 -m http.server 4173 --directory public >/tmp/kbs-http.log 2>&1 &
+          sleep 1
+      - name: Verify guest step, celebration, and cleanup
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1440,height:1100}});
+            const errors=[];
+            page.on('pageerror',e=>errors.push(e.message));
+            await page.goto('http://127.0.0.1:4173/?tourqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:30000});
+            await page.addScriptTag({url:'http://127.0.0.1:4173/features/staging-v287.js?v=2.8.14'});
+            await page.waitForFunction(()=>!!document.querySelector('#guidedTourCongrats')&&!!document.querySelector('#cloudAccountBtn'),null,{timeout:10000});
+
+            await page.evaluate(()=>{
+              const demo=document.querySelector('#guidedDemo');
+              const next=document.querySelector('#guidedDemoNext');
+              demo.hidden=false;demo.setAttribute('aria-hidden','false');
+              document.body.classList.add('live-guided-demo-running');
+              next.hidden=false;next.disabled=false;next.textContent='Finish';
+            });
+            await page.waitForFunction(()=>document.querySelector('#guidedDemoStep')?.textContent==='STEP 16 OF 16',null,{timeout:5000});
+            const guest=await page.evaluate(()=>({
+              title:document.querySelector('#guidedDemoTitle')?.textContent,
+              text:document.querySelector('#guidedDemoText')?.textContent,
+              nextHidden:document.querySelector('#guidedDemoNext')?.hidden,
+              accountTarget:document.querySelector('#cloudAccountBtn')?.classList.contains('guided-demo-target'),
+              popoverOpen:document.querySelector('#cloudPopover')?.hidden===false
+            }));
+            console.log('GUEST_STEP',JSON.stringify(guest));
+            if(guest.title!=='Save your progress with Google')throw new Error('Guest save step title missing');
+            if(!guest.text.includes('Continue with Google'))throw new Error('Google sign-in instruction missing');
+            if(!guest.nextHidden)throw new Error('Old Finish button is still visible');
+            if(!guest.accountTarget)throw new Error('Guest account button is not highlighted');
+
+            await page.waitForFunction(()=>document.querySelector('#guidedTourCongrats')?.hidden===false,null,{timeout:8000});
+            const congrats=await page.evaluate(()=>({
+              demoHidden:document.querySelector('#guidedDemo')?.hidden,
+              title:document.querySelector('#guidedCongratsTitle')?.textContent,
+              finish:document.querySelector('#guidedCongratsFinish')?.textContent,
+              summary:document.querySelectorAll('.guided-tour-summary span').length,
+              confetti:document.querySelectorAll('.guided-confetti-piece').length,
+              backdrop:getComputedStyle(document.querySelector('#guidedTourCongrats')).backdropFilter
+            }));
+            console.log('CONGRATS',JSON.stringify(congrats));
+            if(!congrats.demoHidden||congrats.title!=='Congratulations!'||congrats.finish!=='Finish')throw new Error('Congratulations handoff is incomplete');
+            if(congrats.summary<6||congrats.confetti<30)throw new Error('Summary/confetti missing');
+
+            await page.evaluate(()=>{
+              document.querySelector('#subject').value='Gardevoir';
+              const art=document.querySelector('#artSearchQuery');if(art)art.value='Gardevoir';
+              document.querySelector('#binderColor').value='#27484a';
+              document.querySelector('#pageColor').value='#eadfe8';
+              document.querySelector('#sleeveColor').value='#d7a9c5';
+            });
+            await page.click('#guidedCongratsFinish');
+            await page.waitForTimeout(450);
+            const reset=await page.evaluate(()=>({
+              congratsHidden:document.querySelector('#guidedTourCongrats')?.hidden,
+              subject:document.querySelector('#subject')?.value,
+              art:document.querySelector('#artSearchQuery')?.value,
+              binder:document.querySelector('#binderColor')?.value,
+              page:document.querySelector('#pageColor')?.value,
+              sleeve:document.querySelector('#sleeveColor')?.value,
+              layout:document.querySelector('#layout')?.value,
+              pockets:(typeof state!=='undefined'&&Array.isArray(state.pockets))?state.pockets.filter(Boolean).length:-1,
+              artworks:(typeof state!=='undefined'&&Array.isArray(state.artworks))?state.artworks.length:-1
+            }));
+            console.log('RESET',JSON.stringify(reset));
+            if(!reset.congratsHidden||reset.subject!==''||reset.art!=='')throw new Error('Search cleanup failed');
+            if(reset.binder!=='#111827'||reset.page!=='#080b12'||reset.sleeve!=='#334155')throw new Error('Default colors were not restored');
+            if(reset.layout!=='3x3'||reset.pockets!==0||reset.artworks!==0)throw new Error('Demo page cleanup failed');
+            if(errors.length)throw new Error('Page errors: '+errors.join(' | '));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
