@@ -1,4 +1,4 @@
-/* Binder Studio v2.8.14 staging — vertical page rail + artwork height + tour finish */
+/* Binder Studio v2.8.15 staging — vertical page rail + artwork height + tour finish */
 (function(){
   /* This staging hook is already proven to execute on the live Worker. Load the
      dedicated height module from a new URL so an old cached polish script cannot
@@ -15,14 +15,20 @@
   if(!document.querySelector('link[data-kbs-guided-finish]')){
     const link=document.createElement('link');
     link.rel='stylesheet';
-    link.href='/features/guided-finish.css?v=2.8.14';
+    link.href='/features/guided-finish.css?v=2.8.15';
     link.dataset.kbsGuidedFinish='1';
     document.head.appendChild(link);
   }
   if(!document.querySelector('script[data-kbs-guided-finish]')){
     const script=document.createElement('script');
-    script.src='/features/guided-tour-finish.js?v=2.8.14';
+    script.src='/features/guided-tour-finish.js?v=2.8.15';
     script.dataset.kbsGuidedFinish='1';
+    document.body.appendChild(script);
+  }
+  if(!document.querySelector('script[data-kbs-guided-step16-fix]')){
+    const script=document.createElement('script');
+    script.src='/features/guided-tour-step16-fix.js?v=2.8.15';
+    script.dataset.kbsGuidedStep16Fix='1';
     document.body.appendChild(script);
   }
 
