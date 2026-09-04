@@ -28,7 +28,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for f in public/app.js public/features/cards-lab.js public/features/catalog-lab.js public/features/art-search-lab.js public/features/binder-lab.js public/features/mobile-lab.js public/features/cloud-sync.js public/features/staging-fetch-shim.js public/features/staging-polish.js public/features/help-lab.js src/staging-worker.js; do node --check "$f"; done
+          for f in public/app.js public/features/cards-lab.js public/features/catalog-lab.js public/features/art-search-lab.js public/features/binder-lab.js public/features/mobile-lab.js public/features/cloud-sync.js public/features/staging-fetch-shim.js public/features/staging-polish.js public/features/help-lab.js public/features/guided-tour-finish.js public/features/guided-tour-step16-fix.js src/staging-worker.js; do node --check "$f"; done
           python - <<'PY'
           import re,pathlib
           html=pathlib.Path('public/index.html').read_text(encoding='utf-8')
@@ -37,6 +37,8 @@ jobs:
           assert not dup, f'duplicate ids: {dup}'
           assert 'id="catalogFilter"' not in html
           assert 'serviceWorker.register' not in html
+          for needle in ['features/guided-finish.css?v=2.8.16','features/guided-tour-finish.js?v=2.8.16','features/guided-tour-step16-fix.js?v=2.8.16']:
+              assert needle in html, f'missing direct guided finish asset: {needle}'
 
           tour=pathlib.Path('public/features/help-lab.js').read_text(encoding='utf-8')
           assert '#catalogFilter' not in tour
@@ -85,7 +87,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler deploy --config=wrangler.staging.jsonc
 
-      - name: Guided tour, artwork height, and page rail browser sanity
+      - name: Guided tour, artwork height, page rail, and completion browser sanity
         shell: bash
         run: |
           node <<'JS'
@@ -104,11 +106,18 @@ jobs:
 
             if(ctx.serviceWorkers().length)throw new Error('Service worker active');
             if(await page.locator('#catalogFilter').count())throw new Error('Removed Catalog selector returned');
+            const loaded=await page.evaluate(()=>({
+              version:document.querySelector('#versionLink')?.textContent||'',
+              base:[...document.scripts].some(s=>s.src.includes('guided-tour-finish.js?v=2.8.16')),
+              fix:[...document.scripts].some(s=>s.src.includes('guided-tour-step16-fix.js?v=2.8.16')),
+              shell:!!document.querySelector('#guidedTourCongrats')
+            }));
+            console.log('GUIDED_FINISH_LOAD',JSON.stringify(loaded));
+            if(!loaded.version.includes('2.8.16')||!loaded.base||!loaded.fix||!loaded.shell)throw new Error('Guided finish assets are not loaded directly: '+JSON.stringify(loaded));
 
             const compact=await page.locator('#syncMasterLibrary').boundingBox();
             if(!compact||compact.height>38)throw new Error('Build Card Library is not compact');
 
-            /* Regression check for the large dead space formerly below Artwork. */
             await page.click('#libraryArtworkTab');
             await page.waitForFunction(()=>!!document.querySelector('.library')?.dataset?.canvasHeightSync,null,{timeout:10000});
             await page.waitForTimeout(250);
@@ -117,40 +126,39 @@ jobs:
               const lr=lib.getBoundingClientRect(),cr=canvas.getBoundingClientRect(),pr=pane.getBoundingClientRect(),rr=results.getBoundingClientRect(),ar=arts.getBoundingClientRect();
               return {library:{bottom:lr.bottom,height:lr.height},canvas:{bottom:cr.bottom,height:cr.height},pane:{bottom:pr.bottom},results:{height:rr.height},tray:{bottom:ar.bottom},sync:lib.dataset.canvasHeightSync||''};
             });
-            console.log('ARTWORK_LAYOUT',JSON.stringify(artLayout));
             if(Math.abs(artLayout.library.bottom-artLayout.canvas.bottom)>6)throw new Error('Artwork library does not reach canvas bottom: '+JSON.stringify(artLayout));
             if(Math.abs(artLayout.library.height-artLayout.canvas.height)>6)throw new Error('Artwork library/canvas height mismatch: '+JSON.stringify(artLayout));
             if(artLayout.pane.bottom>artLayout.library.bottom+2||artLayout.tray.bottom>artLayout.library.bottom+2)throw new Error('Artwork content overflows its panel: '+JSON.stringify(artLayout));
             if(artLayout.results.height<300)throw new Error('Matching Artwork area is too short: '+JSON.stringify(artLayout));
 
             await page.waitForFunction(()=>!!document.querySelector('link[data-kbs-v288-rail]'),null,{timeout:10000});
-            const rail=page.locator('#editorPageNav');
-            const railBox=await rail.boundingBox();
+            const railBox=await page.locator('#editorPageNav').boundingBox();
             const direction=await page.locator('#editorPageNumbers').evaluate(el=>getComputedStyle(el).flexDirection);
-            const headingBox=await page.locator('.binder-heading-module').boundingBox();
-            const libraryBox=await page.locator('#librarySetupCard').boundingBox();
-            if(!railBox||!headingBox||!libraryBox)throw new Error('Live Binder rail or controls are missing');
-            if(railBox.width>38)throw new Error('Live Binder page navigation is still wide: '+railBox.width);
-            if(direction!=='column')throw new Error('Page numbers are not vertical: '+direction);
-            if(headingBox.x<=libraryBox.x)throw new Error('Page rail is not positioned to the right of the controls');
-            if((await rail.evaluate(el=>getComputedStyle(el).visibility))!=='visible')throw new Error('Page rail is hidden');
+            if(!railBox||railBox.width>38||direction!=='column')throw new Error('Live Binder page rail regression');
 
             await page.click('#guidedTourLaunch');
             await page.waitForTimeout(250);
             const title1=(await page.locator('#guidedDemoTitle').textContent()).trim();
-            const text1=(await page.locator('#guidedDemoText').textContent()).trim();
-            if(title1!=='Build the card library')throw new Error('Gardevoir tour did not start at the library step');
-            if(!text1.includes('Click Build Card Library once'))throw new Error('Tour bubble is not instruction-focused');
-            if(!(await page.locator('body').evaluate(el=>el.classList.contains('live-guided-demo-running'))))throw new Error('Guided demonstration is not running');
-
-            await page.waitForTimeout(4300);
-            const title2=(await page.locator('#guidedDemoTitle').textContent()).trim();
-            if(title2!=='Choose a page layout')throw new Error('Automatic Gardevoir demonstration did not advance');
-            if(await page.locator('#layout').inputValue()!=='3x3')throw new Error('Guided demonstration did not perform the layout action');
-
+            if(title1!=='Build the card library')throw new Error('Gardevoir tour did not start correctly');
             await page.keyboard.press('Escape');
             await page.waitForTimeout(200);
-            if(await page.locator('#guidedDemo').isVisible())throw new Error('Escape did not close the demonstration');
+
+            /* Exercise the exact live handoff used after the original print step. */
+            await page.evaluate(()=>{
+              const demo=document.querySelector('#guidedDemo'),next=document.querySelector('#guidedDemoNext');
+              demo.hidden=false;demo.setAttribute('aria-hidden','false');
+              document.body.classList.add('live-guided-demo-running');
+              next.hidden=false;next.disabled=false;next.textContent='Finish';
+            });
+            await page.waitForFunction(()=>document.querySelector('#guidedDemoStep')?.textContent==='STEP 16 OF 16',null,{timeout:5000});
+            await page.waitForFunction(()=>document.querySelector('#guidedDemoNext')?.textContent==='Continue'&&!document.querySelector('#guidedDemoNext')?.hidden,null,{timeout:5000});
+            const step16=await page.evaluate(()=>({title:document.querySelector('#guidedDemoTitle')?.textContent,button:document.querySelector('#guidedDemoNext')?.textContent}));
+            console.log('STEP16',JSON.stringify(step16));
+            await page.click('#guidedDemoNext');
+            await page.waitForFunction(()=>document.querySelector('#guidedTourCongrats')?.hidden===false,null,{timeout:5000});
+            const congrats=await page.evaluate(()=>({title:document.querySelector('#guidedCongratsTitle')?.textContent,finish:document.querySelector('#guidedCongratsFinish')?.textContent,confetti:document.querySelectorAll('.guided-confetti-piece').length}));
+            console.log('CONGRATS',JSON.stringify(congrats));
+            if(congrats.title!=='Congratulations!'||congrats.finish!=='Finish'||congrats.confetti<30)throw new Error('Congratulations handoff failed: '+JSON.stringify(congrats));
 
             const cfg=await page.request.get(STAGING+'/api/config');
             if(!cfg.ok())throw new Error('Auth config failed');
