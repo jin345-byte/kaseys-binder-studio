@@ -1,6 +1,6 @@
 import productionWorker from './worker.js';
 
-const STAGING_BUILD='2.9.0-phase123';
+const STAGING_BUILD='2.9.2-broad-art-search';
 const ART_IMAGE_HOSTS=new Set(['cdn.donmai.us','safebooru.org','raw.githubusercontent.com','cdn.artofpkm.com']);
 
 function noStoreResponse(response){
@@ -80,11 +80,64 @@ function normalizeSafebooruPosts(payload){
   }
   return rows;
 }
+
+function normalizeArtTag(raw){
+  return String(raw||'').trim().toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[’']/g,'').replace(/\s+/g,'_');
+}
+function artworkTagPlan(raw){
+  const base=normalizeArtTag(raw).replace(/^_+|_+$/g,'');
+  if(!base)return [];
+  const aliases={
+    frieren:['frieren_(sousou_no_frieren)','sousou_no_frieren'],
+    fern:['fern_(sousou_no_frieren)'],
+    stark:['stark_(sousou_no_frieren)'],
+    'sailor_moon':['sailor_moon_(character)','tsukino_usagi'],
+    'zero_two':['zero_two_(darling_in_the_franxx)'],
+    '2b':['2b_(nier_automata)'],
+    'rem':['rem_(re_zero)'],
+    'ram':['ram_(re_zero)'],
+    'asuna':['asuna_(sao)'],
+    'nezuko':['kamado_nezuko'],
+    'tanjiro':['kamado_tanjiro'],
+    'gojo':['gojo_satoru'],
+    'makima':['makima_(chainsaw_man)']
+  };
+  const out=[base];
+  for(const alias of aliases[base]||[])out.push(alias);
+  /* Wildcard catches booru disambiguation tags such as character_(series). */
+  if(!base.includes('*')&&base.length>=3)out.push(base+'*');
+  const words=base.split('_').filter(Boolean);
+  if(words.length>1){
+    const meaningful=words.filter(x=>x.length>=4&&!['anime','manga','character','artwork','fanart','pokemon'].includes(x));
+    for(const word of meaningful.slice(0,2))out.push(word+'*');
+  }
+  return [...new Set(out)].slice(0,5);
+}
+function validArtworkQuery(tag){return /^[a-z0-9_.♀♂()*-]{1,120}$/.test(tag)}
+async function fetchSafebooruTag(tag,pid){
+  if(!validArtworkQuery(tag))return {rows:[],error:'invalid'};
+  const target=new URL('https://safebooru.org/index.php');
+  for(const [k,v] of [['page','dapi'],['s','post'],['q','index'],['json','1'],['limit','40'],['pid',String(pid)],['tags',tag]])target.searchParams.set(k,v);
+  try{
+    const upstream=await fetch(target.href,{headers:{accept:'application/json','user-agent':'Mozilla/5.0 Kaseys-Binder-Studio/2.9'},cf:{cacheEverything:true,cacheTtl:300}});
+    if(!upstream.ok){try{await upstream.body?.cancel()}catch{}return {rows:[],error:`HTTP ${upstream.status}`};}
+    return {rows:normalizeSafebooruPosts(await upstream.json()),error:''};
+  }catch(e){return {rows:[],error:String(e?.message||e)}}
+}
 async function artworkFeed(request){
-  const incoming=new URL(request.url),tag=String(incoming.searchParams.get('tag')||'').trim().toLowerCase(),pid=Math.max(0,Number.parseInt(incoming.searchParams.get('pid')||'0',10)||0);
-  if(!/^[a-z0-9_.♀♂-]{1,80}$/.test(tag))return artJson({results:[],done:true,error:'Invalid artwork tag'},400);
-  const target=new URL('https://safebooru.org/index.php');for(const [k,v] of [['page','dapi'],['s','post'],['q','index'],['json','1'],['limit','40'],['pid',String(pid)],['tags',tag]])target.searchParams.set(k,v);
-  try{const upstream=await fetch(target.href,{headers:{accept:'application/json','user-agent':'Mozilla/5.0 Kaseys-Binder-Studio/2.9'},cf:{cacheEverything:true,cacheTtl:300}});if(!upstream.ok)return artJson({results:[],done:false,error:`Artwork upstream ${upstream.status}`},200,{'x-kbs-art-upstream-status':String(upstream.status)});const rows=normalizeSafebooruPosts(await upstream.json());return artJson({results:rows,pid,nextPid:pid+1,done:rows.length===0})}catch(e){console.warn('Artwork feed upstream unavailable',e?.message||e);return artJson({results:[],done:false,error:'Artwork feed temporarily unavailable'},200,{'x-kbs-art-upstream-status':'network'})}
+  const incoming=new URL(request.url),raw=String(incoming.searchParams.get('tag')||'').trim(),pid=Math.max(0,Number.parseInt(incoming.searchParams.get('pid')||'0',10)||0);
+  const tags=artworkTagPlan(raw);
+  if(!tags.length||!tags.every(validArtworkQuery))return artJson({results:[],done:true,error:'Invalid artwork tag'},400);
+  const fetched=await Promise.all(tags.map(tag=>fetchSafebooruTag(tag,pid)));
+  const merged=[],seen=new Set();let hadNetworkError=false;
+  fetched.forEach((result,index)=>{
+    if(result.error)hadNetworkError=true;
+    for(const row of result.rows){
+      if(!row.url||seen.has(row.url))continue;
+      seen.add(row.url);merged.push({...row,matchedTag:tags[index]});
+    }
+  });
+  return artJson({results:merged,pid,nextPid:pid+1,done:merged.length===0&&!hadNetworkError,queryTags:tags,broad:true,error:merged.length?'':(hadNetworkError?'Artwork feed temporarily unavailable':'')},200,{'x-kbs-art-query-count':String(tags.length),'x-kbs-art-broad':'1'});
 }
 function emptyCardSearch(upstreamStatus=''){const headers=new Headers({'content-type':'application/json; charset=utf-8','cache-control':'no-store','access-control-allow-origin':'*','x-content-type-options':'nosniff','x-kbs-card-search':'proxy'});if(upstreamStatus)headers.set('x-kbs-card-upstream-status',String(upstreamStatus));return new Response(JSON.stringify({data:[],page:1,pageSize:250,count:0,totalCount:0}),{status:200,headers})}
 async function cardSearch(request){
@@ -99,7 +152,7 @@ export default{
     if(request.method==='GET'&&url.pathname==='/api/art-feed')return artworkFeed(request);
     if(request.method==='GET'&&url.pathname==='/api/card-search')return cardSearch(request);
 
-    const noStorePaths=new Set(['/art-search-lab.css','/style.css','/features/art-search-lab.js','/features/catalog-lab.js','/features/mobile-lab.js','/features/staging-fetch-shim.js','/features/staging-polish.js','/features/help-lab.js','/features/staging-v287.js','/features/artwork-height-sync.js','/features/prebuilt-catalog-bootstrap.js','/features/data-safety.js','/features/cloud-sync.js','/features/cloud-sync.css','/features/guided-tour-auto-library.js','/features/guided-tour-finish.js','/features/guided-tour-step16-fix.js','/features/guided-finish.css','/styles/staging-polish.css','/styles/staging-v287.css','/styles/staging-v288-fix.css','/styles/appearance-cleanup.css','/styles/mobile-lab.css','/styles/v2-visual.css']);
+    const noStorePaths=new Set(['/art-search-lab.css','/style.css','/features/art-search-lab.js','/features/catalog-lab.js','/features/mobile-lab.js','/features/staging-fetch-shim.js','/features/staging-polish.js','/features/help-lab.js','/features/staging-v287.js','/features/artwork-height-sync.js','/features/prebuilt-catalog-bootstrap.js','/features/data-safety.js','/features/cloud-sync.js','/features/cloud-sync.css','/features/guided-tour-auto-library.js','/features/guided-tour-finish.js','/features/guided-tour-step16-fix.js','/features/guided-finish.css','/features/artwork-legacy-repair.js','/features/art-source-links.js','/styles/staging-polish.css','/styles/staging-v287.css','/styles/staging-v288-fix.css','/styles/appearance-cleanup.css','/styles/mobile-lab.css','/styles/v2-visual.css']);
     if(request.method==='GET'&&noStorePaths.has(url.pathname))return noStoreResponse(await env.ASSETS.fetch(request));
 
     if(request.method==='GET'&&(url.pathname==='/'||url.pathname==='/index.html'))return stagingHtml(await env.ASSETS.fetch(request));
