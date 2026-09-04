@@ -33,7 +33,7 @@ jobs:
           (async()=>{
             let response,payload;
             for(let i=0;i<12;i++){
-              response=await fetch(BASE+'/api/art-feed?tag=frieren&pid=0&feedv=2.9.2&qa='+Date.now(),{cache:'no-store'}).catch(()=>null);
+              response=await fetch(BASE+'/api/art-feed-v2?tag=frieren&pid=0&qa='+Date.now(),{cache:'no-store'}).catch(()=>null);
               payload=response?await response.json().catch(()=>null):null;
               const broad=response?.headers.get('x-kbs-art-broad')||'';
               console.log('BROAD_ART_ATTEMPT',JSON.stringify({attempt:i+1,status:response?.status||0,broad,results:payload?.results?.length||0,queryTags:payload?.queryTags||[]}));
