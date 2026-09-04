@@ -17,7 +17,7 @@ jobs:
       - run: |
           npm install --no-save playwright@1.55.0 >/dev/null 2>&1
           npx playwright install chromium >/dev/null
-      - name: Verify live Art Tray and size selector
+      - name: Verify live Art Tray through normal UI flow
         run: |
           node <<'JS'
           const {chromium}=require('playwright');
@@ -25,25 +25,31 @@ jobs:
           (async()=>{
             const browser=await chromium.launch({headless:true});
             const page=await browser.newPage({viewport:{width:1440,height:1100}});
+            const errors=[];
+            page.on('pageerror',e=>errors.push(e.message));
             await page.goto(URL,{waitUntil:'networkidle',timeout:60000});
-            await page.waitForTimeout(1600);
+            await page.waitForTimeout(1800);
             await page.click('#libraryArtworkTab');
-            await page.evaluate(()=>{
-              const art={id:'qa-art',name:'QA Artwork',source:'QA',image:'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="420"><rect width="300" height="420" fill="%23888"/></svg>'),kind:'art',size:'2x1'};
-              state.artworks=[art];
-              renderArts();
-            });
-            await page.waitForSelector('#arts .item .art-size',{state:'visible',timeout:5000});
+            await page.fill('#artSearchQuery','Gardevoir');
+            await page.click('#artSearchSubmit');
+            await page.waitForSelector('#autoArtworkResults .auto-art-card .auto-art-add',{state:'visible',timeout:15000});
+            await page.locator('#autoArtworkResults .auto-art-card .auto-art-add').first().click();
+            await page.waitForSelector('#arts .item .art-size',{state:'visible',timeout:8000});
             const m=await page.evaluate(()=>{
               const tray=document.querySelector('#arts'),sel=document.querySelector('#arts .art-size'),item=document.querySelector('#arts .item');
               const tr=tray.getBoundingClientRect(),sr=sel.getBoundingClientRect(),ir=item.getBoundingClientRect();
               const cs=getComputedStyle(tray);
-              return {trayH:tr.height,trayW:tr.width,display:cs.display,overflow:cs.overflowY,itemH:ir.height,selH:sr.height,selW:sr.width,selValue:sel.value,selVisible:sr.bottom>tr.top&&sr.top<tr.bottom};
+              return {trayH:tr.height,trayW:tr.width,display:cs.display,overflow:cs.overflowY,itemH:ir.height,selH:sr.height,selW:sr.width,selValue:sel.value,selVisible:sr.bottom>tr.top&&sr.top<tr.bottom,items:document.querySelectorAll('#arts .item').length};
             });
             console.log('ART_TRAY_METRICS',JSON.stringify(m));
+            console.log('PAGE_ERRORS',JSON.stringify(errors));
+            if(m.items<1)throw new Error('Artwork was not added to Art Tray');
             if(m.trayH<200)throw new Error('Art Tray collapsed: '+JSON.stringify(m));
             if(!m.selVisible||m.selH<20||m.selW<40)throw new Error('Art size selector is not usable: '+JSON.stringify(m));
-            if(m.selValue!=='2x1')throw new Error('Art size value did not render correctly: '+JSON.stringify(m));
+            await page.locator('#arts .art-size').first().selectOption('3x1');
+            const changed=await page.locator('#arts .art-size').first().inputValue();
+            if(changed!=='3x1')throw new Error('Art size selector did not change');
+            if(errors.length)throw new Error('Runtime errors: '+errors.join(' | '));
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
