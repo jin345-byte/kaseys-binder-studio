@@ -1,4 +1,4 @@
-/* v2.8.17 shared Cards / Artwork browser */
+/* v2.8.20 shared Cards / Artwork browser */
 .library.has-browser-tabs{
   position:relative;
   display:grid!important;
@@ -54,10 +54,31 @@
   .library.has-browser-tabs>.browser-pane{height:100%!important;min-height:0!important;align-self:stretch!important}
   .library[data-library-tab="cards"] .variant-pane{grid-template-rows:auto auto minmax(0,1fr)!important}
   .library[data-library-tab="cards"] .cards-viewport{min-height:0!important;height:100%!important;overflow:auto!important}
-  .library[data-library-tab="artwork"] .artwork-pane{grid-template-rows:auto minmax(0,1fr) auto minmax(120px,.24fr)!important;min-height:0!important;height:100%!important}
-  .library[data-library-tab="artwork"] .auto-artwork-results-wrap{min-height:0!important;height:100%!important}
-  .library[data-library-tab="artwork"] .auto-artwork-scroll{min-height:0!important;height:100%!important}
-  .library[data-library-tab="artwork"] #arts{min-height:120px!important;height:100%!important;max-height:none!important;overflow:auto!important}
+
+  /* Artwork uses one simple balanced model:
+     header | matching artwork (1fr) | link/size controls | art tray (1fr). */
+  .library[data-library-tab="artwork"] .artwork-pane{
+    grid-template-rows:auto minmax(0,1fr) auto minmax(0,1fr)!important;
+    gap:10px!important;
+    min-height:0!important;
+    height:100%!important;
+  }
+  .library[data-library-tab="artwork"] .auto-artwork-results-wrap{
+    min-height:0!important;
+    height:100%!important;
+    margin:0!important;
+  }
+  .library[data-library-tab="artwork"] .auto-artwork-scroll{
+    min-height:0!important;
+    height:100%!important;
+  }
+  .library[data-library-tab="artwork"] #arts{
+    min-height:0!important;
+    height:100%!important;
+    max-height:none!important;
+    overflow:auto!important;
+    margin:0!important;
+  }
 }
 
 .art-search-tools{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end;margin:0 0 8px;padding:8px;border:1px solid color-mix(in srgb,var(--accent) 24%,var(--line));border-radius:11px;background:color-mix(in srgb,var(--surface2) 82%,transparent)}
