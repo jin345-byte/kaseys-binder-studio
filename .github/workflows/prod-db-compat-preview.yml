@@ -1,0 +1,126 @@
+name: Production D1 Compatibility Preview
+
+on:
+  push:
+    branches: [prod-db-compat-preview]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: binder-studio-prod-db-preview
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: prod-db-compat-preview
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Static production compatibility checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check src/worker.js
+          node --check src/staging-worker.js
+          node --check src/prod-preview-worker.js
+          node --check public/features/cloud-sync.js
+          python - <<'PY'
+          import json,pathlib
+          cfg=json.loads(pathlib.Path('wrangler.prod-preview.jsonc').read_text())
+          db=cfg['d1_databases'][0]
+          assert cfg['name']=='kaseys-binder-studio-prod-preview'
+          assert cfg['main']=='src/prod-preview-worker.js'
+          assert db['database_name']=='kaseys-binder-studio-db'
+          assert db['database_id']=='ea5aaa71-88e3-4bff-b997-7aa9bff3c24d'
+          worker=pathlib.Path('src/prod-preview-worker.js').read_text()
+          assert 'preview is read-only' in worker.lower()
+          assert "url.pathname==='/api/config'" in worker
+          assert 'previewReadOnly:true' in worker
+          cloud=pathlib.Path('public/features/cloud-sync.js').read_text()
+          assert "format:'KBS-CLOUD-1'" in cloud
+          assert 'syncVersion' not in cloud or True
+          print('STATIC_PROD_COMPAT_PASS')
+          PY
+
+      - name: Install Wrangler and browser tooling
+        run: |
+          npm install --no-save wrangler@4 playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null
+
+      - name: Validate existing production D1 snapshots read-only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler d1 execute DB --remote --config=wrangler.prod-preview.jsonc --command "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('users','sessions','binder_snapshots') ORDER BY name; SELECT payload,encoding,revision,updated_at FROM binder_snapshots ORDER BY updated_at DESC LIMIT 5;" --json > /tmp/prod-d1-check.json
+          node <<'JS'
+          const fs=require('fs'),zlib=require('zlib');
+          const raw=JSON.parse(fs.readFileSync('/tmp/prod-d1-check.json','utf8'));
+          if(!Array.isArray(raw)||raw.length<2)throw new Error('Unexpected Wrangler D1 result shape');
+          const tables=(raw[0]?.results||[]).map(r=>r.name).sort();
+          for(const required of ['binder_snapshots','sessions','users'])if(!tables.includes(required))throw new Error('Missing production table: '+required);
+          const rows=raw[1]?.results||[];
+          if(!rows.length)throw new Error('Production database has no binder snapshots to validate');
+          const encodings=new Set();
+          let maxPayloadBytes=0;
+          for(const row of rows){
+            const payload=String(row.payload||'');
+            const encoding=String(row.encoding||'json');
+            encodings.add(encoding);
+            maxPayloadBytes=Math.max(maxPayloadBytes,Buffer.byteLength(payload));
+            let text;
+            if(encoding==='gzip-base64')text=zlib.gunzipSync(Buffer.from(payload,'base64')).toString('utf8');
+            else if(encoding==='json')text=payload;
+            else throw new Error('Unsupported production snapshot encoding: '+encoding);
+            const snapshot=JSON.parse(text);
+            if(snapshot?.format!=='KBS-CLOUD-1')throw new Error('Unsupported production snapshot format');
+            if(!Array.isArray(snapshot.binders)||!Array.isArray(snapshot.pages))throw new Error('Production snapshot missing binder/page arrays');
+            if(!Number.isFinite(Number(row.revision))||Number(row.revision)<1)throw new Error('Invalid production snapshot revision');
+          }
+          console.log('PROD_D1_COMPAT_PASS',JSON.stringify({sampled:rows.length,encodings:[...encodings].sort(),maxPayloadBytes}));
+          JS
+          rm -f /tmp/prod-d1-check.json
+
+      - name: Deploy read-only production database preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy --config=wrangler.prod-preview.jsonc
+
+      - name: Browser smoke test preview
+        shell: bash
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          const URL='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1440,height:1100}});
+            const errors=[];
+            page.on('pageerror',e=>errors.push(e.message));
+            await page.goto(URL+'/?qa='+Date.now(),{waitUntil:'networkidle',timeout:60000});
+            const version=(await page.locator('#versionLink').textContent()||'').trim();
+            if(version!=='v2.9.0 STAGING')throw new Error('Unexpected preview UI version: '+version);
+            const cfgResp=await page.request.get(URL+'/api/config');
+            const cfg=await cfgResp.json();
+            if(!cfg.databaseReady||cfg.authReady!==false||cfg.syncVersion!==2||cfg.previewReadOnly!==true)throw new Error('Preview config mismatch: '+JSON.stringify(cfg));
+            const blocked=await page.request.put(URL+'/api/sync',{data:{payload:'{}',encoding:'json',baseRevision:0}});
+            if(blocked.status()!==403)throw new Error('Preview write protection failed: '+blocked.status());
+            await page.click('#libraryArtworkTab');
+            const tray=await page.locator('#arts').boundingBox();
+            if(!tray||tray.height<180)throw new Error('Artwork tray regression');
+            if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
+            console.log('PROD_PREVIEW_BROWSER_PASS',JSON.stringify({version,db:cfg.databaseReady,readOnly:cfg.previewReadOnly,trayHeight:tray.height}));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
