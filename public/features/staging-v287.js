@@ -1,5 +1,16 @@
-/* Binder Studio v2.9.0 staging — vertical page rail behavior only */
+/* Binder Studio v2.9.1 staging — vertical page rail + artwork compatibility helpers */
 (function(){
+  function loadScript(src,id){
+    if(document.getElementById(id))return;
+    const s=document.createElement('script');
+    s.id=id;
+    s.src=src;
+    s.defer=false;
+    document.head.appendChild(s);
+  }
+  loadScript('features/artwork-legacy-repair.js?v=2.9.1','kbsArtworkLegacyRepairScript');
+  loadScript('features/art-source-links.js?v=2.9.1','kbsArtSourceLinksScript');
+
   const numbers=document.querySelector('#editorPageNumbers');
   if(!numbers)return;
   let lastActive='';
