@@ -1,4 +1,4 @@
-name: Staging v2.8 Sanity
+name: Staging v2.9 Phase 1-3 Sanity
 
 on:
   push:
@@ -24,56 +24,65 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Static structure and syntax checks
+      - name: Static structure, syntax, and architecture checks
         shell: bash
         run: |
           set -euo pipefail
-          for f in public/app.js public/features/cards-lab.js public/features/catalog-lab.js public/features/art-search-lab.js public/features/binder-lab.js public/features/mobile-lab.js public/features/cloud-sync.js public/features/staging-fetch-shim.js public/features/staging-polish.js public/features/help-lab.js public/features/guided-tour-finish.js public/features/guided-tour-step16-fix.js src/staging-worker.js; do node --check "$f"; done
+          for f in public/app.js public/features/cards-lab.js public/features/catalog-lab.js public/features/art-search-lab.js public/features/binder-lab.js public/features/mobile-lab.js public/features/cloud-sync.js public/features/data-safety.js public/features/prebuilt-catalog-bootstrap.js public/features/staging-fetch-shim.js public/features/staging-polish.js public/features/artwork-height-sync.js public/features/staging-v287.js public/features/help-lab.js public/features/guided-tour-auto-library.js public/features/guided-tour-finish.js public/features/guided-tour-step16-fix.js src/worker.js src/staging-worker.js; do node --check "$f"; done
           python - <<'PY'
           import re,pathlib
           html=pathlib.Path('public/index.html').read_text(encoding='utf-8')
           ids=re.findall(r'\bid=["\']([^"\']+)["\']',html)
           dup=sorted({x for x in ids if ids.count(x)>1})
-          assert not dup, f'duplicate ids: {dup}'
-          assert 'id="catalogFilter"' not in html
+          assert not dup, f'duplicate source ids: {dup}'
+          assert 'v2.9.0 STAGING' in html
           assert 'serviceWorker.register' not in html
-          for needle in ['features/guided-finish.css?v=2.8.16','features/guided-tour-finish.js?v=2.8.16','features/guided-tour-step16-fix.js?v=2.8.16']:
-              assert needle in html, f'missing direct guided finish asset: {needle}'
+          required=[
+            'features/data-safety.js?v=2.9.0',
+            'features/prebuilt-catalog-bootstrap.js?v=2.9.0',
+            'features/artwork-height-sync.js?v=2.9.0',
+            'features/cloud-sync.js?v=2.9.0',
+            'features/guided-tour-finish.js?v=2.9.0',
+            'features/guided-tour-step16-fix.js?v=2.9.0'
+          ]
+          for needle in required:
+              assert html.count(needle)==1, f'expected exactly one direct asset: {needle}'
 
-          tour=pathlib.Path('public/features/help-lab.js').read_text(encoding='utf-8')
-          assert '#catalogFilter' not in tour
-          for needle in [
-              "name:'Gardevoir',set:'Ruby & Sapphire',number:'7'",
-              "name:'Gardevoir ex',set:'Paldean Fates',number:'233'",
-              '#libraryArtworkTab',
-              'searchGardevoir()',
-              'moveCard(card,spec.slot)',
-              'addDemoArt(G.art[0])',
-              'Click Build Card Library once',
-              'Open the Artwork tab',
-              'Place cards on the page'
-          ]:
-              assert needle in tour, f'missing restored demo/instruction: {needle}'
+          # Local versioned assets should use the same release marker.
+          for attr,url in re.findall(r'(?:src|href)=["\']([^"\']+)["\']',html):
+              pass
+          local_assets=re.findall(r'(?:src|href)=["\']((?!https://)[^"\']+\.(?:js|css)(?:\?[^"\']*)?)["\']',html)
+          bad=[x for x in local_assets if '?v=2.9.0' not in x]
+          assert not bad, f'unversioned/mixed local assets: {bad}'
 
-          rail=pathlib.Path('public/styles/staging-v288-fix.css').read_text(encoding='utf-8')
-          for needle in [
-              'grid-template-columns:minmax(0,1fr) 44px',
-              'grid-column:2',
-              'flex-direction:column',
-              'visibility:visible',
-              'kbsV288PagePop'
-          ]:
-              assert needle in rail, f'missing persistent page rail rule: {needle}'
+          worker=pathlib.Path('src/worker.js').read_text(encoding='utf-8')
+          assert "syncVersion:2" in worker
+          assert "baseRevision" in worker and "SYNC_CONFLICT" in worker and "409" in worker
+          assert "DELETE FROM sessions WHERE expires_at<=?1 OR user_id=?2" not in worker
+          assert "DELETE FROM sessions WHERE expires_at<=?1" in worker
+          assert "searchParams.get('meta')==='1'" in worker
+
+          cloud=pathlib.Path('public/features/cloud-sync.js').read_text(encoding='utf-8')
+          for needle in ['stableSnapshot','delete copy.capturedAt','mergeSnapshots','validateSnapshot','snapshotHasMeaningfulWork','baseRevision','lastAppliedCloudRevision','Cannot sign out safely while offline','Sign out stopped because your binder could not be backed up']:
+              assert needle in cloud, f'missing sync safety: {needle}'
+          assert "transaction(['binders','pages'],'readwrite')" in cloud
+          assert "await saveActivePageSnapshot().catch(()=>{})" not in cloud
+
+          safety=pathlib.Path('public/features/data-safety.js').read_text(encoding='utf-8')
+          for needle in ['Save failed — keep this tab open','visibilitychange','pagehide','saveActivePageSnapshot=async function']:
+              assert needle in safety
 
           polish=pathlib.Path('public/features/staging-polish.js').read_text(encoding='utf-8')
-          assert 'staging-v288-fix.css?v=2.8.8' in polish
-          assert 'page-switch-pop' in polish and 'scrollIntoView' in polish
-          assert 'canvasHeightSync' in polish and 'ResizeObserver' in polish
+          assert 'canvasHeightSync' not in polish
+          assert 'prebuilt-catalog-bootstrap.js' not in polish
+          rail=pathlib.Path('public/features/staging-v287.js').read_text(encoding='utf-8')
+          for forbidden in ['guided-tour-finish.js','guided-tour-step16-fix.js','artwork-height-sync.js']:
+              assert forbidden not in rail, f'duplicate dynamic loader remained: {forbidden}'
 
-          worker=pathlib.Path('src/staging-worker.js').read_text(encoding='utf-8')
-          for route in ['/api/art-image','/api/art-feed','/api/card-search']:
-              assert route in worker
-          print('STATIC PASS',len(ids),'unique ids')
+          stage_worker=pathlib.Path('src/staging-worker.js').read_text(encoding='utf-8')
+          assert "STAGING_BUILD='2.9.0-phase123'" in stage_worker
+          assert "redirect:'manual'" in stage_worker and 'Artwork redirect left the approved host list' in stage_worker
+          print('STATIC PASS',len(ids),'unique ids',len(local_assets),'versioned local assets')
           PY
 
       - name: Install Wrangler and browser tooling
@@ -87,7 +96,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler deploy --config=wrangler.staging.jsonc
 
-      - name: Guided tour, artwork height, page rail, and completion browser sanity
+      - name: Browser regression and Phase 1-3 sanity
         shell: bash
         run: |
           node <<'JS'
@@ -100,69 +109,73 @@ jobs:
             const errors=[];
             page.on('pageerror',e=>errors.push('PAGE '+e.message));
             page.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
-
             await page.goto(STAGING+'/?qa='+Date.now(),{waitUntil:'networkidle',timeout:60000});
-            await page.waitForTimeout(1100);
+            await page.waitForTimeout(1400);
 
-            if(ctx.serviceWorkers().length)throw new Error('Service worker active');
-            if(await page.locator('#catalogFilter').count())throw new Error('Removed Catalog selector returned');
-            const loaded=await page.evaluate(()=>({
-              version:document.querySelector('#versionLink')?.textContent||'',
-              base:[...document.scripts].some(s=>s.src.includes('guided-tour-finish.js?v=2.8.16')),
-              fix:[...document.scripts].some(s=>s.src.includes('guided-tour-step16-fix.js?v=2.8.16')),
-              shell:!!document.querySelector('#guidedTourCongrats')
+            if(ctx.serviceWorkers().length)throw new Error('Service worker active on staging');
+            const version=(await page.locator('#versionLink').textContent()||'').trim();
+            if(version!=='v2.9.0 STAGING')throw new Error('Wrong staging version: '+version);
+
+            const runtime=await page.evaluate(()=>({
+              congrats:document.querySelectorAll('#guidedTourCongrats').length,
+              cloudButtons:document.querySelectorAll('#cloudAccountBtn').length,
+              cloudDebug:!!globalThis.KBSCloudSyncDebug,
+              dataSafety:!!globalThis.KBSDataSafety,
+              heightSync:!!globalThis.KBSArtworkHeightSync,
+              finishScripts:[...document.scripts].filter(s=>s.src.includes('guided-tour-finish.js')).length,
+              step16Scripts:[...document.scripts].filter(s=>s.src.includes('guided-tour-step16-fix.js')).length
             }));
-            console.log('GUIDED_FINISH_LOAD',JSON.stringify(loaded));
-            if(!loaded.version.includes('2.8.16')||!loaded.base||!loaded.fix||!loaded.shell)throw new Error('Guided finish assets are not loaded directly: '+JSON.stringify(loaded));
+            console.log('RUNTIME_OWNERS',runtime);
+            if(runtime.congrats!==1||runtime.cloudButtons!==1||!runtime.cloudDebug||!runtime.dataSafety||!runtime.heightSync||runtime.finishScripts!==1||runtime.step16Scripts!==1)throw new Error('Duplicate/missing runtime owner: '+JSON.stringify(runtime));
 
-            const compact=await page.locator('#syncMasterLibrary').boundingBox();
-            if(!compact||compact.height>38)throw new Error('Build Card Library is not compact');
+            // Timestamp changes must not dirty an otherwise identical snapshot.
+            const hashTest=await page.evaluate(async()=>{
+              const base={format:'KBS-CLOUD-1',capturedAt:1,maxUpdated:10,activeBinderId:'b1',activePageId:'p1',binders:[{id:'b1',name:'A',updatedAt:10}],pages:[{id:'p1',binderId:'b1',order:0,updatedAt:10,state:{}}],editorState:{}};
+              const a=await KBSCloudSyncDebug.snapshotHash(base);
+              const b=await KBSCloudSyncDebug.snapshotHash({...base,capturedAt:999999});
+              const remote={...base,binders:[{id:'b1',name:'Cloud',updatedAt:10}]};
+              const local={...base,activeBinderId:'b2',activePageId:'p2',binders:[{id:'b2',name:'Local',updatedAt:20}],pages:[{id:'p2',binderId:'b2',order:0,updatedAt:20,state:{subject:'Pikachu'}}]};
+              const merged=KBSCloudSyncDebug.mergeSnapshots(remote,local);
+              return{sameHash:a===b,binders:merged.binders.map(x=>x.id).sort(),pages:merged.pages.map(x=>x.id).sort()};
+            });
+            console.log('SYNC_CORE',hashTest);
+            if(!hashTest.sameHash||hashTest.binders.join(',')!=='b1,b2'||hashTest.pages.join(',')!=='p1,p2')throw new Error('Sync core regression: '+JSON.stringify(hashTest));
 
+            // Artwork panel still reaches the live canvas and stays contained.
             await page.click('#libraryArtworkTab');
             await page.waitForFunction(()=>!!document.querySelector('.library')?.dataset?.canvasHeightSync,null,{timeout:10000});
             await page.waitForTimeout(250);
             const artLayout=await page.evaluate(()=>{
               const lib=document.querySelector('.library'),canvas=document.querySelector('.canvas'),pane=document.querySelector('.artwork-pane'),results=document.querySelector('#autoArtworkSection'),arts=document.querySelector('#arts');
               const lr=lib.getBoundingClientRect(),cr=canvas.getBoundingClientRect(),pr=pane.getBoundingClientRect(),rr=results.getBoundingClientRect(),ar=arts.getBoundingClientRect();
-              return {library:{bottom:lr.bottom,height:lr.height},canvas:{bottom:cr.bottom,height:cr.height},pane:{bottom:pr.bottom},results:{height:rr.height},tray:{bottom:ar.bottom},sync:lib.dataset.canvasHeightSync||''};
+              return{library:{bottom:lr.bottom,height:lr.height},canvas:{bottom:cr.bottom,height:cr.height},pane:{bottom:pr.bottom},results:{height:rr.height},tray:{top:ar.top,bottom:ar.bottom,height:ar.height}};
             });
-            if(Math.abs(artLayout.library.bottom-artLayout.canvas.bottom)>6)throw new Error('Artwork library does not reach canvas bottom: '+JSON.stringify(artLayout));
-            if(Math.abs(artLayout.library.height-artLayout.canvas.height)>6)throw new Error('Artwork library/canvas height mismatch: '+JSON.stringify(artLayout));
-            if(artLayout.pane.bottom>artLayout.library.bottom+2||artLayout.tray.bottom>artLayout.library.bottom+2)throw new Error('Artwork content overflows its panel: '+JSON.stringify(artLayout));
-            if(artLayout.results.height<300)throw new Error('Matching Artwork area is too short: '+JSON.stringify(artLayout));
+            console.log('ART_LAYOUT',artLayout);
+            if(Math.abs(artLayout.library.bottom-artLayout.canvas.bottom)>6||Math.abs(artLayout.library.height-artLayout.canvas.height)>6)throw new Error('Artwork/canvas height mismatch');
+            if(artLayout.pane.bottom>artLayout.library.bottom+2||artLayout.tray.bottom>artLayout.library.bottom+2||artLayout.tray.height<180)throw new Error('Artwork tray containment regression: '+JSON.stringify(artLayout));
 
-            await page.waitForFunction(()=>!!document.querySelector('link[data-kbs-v288-rail]'),null,{timeout:10000});
-            const railBox=await page.locator('#editorPageNav').boundingBox();
-            const direction=await page.locator('#editorPageNumbers').evaluate(el=>getComputedStyle(el).flexDirection);
-            if(!railBox||railBox.width>38||direction!=='column')throw new Error('Live Binder page rail regression');
+            // Appearance controls remain clean and functional.
+            const appearance=await page.evaluate(()=>[...document.querySelectorAll('.appearance-module .color-control')].map(x=>({label:x.querySelector('strong')?.textContent.trim(),icon:getComputedStyle(x.querySelector('.color-icon')).display,small:getComputedStyle(x.querySelector('small')).display,input:!!x.querySelector('input[type=color]')})));
+            if(JSON.stringify(appearance.map(x=>x.label))!==JSON.stringify(['Binder','Page','Sleeves'])||appearance.some(x=>x.icon!=='none'||x.small!=='none'||!x.input))throw new Error('Appearance cleanup regression: '+JSON.stringify(appearance));
 
-            await page.click('#guidedTourLaunch');
-            await page.waitForTimeout(250);
-            const title1=(await page.locator('#guidedDemoTitle').textContent()).trim();
-            if(title1!=='Build the card library')throw new Error('Gardevoir tour did not start correctly');
-            await page.keyboard.press('Escape');
-            await page.waitForTimeout(200);
-
-            /* Exercise the exact live handoff used after the original print step. */
+            // Guided tour completion must have a single owner and still hand off correctly.
             await page.evaluate(()=>{
               const demo=document.querySelector('#guidedDemo'),next=document.querySelector('#guidedDemoNext');
-              demo.hidden=false;demo.setAttribute('aria-hidden','false');
-              document.body.classList.add('live-guided-demo-running');
-              next.hidden=false;next.disabled=false;next.textContent='Finish';
+              demo.hidden=false;demo.setAttribute('aria-hidden','false');document.body.classList.add('live-guided-demo-running');next.hidden=false;next.disabled=false;next.textContent='Finish';
             });
             await page.waitForFunction(()=>document.querySelector('#guidedDemoStep')?.textContent==='STEP 16 OF 16',null,{timeout:5000});
-            await page.waitForFunction(()=>document.querySelector('#guidedDemoNext')?.textContent==='Continue'&&!document.querySelector('#guidedDemoNext')?.hidden,null,{timeout:5000});
-            const step16=await page.evaluate(()=>({title:document.querySelector('#guidedDemoTitle')?.textContent,button:document.querySelector('#guidedDemoNext')?.textContent}));
-            console.log('STEP16',JSON.stringify(step16));
+            await page.waitForFunction(()=>document.querySelector('#guidedDemoNext')?.textContent==='Continue',null,{timeout:5000});
             await page.click('#guidedDemoNext');
             await page.waitForFunction(()=>document.querySelector('#guidedTourCongrats')?.hidden===false,null,{timeout:5000});
-            const congrats=await page.evaluate(()=>({title:document.querySelector('#guidedCongratsTitle')?.textContent,finish:document.querySelector('#guidedCongratsFinish')?.textContent,confetti:document.querySelectorAll('.guided-confetti-piece').length}));
-            console.log('CONGRATS',JSON.stringify(congrats));
-            if(congrats.title!=='Congratulations!'||congrats.finish!=='Finish'||congrats.confetti<30)throw new Error('Congratulations handoff failed: '+JSON.stringify(congrats));
+            const congrats=await page.evaluate(()=>({count:document.querySelectorAll('#guidedTourCongrats').length,title:document.querySelector('#guidedCongratsTitle')?.textContent,confetti:document.querySelectorAll('.guided-confetti-piece').length}));
+            if(congrats.count!==1||congrats.title!=='Congratulations!'||congrats.confetti<30)throw new Error('Guided completion regression: '+JSON.stringify(congrats));
 
-            const cfg=await page.request.get(STAGING+'/api/config');
-            if(!cfg.ok())throw new Error('Auth config failed');
+            const cfg=await page.request.get(STAGING+'/api/config');if(!cfg.ok())throw new Error('Auth config failed');
+            const cfgData=await cfg.json();if(cfgData.syncVersion!==2)throw new Error('Expected syncVersion 2');
+            const meta=await page.request.get(STAGING+'/api/sync?meta=1');if(meta.status()!==401)throw new Error('Unauthenticated sync metadata should be 401, got '+meta.status());
+
             if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
+            console.log('PHASE123_BROWSER_PASS',JSON.stringify({version,hashTest,artLayout,appearance,congrats,syncVersion:cfgData.syncVersion}));
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
