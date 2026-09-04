@@ -51,6 +51,7 @@ jobs:
               next.hidden=false;next.disabled=false;next.textContent='Finish';
             });
             await page.waitForFunction(()=>document.querySelector('#guidedDemoStep')?.textContent==='STEP 16 OF 16',null,{timeout:5000});
+            await page.waitForFunction(()=>document.querySelector('#cloudAccountBtn')?.classList.contains('guided-demo-target'),null,{timeout:2500});
             const guest=await page.evaluate(()=>({
               title:document.querySelector('#guidedDemoTitle')?.textContent,
               text:document.querySelector('#guidedDemoText')?.textContent,
