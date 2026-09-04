@@ -1,46 +1,8 @@
-/* Binder Studio staging polish — artwork hover preview, wheel zoom, animated brand, page rail, Art of Pokemon proxy */
+/* Binder Studio v2.9.0 staging polish — hover preview, wheel zoom, brand, page rail, Art of Pokemon proxy */
 (function(){
-  if(!document.querySelector('link[data-kbs-v288-rail]')){const link=document.createElement('link');link.rel='stylesheet';link.href='styles/staging-v288-fix.css?v=2.8.8';link.dataset.kbsV288Rail='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-kbs-prebuilt-catalog]')){const s=document.createElement('script');s.src='features/prebuilt-catalog-bootstrap.js?v=2.8.9';s.dataset.kbsPrebuiltCatalog='1';document.head.appendChild(s)}
-
   const artGrid=document.querySelector('#autoArtworkResults');
   const binderGrid=document.querySelector('#grid');
   if(!artGrid||!binderGrid)return;
-
-  /* Desktop columns must end together. Legacy viewport-height rules made the
-     artwork library stop hundreds of pixels above the real binder canvas.
-     Measure the rendered canvas instead of guessing from vh. */
-  const workspace=document.querySelector('.workspace');
-  const libraryPanel=document.querySelector('.library.has-browser-tabs,.library');
-  const canvasPanel=document.querySelector('.canvas');
-  let heightSyncFrame=0;
-  function syncWorkspaceHeights(){
-    cancelAnimationFrame(heightSyncFrame);
-    heightSyncFrame=requestAnimationFrame(()=>{
-      if(!workspace||!libraryPanel||!canvasPanel)return;
-      const desktop=innerWidth>=821&&!document.body.classList.contains('mobile-lab-enabled');
-      if(!desktop){
-        workspace.style.removeProperty('align-items');
-        libraryPanel.style.removeProperty('height');
-        libraryPanel.style.removeProperty('min-height');
-        libraryPanel.removeAttribute('data-canvas-height-sync');
-        return;
-      }
-      /* Disable CSS grid stretching so canvasPanel reports its own natural content height. */
-      workspace.style.setProperty('align-items','start','important');
-      libraryPanel.style.removeProperty('height');
-      const canvasHeight=Math.ceil(Math.max(canvasPanel.scrollHeight,canvasPanel.getBoundingClientRect().height));
-      if(canvasHeight>0){
-        libraryPanel.style.setProperty('height',canvasHeight+'px','important');
-        libraryPanel.style.setProperty('min-height',canvasHeight+'px','important');
-        libraryPanel.dataset.canvasHeightSync=String(canvasHeight);
-      }
-    });
-  }
-  if(typeof ResizeObserver!=='undefined'&&canvasPanel){new ResizeObserver(syncWorkspaceHeights).observe(canvasPanel)}
-  window.addEventListener('resize',syncWorkspaceHeights,{passive:true});
-  new MutationObserver(syncWorkspaceHeights).observe(binderGrid,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
-  setTimeout(syncWorkspaceHeights,0);setTimeout(syncWorkspaceHeights,250);setTimeout(syncWorkspaceHeights,900);
 
   const preview=document.createElement('div');
   preview.className='artwork-hover-preview';
@@ -55,7 +17,10 @@
   function placePreview(x,y){const pad=16,w=Math.min(340,innerWidth*.38),h=Math.min(480,innerHeight*.72);let left=x+18,top=y+18;if(left+w>innerWidth-pad)left=Math.max(pad,x-w-18);if(top+h>innerHeight-pad)top=Math.max(pad,innerHeight-h-pad);preview.style.left=left+'px';preview.style.top=top+'px'}
   function showPreview(img,e){if(!canHover()||!img)return;previewTarget=img;previewImg.src=img.currentSrc||img.src||img.dataset.fallbackSrc||'';preview.hidden=false;requestAnimationFrame(()=>preview.classList.add('visible'));placePreview(e.clientX,e.clientY)}
   function hidePreview(){previewTarget=null;preview.classList.remove('visible');setTimeout(()=>{if(!previewTarget)preview.hidden=true},120)}
-  artGrid.addEventListener('pointerover',e=>{const img=e.target.closest('.auto-art-image img');if(img)showPreview(img,e)});artGrid.addEventListener('pointermove',e=>{if(previewTarget)placePreview(e.clientX,e.clientY)});artGrid.addEventListener('pointerout',e=>{if(e.target.closest('.auto-art-image img'))hidePreview()});artGrid.addEventListener('click',hidePreview);
+  artGrid.addEventListener('pointerover',e=>{const img=e.target.closest('.auto-art-image img');if(img)showPreview(img,e)});
+  artGrid.addEventListener('pointermove',e=>{if(previewTarget)placePreview(e.clientX,e.clientY)});
+  artGrid.addEventListener('pointerout',e=>{if(e.target.closest('.auto-art-image img'))hidePreview()});
+  artGrid.addEventListener('click',hidePreview);
 
   function getItem(index){try{return typeof state!=='undefined'?state?.pockets?.[index]:null}catch{return null}}
   function persist(){try{if(typeof save==='function')save()}catch{}}
@@ -68,7 +33,6 @@
   const brandTitle=document.querySelector('.brand-copy h1');
   if(brandTitle&&!brandTitle.dataset.animatedBrand){const text=brandTitle.textContent||'';brandTitle.textContent='';brandTitle.classList.add('brand-animated');brandTitle.dataset.animatedBrand='1';[...text].forEach((ch,i)=>{const span=document.createElement('span');span.className=ch===' '?'brand-char brand-space':'brand-char';span.style.setProperty('--char-index',String(i));span.textContent=ch===' '?'\u00a0':ch;brandTitle.appendChild(span)})}
 
-  /* Keep the active page visible and animate every actual page change. */
   const pageNumbers=document.querySelector('#editorPageNumbers');
   let lastActive='';
   function revealActivePage(){
