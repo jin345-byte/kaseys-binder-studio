@@ -8,15 +8,17 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Kasey's Binder Studio">
 <title>Kasey's Binder Studio</title>
-<link rel="stylesheet" href="style.css">
-<link rel="stylesheet" href="styles/v2-visual.css">
-<link rel="stylesheet" href="features/feature-lab.css">
-<link rel="stylesheet" href="art-search-lab.css?v=2.8.23">
-<link rel="stylesheet" href="styles/staging-polish.css?v=2.8.23">
-<link rel="stylesheet" href="styles/staging-v288-fix.css?v=2.8.8">
-<link rel="stylesheet" href="styles/mobile-lab.css">
-<link rel="stylesheet" href="styles/appearance-cleanup.css?v=2.8.25">
-<link rel="stylesheet" href="features/guided-finish.css?v=2.8.16">
+<link rel="stylesheet" href="style.css?v=2.9.0">
+<link rel="stylesheet" href="styles/v2-visual.css?v=2.9.0">
+<link rel="stylesheet" href="features/feature-lab.css?v=2.9.0">
+<link rel="stylesheet" href="art-search-lab.css?v=2.9.0">
+<link rel="stylesheet" href="styles/staging-polish.css?v=2.9.0">
+<link rel="stylesheet" href="styles/staging-v288-fix.css?v=2.9.0">
+<link rel="stylesheet" href="styles/staging-v287.css?v=2.9.0">
+<link rel="stylesheet" href="styles/mobile-lab.css?v=2.9.0">
+<link rel="stylesheet" href="styles/appearance-cleanup.css?v=2.9.0">
+<link rel="stylesheet" href="features/cloud-sync.css?v=2.9.0">
+<link rel="stylesheet" href="features/guided-finish.css?v=2.9.0">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#f5d52f">
@@ -26,7 +28,7 @@
 <div class="app">
   <div class="top">
     <div class="brand brand-modern"><div class="k-logo" aria-hidden="true"><span>K</span></div><div class="brand-copy"><h1>Kasey's Binder Studio</h1></div></div>
-    <div class="top-actions"><button class="version-link" id="versionLink" type="button" title="Build information">v2.8.16 STAGING</button><button class="btn mobile-preview-toggle" id="mobilePreviewToggle" type="button" aria-pressed="false" title="Force the phone layout in this desktop browser">▣ Mobile Preview</button><button class="btn guided-tour-launch" id="guidedTourLaunch" type="button" title="Show me how Binder Studio works">▶ Guided Tour</button></div>
+    <div class="top-actions"><button class="version-link" id="versionLink" type="button" title="Build information">v2.9.0 STAGING</button><button class="btn mobile-preview-toggle" id="mobilePreviewToggle" type="button" aria-pressed="false" title="Force the phone layout in this desktop browser">▣ Mobile Preview</button><button class="btn guided-tour-launch" id="guidedTourLaunch" type="button" title="Show me how Binder Studio works">▶ Guided Tour</button></div>
   </div>
   <section class="controls panel command-deck">
     <label><span>Pokémon or Trainer</span><div class="searchrow"><input id="subject" type="search" placeholder="Try Gardevoir, Pikachu, or Lillie"><button class="btn" id="searchBtn">Search</button></div></label>
@@ -72,13 +74,25 @@
 <div class="binder-viewer" id="binderViewer" aria-hidden="true"><div class="viewer-shell panel"><header class="viewer-head"><div><span class="eyebrow">Binder viewer</span><h2 id="viewerTitle">Binder</h2></div><button class="modal-close" id="closeViewer">×</button></header><div class="viewer-nav"><button class="btn ghost" id="viewerPrev">‹ Previous</button><div class="viewer-pages"><span id="viewerCounter">Page 1</span><div class="page-numbers viewer-page-numbers" id="viewerPageNumbers" aria-label="Viewer page numbers"></div></div><button class="btn ghost" id="viewerNext">Next ›</button><button class="btn" id="viewerEdit">Edit this page</button></div><div id="viewerPage" class="viewer-page"></div></div></div><div class="toast" id="toast"></div>
 <div class="feature-drawer" id="cardDetailsDrawer" aria-hidden="true"><div class="feature-drawer-shell"><header class="feature-drawer-head"><div><span class="eyebrow">Card inspector</span><h2 id="cardDetailsTitle">Card details</h2></div><button class="btn feature-close" id="cardDetailsClose" type="button">×</button></header><div class="card-details-body" id="cardDetailsBody"></div></div></div>
 <div class="hover-card-preview" id="hoverCardPreview" hidden></div><div class="search-suggestions" id="searchSuggestions" hidden></div>
-<div class="build-info-modal" id="buildInfoModal" hidden><div class="build-info-shell" role="dialog" aria-modal="true" aria-labelledby="buildInfoTitle"><div class="build-info-head"><div><span class="eyebrow">Build information</span><h2 id="buildInfoTitle">Kasey’s Binder Studio v2.8.16 Staging</h2></div><button class="btn build-info-close" id="buildInfoClose" type="button">×</button></div><div class="build-info-content"><section><strong>v2.8.16 Staging</strong><p>Guided tour completion screen now loads directly from the page entry point.</p></section></div></div></div>
+<div class="build-info-modal" id="buildInfoModal" hidden><div class="build-info-shell" role="dialog" aria-modal="true" aria-labelledby="buildInfoTitle"><div class="build-info-head"><div><span class="eyebrow">Build information</span><h2 id="buildInfoTitle">Kasey’s Binder Studio v2.9.0 Staging</h2></div><button class="btn build-info-close" id="buildInfoClose" type="button">×</button></div><div class="build-info-content"><section><strong>v2.9.0 Staging</strong><p>Data-safety, multi-device sync, and runtime cleanup integration build.</p></section></div></div></div>
 <div id="runtimeErrorBanner" class="runtime-error-banner" hidden><div><strong>App notice</strong><small id="runtimeErrorText"></small></div><button type="button" id="runtimeErrorDismiss">×</button></div>
-<script src="features/staging-fetch-shim.js?v=2.8.4"></script><script src="app.js"></script><script src="features/cards-lab.js"></script><script src="features/catalog-lab.js?v=2.8.4"></script><script src="features/binder-lab.js"></script>
+<script src="features/staging-fetch-shim.js?v=2.9.0"></script>
+<script src="app.js?v=2.9.0"></script>
+<script src="features/cards-lab.js?v=2.9.0"></script>
+<script src="features/catalog-lab.js?v=2.9.0"></script>
+<script src="features/binder-lab.js?v=2.9.0"></script>
+<script src="features/data-safety.js?v=2.9.0"></script>
+<script src="features/prebuilt-catalog-bootstrap.js?v=2.9.0"></script>
 <div class="guided-demo" id="guidedDemo" hidden aria-hidden="true"><div class="guided-demo-shade"></div><div class="guided-demo-card" id="guidedDemoCard" role="dialog" aria-live="polite"><small id="guidedDemoStep">STEP 1 OF 15</small><h3 id="guidedDemoTitle">Welcome</h3><p id="guidedDemoText"></p><div class="guided-demo-actions"><span></span><button class="btn" id="guidedDemoNext" type="button">Next</button></div></div></div>
-<script src="features/help-lab.js?v=2.8.8"></script>
-<script src="features/guided-tour-finish.js?v=2.8.16"></script>
-<script src="features/guided-tour-step16-fix.js?v=2.8.16"></script>
+<script src="features/help-lab.js?v=2.9.0"></script>
+<script src="features/guided-tour-auto-library.js?v=2.9.0"></script>
+<script src="features/guided-tour-finish.js?v=2.9.0"></script>
+<script src="features/guided-tour-step16-fix.js?v=2.9.0"></script>
 <nav class="mobile-lab-bottom-nav" id="mobileLabBottomNav" aria-label="Phone navigation"><button class="mobile-lab-nav-btn active" data-mobile-lab="cards" type="button"><span>▤</span>Cards</button><button class="mobile-lab-nav-btn" data-mobile-lab="page" type="button"><span>▦</span>Page</button><button class="mobile-lab-nav-btn" data-mobile-lab="art" type="button"><span>✦</span>Art</button></nav>
-<script src="features/art-search-lab.js?v=2.8.5"></script><script src="features/mobile-lab.js"></script><script src="features/staging-polish.js?v=2.8.8"></script>
+<script src="features/art-search-lab.js?v=2.9.0"></script>
+<script src="features/mobile-lab.js?v=2.9.0"></script>
+<script src="features/artwork-height-sync.js?v=2.9.0"></script>
+<script src="features/staging-v287.js?v=2.9.0"></script>
+<script src="features/staging-polish.js?v=2.9.0"></script>
+<script src="features/cloud-sync.js?v=2.9.0"></script>
 </body></html>
