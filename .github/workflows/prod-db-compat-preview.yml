@@ -32,6 +32,8 @@ jobs:
           node --check src/staging-worker.js
           node --check src/prod-preview-worker.js
           node --check public/features/cloud-sync.js
+          node --check public/features/artwork-legacy-repair.js
+          node --check public/features/art-source-links.js
           python - <<'PY'
           import json,pathlib
           cfg=json.loads(pathlib.Path('wrangler.prod-preview.jsonc').read_text())
@@ -45,6 +47,9 @@ jobs:
           assert 'read-only' not in worker.lower()
           cloud=pathlib.Path('public/features/cloud-sync.js').read_text()
           assert "format:'KBS-CLOUD-1'" in cloud
+          rail=pathlib.Path('public/features/staging-v287.js').read_text()
+          assert 'artwork-legacy-repair.js?v=2.9.1' in rail
+          assert 'art-source-links.js?v=2.9.1' in rail
           print('STATIC_PROD_COMPAT_PASS')
           PY
 
@@ -113,16 +118,39 @@ jobs:
             const cfg=await cfgResp.json();
             if(!cfg.databaseReady||!cfg.authReady||cfg.syncVersion!==2||!cfg.googleClientId)throw new Error('Preview config mismatch: '+JSON.stringify({databaseReady:cfg.databaseReady,authReady:cfg.authReady,syncVersion:cfg.syncVersion,hasClientId:!!cfg.googleClientId}));
             await page.click('#cloudAccountBtn');
-            await page.waitForTimeout(1500);
+            await page.waitForTimeout(1200);
             const hint=(await page.locator('#cloudSetupHint').textContent()||'').trim();
             if(!hint.includes('Sign in to sync'))throw new Error('Google auth UI not enabled: '+hint);
             const googleMount=page.locator('#googleButtonMount');
             if(!(await googleMount.isVisible()))throw new Error('Google button mount not visible');
+
             await page.click('#libraryArtworkTab');
+            await page.waitForFunction(()=>globalThis.KBSArtworkRepair&&globalThis.KBSArtSourceLinks,{timeout:10000});
+            const artCompat=await page.evaluate(()=>{
+              const legacy='https://cdn.artofpkm.com/rp4nom0pifi0d7ozvegmbon7hv5c';
+              const sample={subject:'Pikachu',layout:'3x3',binderColor:'#111827',pageColor:'#080b12',sleeveColor:'#334155',artworks:[{id:'a',kind:'art',image:legacy,size:'1x1'}],pockets:[{id:'a',kind:'art',image:legacy,size:'1x1'}]};
+              const fixed=KBSArtworkRepair.repairEditorState(sample);
+              const links=[...document.querySelectorAll('#artSourceLinks .art-source-chip')].map(x=>x.textContent.trim());
+              document.querySelector('#artSearchQuery').value='Pikachu';
+              document.querySelector('#artSearchQuery').dispatchEvent(new Event('input',{bubbles:true}));
+              return{
+                art:fixed.artworks[0].image,
+                pocket:fixed.pockets[0].image,
+                linkCount:links.length,
+                links,
+                dev:document.querySelector('#artSourceDeviant')?.href||'',
+                safe:document.querySelector('#artSourceSafe')?.href||'',
+                pkmTitle:document.querySelector('#artSourcePkm')?.title||''
+              };
+            });
+            if(!artCompat.art.includes('/api/art-image?url=')||!artCompat.pocket.includes('/api/art-image?url='))throw new Error('Legacy Art of Pokemon URL repair failed: '+JSON.stringify(artCompat));
+            if(artCompat.linkCount<3||!artCompat.links.includes('Art of Pokémon ↗')||!artCompat.links.includes('DeviantArt ↗')||!artCompat.links.includes('Safebooru ↗'))throw new Error('Artwork source links missing: '+JSON.stringify(artCompat));
+            if(!artCompat.dev.toLowerCase().includes('pikachu')||!artCompat.safe.toLowerCase().includes('pikachu')||!artCompat.pkmTitle.includes('Pikachu'))throw new Error('Artwork source links did not follow art search: '+JSON.stringify(artCompat));
+
             const tray=await page.locator('#arts').boundingBox();
             if(!tray||tray.height<180)throw new Error('Artwork tray regression');
             if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
-            console.log('PROD_PREVIEW_AUTH_PASS',JSON.stringify({version,db:cfg.databaseReady,authReady:cfg.authReady,googleMount:true,trayHeight:tray.height}));
+            console.log('PROD_PREVIEW_ART_COMPAT_PASS',JSON.stringify({version,db:cfg.databaseReady,authReady:cfg.authReady,googleMount:true,trayHeight:tray.height,artCompat}));
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
