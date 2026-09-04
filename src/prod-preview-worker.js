@@ -16,6 +16,17 @@ function json(data,status=200){
 export default{
   async fetch(request,env,ctx){
     const url=new URL(request.url);
+
+    if(url.pathname==='/api/config'&&request.method==='GET'){
+      return json({
+        googleClientId:'',
+        databaseReady:Boolean(env.DB),
+        authReady:false,
+        syncVersion:2,
+        previewReadOnly:true
+      });
+    }
+
     const mutatingApi=url.pathname==='/api/auth/google'||url.pathname==='/api/logout'||(url.pathname==='/api/sync'&&request.method!=='GET');
     if(mutatingApi){
       return json({error:'Production database compatibility preview is read-only.'},403);
