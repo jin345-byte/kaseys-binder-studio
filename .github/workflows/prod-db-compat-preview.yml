@@ -46,7 +46,6 @@ jobs:
           assert 'previewReadOnly:true' in worker
           cloud=pathlib.Path('public/features/cloud-sync.js').read_text()
           assert "format:'KBS-CLOUD-1'" in cloud
-          assert 'syncVersion' not in cloud or True
           print('STATIC_PROD_COMPAT_PASS')
           PY
 
@@ -102,19 +101,19 @@ jobs:
         run: |
           node <<'JS'
           const {chromium}=require('playwright');
-          const URL='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';
+          const PREVIEW='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';
           (async()=>{
             const browser=await chromium.launch({headless:true});
             const page=await browser.newPage({viewport:{width:1440,height:1100}});
             const errors=[];
             page.on('pageerror',e=>errors.push(e.message));
-            await page.goto(URL+'/?qa='+Date.now(),{waitUntil:'networkidle',timeout:60000});
+            await page.goto(PREVIEW+'/?qa='+Date.now(),{waitUntil:'networkidle',timeout:60000});
             const version=(await page.locator('#versionLink').textContent()||'').trim();
             if(version!=='v2.9.0 STAGING')throw new Error('Unexpected preview UI version: '+version);
-            const cfgResp=await page.request.get(URL+'/api/config');
+            const cfgResp=await page.request.get(PREVIEW+'/api/config');
             const cfg=await cfgResp.json();
             if(!cfg.databaseReady||cfg.authReady!==false||cfg.syncVersion!==2||cfg.previewReadOnly!==true)throw new Error('Preview config mismatch: '+JSON.stringify(cfg));
-            const blocked=await page.request.put(URL+'/api/sync',{data:{payload:'{}',encoding:'json',baseRevision:0}});
+            const blocked=await page.request.put(PREVIEW+'/api/sync',{data:{payload:'{}',encoding:'json',baseRevision:0}});
             if(blocked.status()!==403)throw new Error('Preview write protection failed: '+blocked.status());
             await page.click('#libraryArtworkTab');
             const tray=await page.locator('#arts').boundingBox();
