@@ -50,6 +50,10 @@ jobs:
           rail=pathlib.Path('public/features/staging-v287.js').read_text()
           assert 'artwork-legacy-repair.js?v=2.9.1' in rail
           assert 'art-source-links.js?v=2.9.1' in rail
+          broad=pathlib.Path('src/staging-worker.js').read_text()
+          assert "frieren_(sousou_no_frieren)" in broad
+          assert "base+'*'" in broad
+          assert "x-kbs-art-broad" in broad
           print('STATIC_PROD_COMPAT_PASS')
           PY
 
@@ -147,10 +151,19 @@ jobs:
             if(artCompat.linkCount<3||!artCompat.links.includes('Art of Pokémon ↗')||!artCompat.links.includes('DeviantArt ↗')||!artCompat.links.includes('Safebooru ↗'))throw new Error('Artwork source links missing: '+JSON.stringify(artCompat));
             if(!artCompat.dev.toLowerCase().includes('pikachu')||!artCompat.safe.toLowerCase().includes('pikachu')||!artCompat.pkmTitle.includes('Pikachu'))throw new Error('Artwork source links did not follow art search: '+JSON.stringify(artCompat));
 
+            const broadResp=await page.request.get(PREVIEW+'/api/art-feed?tag=frieren&pid=0');
+            const broad=await broadResp.json();
+            const broadHeader=broadResp.headers()['x-kbs-art-broad'];
+            if(!broadResp.ok()||broadHeader!=='1'||broad.broad!==true)throw new Error('Broad artwork endpoint not active: '+JSON.stringify({status:broadResp.status(),broadHeader,broad}));
+            if(!Array.isArray(broad.queryTags)||!broad.queryTags.includes('frieren_(sousou_no_frieren)')||!broad.queryTags.includes('frieren*'))throw new Error('Frieren query expansion missing: '+JSON.stringify(broad.queryTags));
+            if(!Array.isArray(broad.results)||broad.results.length<10)throw new Error('Frieren broad search returned too few results: '+(broad.results?.length||0));
+            const unique=new Set(broad.results.map(x=>x.url));
+            if(unique.size!==broad.results.length)throw new Error('Broad artwork results were not deduplicated');
+
             const tray=await page.locator('#arts').boundingBox();
             if(!tray||tray.height<180)throw new Error('Artwork tray regression');
             if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
-            console.log('PROD_PREVIEW_ART_COMPAT_PASS',JSON.stringify({version,db:cfg.databaseReady,authReady:cfg.authReady,googleMount:true,trayHeight:tray.height,artCompat}));
+            console.log('PROD_PREVIEW_BROAD_ART_PASS',JSON.stringify({version,db:cfg.databaseReady,authReady:cfg.authReady,trayHeight:tray.height,frierenResults:broad.results.length,queryTags:broad.queryTags}));
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
