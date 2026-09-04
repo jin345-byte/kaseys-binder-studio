@@ -67,7 +67,7 @@ async function artworkImage(request){
   }catch(e){console.error('Artwork image proxy failed',target.href,e);return new Response('Artwork image unavailable',{status:502})}
 }
 
-function artJson(data,status=200,extra={}){return new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':status===200?'public, max-age=300':'no-store','access-control-allow-origin':'*','x-content-type-options':'nosniff','x-kbs-art-feed':'proxy',...extra}})}
+function artJson(data,status=200,extra={}){return new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store, max-age=0','access-control-allow-origin':'*','x-content-type-options':'nosniff','x-kbs-art-feed':'proxy',...extra}})}
 function normalizeSafebooruPosts(payload){
   const posts=Array.isArray(payload)?payload:(Array.isArray(payload?.post)?payload.post:[]),rows=[],seen=new Set();
   for(const p of posts){
@@ -104,7 +104,6 @@ function artworkTagPlan(raw){
   };
   const out=[base];
   for(const alias of aliases[base]||[])out.push(alias);
-  /* Wildcard catches booru disambiguation tags such as character_(series). */
   if(!base.includes('*')&&base.length>=3)out.push(base+'*');
   const words=base.split('_').filter(Boolean);
   if(words.length>1){
@@ -119,7 +118,7 @@ async function fetchSafebooruTag(tag,pid){
   const target=new URL('https://safebooru.org/index.php');
   for(const [k,v] of [['page','dapi'],['s','post'],['q','index'],['json','1'],['limit','40'],['pid',String(pid)],['tags',tag]])target.searchParams.set(k,v);
   try{
-    const upstream=await fetch(target.href,{headers:{accept:'application/json','user-agent':'Mozilla/5.0 Kaseys-Binder-Studio/2.9'},cf:{cacheEverything:true,cacheTtl:300}});
+    const upstream=await fetch(target.href,{headers:{accept:'application/json','user-agent':'Mozilla/5.0 Kaseys-Binder-Studio/2.9'},signal:AbortSignal.timeout(8000),cf:{cacheEverything:true,cacheTtl:300}});
     if(!upstream.ok){try{await upstream.body?.cancel()}catch{}return {rows:[],error:`HTTP ${upstream.status}`};}
     return {rows:normalizeSafebooruPosts(await upstream.json()),error:''};
   }catch(e){return {rows:[],error:String(e?.message||e)}}
