@@ -1,4 +1,4 @@
-/* v2.8.20 shared Cards / Artwork browser */
+/* v2.8.21 shared Cards / Artwork browser */
 .library.has-browser-tabs{
   position:relative;
   display:grid!important;
@@ -48,6 +48,9 @@
   display:grid!important;
 }
 
+/* The old Outside artwork / Art tray heading is intentionally removed visually. */
+.artwork-pane>.arthead{display:none!important}
+
 @media(min-width:821px){
   .workspace{align-items:stretch!important}
   .library.has-browser-tabs{height:auto!important;min-height:760px!important;align-self:stretch!important}
@@ -55,13 +58,14 @@
   .library[data-library-tab="cards"] .variant-pane{grid-template-rows:auto auto minmax(0,1fr)!important}
   .library[data-library-tab="cards"] .cards-viewport{min-height:0!important;height:100%!important;overflow:auto!important}
 
-  /* Artwork uses one simple balanced model:
-     header | matching artwork (1fr) | link/size controls | art tray (1fr). */
+  /* Simplified Artwork model:
+     search + matching artwork (1fr) | compact link controls | art tray (1fr). */
   .library[data-library-tab="artwork"] .artwork-pane{
-    grid-template-rows:auto minmax(0,1fr) auto minmax(0,1fr)!important;
-    gap:10px!important;
+    grid-template-rows:minmax(0,1fr) auto minmax(0,1fr)!important;
+    gap:8px!important;
     min-height:0!important;
     height:100%!important;
+    padding-top:8px!important;
   }
   .library[data-library-tab="artwork"] .auto-artwork-results-wrap{
     min-height:0!important;
@@ -81,20 +85,53 @@
   }
 }
 
-.art-search-tools{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end;margin:0 0 8px;padding:8px;border:1px solid color-mix(in srgb,var(--accent) 24%,var(--line));border-radius:11px;background:color-mix(in srgb,var(--surface2) 82%,transparent)}
-.art-search-tools label{display:grid;gap:4px;min-width:0}
-.art-search-tools label>span{color:var(--accent);font-size:8px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
-.art-search-tools input,#artSearchInput{width:100%!important;min-width:0!important;min-height:40px!important;border:1px solid var(--line)!important;border-radius:10px!important;background:var(--surface)!important;color:var(--text)!important;caret-color:var(--accent)!important;-webkit-text-fill-color:var(--text)!important;box-shadow:none!important;opacity:1!important}
+/* Compact artwork search at the very top of the Artwork pane. */
+.art-search-tools{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:6px;
+  align-items:end;
+  margin:0 0 6px;
+  padding:5px 6px;
+  border:1px solid color-mix(in srgb,var(--accent) 24%,var(--line));
+  border-radius:9px;
+  background:color-mix(in srgb,var(--surface2) 82%,transparent);
+}
+.art-search-tools label{display:grid;gap:2px;min-width:0}
+.art-search-tools label>span{color:var(--accent);font-size:7px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.art-search-tools input,#artSearchInput{
+  width:100%!important;
+  min-width:0!important;
+  min-height:34px!important;
+  height:34px!important;
+  padding:5px 10px!important;
+  border:1px solid var(--line)!important;
+  border-radius:9px!important;
+  background:var(--surface)!important;
+  color:var(--text)!important;
+  caret-color:var(--accent)!important;
+  -webkit-text-fill-color:var(--text)!important;
+  box-shadow:none!important;
+  opacity:1!important;
+  font-size:12px!important;
+}
 .art-search-tools input::placeholder,#artSearchInput::placeholder{color:var(--muted)!important;-webkit-text-fill-color:var(--muted)!important;opacity:.9!important}
 .art-search-tools input:focus,#artSearchInput:focus{outline:none!important;border-color:color-mix(in srgb,var(--accent) 72%,var(--line))!important;box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 14%,transparent)!important}
-.art-search-submit{min-height:40px!important;white-space:nowrap}
+.art-search-submit{
+  min-height:34px!important;
+  height:34px!important;
+  padding:0 12px!important;
+  border-radius:9px!important;
+  white-space:nowrap;
+  font-size:10px!important;
+}
 
-.auto-artwork-results-wrap{display:grid;grid-template-rows:auto auto minmax(0,1fr);gap:8px;min-height:0;padding:8px 0 10px;border-bottom:1px solid color-mix(in srgb,var(--line) 78%,transparent)}
+.auto-artwork-results-wrap{display:grid;grid-template-rows:auto auto minmax(0,1fr);gap:6px;min-height:0;padding:0 0 8px;border-bottom:1px solid color-mix(in srgb,var(--line) 78%,transparent)}
 .auto-artwork-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .auto-artwork-head>div:first-child{display:flex;align-items:baseline;gap:7px;min-width:0}
 .auto-artwork-head small{color:var(--muted);font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .auto-artwork-head-actions{display:flex;align-items:center;gap:5px;flex:0 0 auto}
-.auto-artwork-more{min-height:30px;padding:3px 9px;border:1px solid color-mix(in srgb,var(--accent) 42%,var(--line));border-radius:8px;background:color-mix(in srgb,var(--accent) 10%,var(--surface2));color:var(--accent);font-size:9px;font-weight:900}
+.auto-artwork-more{min-height:28px;padding:2px 8px;border:1px solid color-mix(in srgb,var(--accent) 42%,var(--line));border-radius:8px;background:color-mix(in srgb,var(--accent) 10%,var(--surface2));color:var(--accent);font-size:8px;font-weight:900}
 .auto-artwork-more:disabled{opacity:.45;cursor:default}
 .auto-artwork-scroll{min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-right:3px}
 .auto-artwork-results{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
@@ -111,55 +148,76 @@
 .auto-art-add{min-height:31px!important;height:31px;padding:2px 5px!important;font-size:9px!important}
 .auto-art-empty{grid-column:1/-1;padding:18px;text-align:center;color:var(--muted);font-size:10px}
 
-/* Direct-link controls: selector gets the flexible space; action buttons never wrap. */
+/* Direct artwork controls use the same compact visual language as Art Search. */
 .artwork-pane .artadd{
   display:grid!important;
-  grid-template-columns:minmax(0,1fr) 92px 116px!important;
-  gap:8px!important;
+  grid-template-columns:minmax(0,1fr) 88px 108px!important;
+  gap:6px!important;
   align-items:stretch;
   position:relative;
   z-index:2;
-  padding:8px 0;
-  border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent);
-  border-bottom:1px solid color-mix(in srgb,var(--line) 70%,transparent);
-  background:var(--surface);
+  padding:6px!important;
+  border:1px solid color-mix(in srgb,var(--accent) 18%,var(--line));
+  border-radius:9px;
+  background:color-mix(in srgb,var(--surface2) 82%,transparent);
 }
-.artwork-pane .artadd #artUrl{grid-column:1/-1;width:100%!important;min-width:0!important}
-.artwork-pane .artadd #newArtSize{grid-column:1;width:100%!important;min-width:0!important}
+.artwork-pane .artadd #artUrl{
+  grid-column:1/-1;
+  width:100%!important;
+  min-width:0!important;
+  min-height:34px!important;
+  height:34px!important;
+  padding:5px 10px!important;
+  border-radius:9px!important;
+  font-size:12px!important;
+}
+.artwork-pane .artadd #newArtSize{
+  grid-column:1;
+  width:100%!important;
+  min-width:0!important;
+  min-height:34px!important;
+  height:34px!important;
+  padding:4px 9px!important;
+  border-radius:9px!important;
+  font-size:11px!important;
+}
 .artwork-pane .artadd #addUrl,
 .artwork-pane .artadd .upload{
   width:100%!important;
   min-width:0!important;
-  min-height:42px!important;
-  height:42px!important;
+  min-height:34px!important;
+  height:34px!important;
   margin:0!important;
-  padding:0 10px!important;
+  padding:0 8px!important;
   display:flex!important;
   align-items:center!important;
   justify-content:center!important;
+  border-radius:9px!important;
   white-space:nowrap!important;
   line-height:1!important;
   text-align:center!important;
+  font-size:9px!important;
 }
 .artwork-pane .artadd #addUrl{grid-column:2}
 .artwork-pane .artadd .upload{grid-column:3}
-.artwork-pane #arts{position:relative;z-index:1;align-content:start;padding-top:8px}
+.artwork-pane #arts{position:relative;z-index:1;align-content:start;padding-top:6px}
 
-/* When the artwork panel gets narrow, stop squeezing the controls. */
+/* At narrow widths, preserve the same neat two-row arrangement. */
 @media(max-width:1180px){
-  .artwork-pane .artadd{grid-template-columns:1fr 1fr!important}
+  .artwork-pane .artadd{grid-template-columns:minmax(0,1fr) auto auto!important}
   .artwork-pane .artadd #artUrl{grid-column:1/-1!important}
-  .artwork-pane .artadd #newArtSize{grid-column:1/-1!important}
-  .artwork-pane .artadd #addUrl{grid-column:1!important}
-  .artwork-pane .artadd .upload{grid-column:2!important}
+  .artwork-pane .artadd #newArtSize{grid-column:1!important}
+  .artwork-pane .artadd #addUrl{grid-column:2!important;min-width:84px!important}
+  .artwork-pane .artadd .upload{grid-column:3!important;min-width:104px!important}
 }
 
 body.mobile-lab-enabled .library.has-browser-tabs{display:grid!important;grid-template-rows:auto auto!important;height:auto!important;min-height:0!important}
 body.mobile-lab-enabled .library-browser-tabs{position:sticky;top:55px;z-index:55;margin:0 0 6px;padding:4px;border-radius:10px}
 body.mobile-lab-enabled .library-browser-tab{min-height:34px;font-size:10px}
 body.mobile-lab-enabled .library.has-browser-tabs>.browser-pane{height:auto!important;min-height:0!important}
-body.mobile-lab-enabled .art-search-tools{grid-template-columns:1fr}
-body.mobile-lab-enabled .art-search-submit{width:100%;min-height:42px!important}
+body.mobile-lab-enabled .artwork-pane>.arthead{display:none!important}
+body.mobile-lab-enabled .art-search-tools{grid-template-columns:minmax(0,1fr) auto;gap:5px;padding:5px}
+body.mobile-lab-enabled .art-search-submit{width:auto;min-height:34px!important;height:34px!important}
 body.mobile-lab-enabled .auto-artwork-scroll{max-height:72vh;min-height:440px;overflow:auto!important}
 body.mobile-lab-enabled .auto-artwork-results{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 body.mobile-lab-enabled .auto-artwork-head{align-items:flex-start}
@@ -168,8 +226,8 @@ body.mobile-lab-enabled .auto-artwork-head small{max-width:230px}
 body.mobile-lab-enabled .auto-art-card{padding:5px}
 body.mobile-lab-enabled .auto-art-size{grid-template-columns:1fr;gap:2px}
 body.mobile-lab-enabled .auto-art-add{min-height:34px!important}
-body.mobile-lab-enabled .artwork-pane .artadd{grid-template-columns:1fr 1fr!important}
+body.mobile-lab-enabled .artwork-pane .artadd{grid-template-columns:minmax(0,1fr) auto auto!important}
 body.mobile-lab-enabled .artwork-pane .artadd #artUrl{grid-column:1/-1!important}
-body.mobile-lab-enabled .artwork-pane .artadd #newArtSize{grid-column:1/-1!important;min-width:0!important}
-body.mobile-lab-enabled .artwork-pane .artadd #addUrl{grid-column:1!important}
-body.mobile-lab-enabled .artwork-pane .artadd .upload{grid-column:2!important}
+body.mobile-lab-enabled .artwork-pane .artadd #newArtSize{grid-column:1!important;min-width:0!important}
+body.mobile-lab-enabled .artwork-pane .artadd #addUrl{grid-column:2!important;min-width:80px!important}
+body.mobile-lab-enabled .artwork-pane .artadd .upload{grid-column:3!important;min-width:100px!important}
