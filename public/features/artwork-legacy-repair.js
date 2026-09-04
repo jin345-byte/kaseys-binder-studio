@@ -65,18 +65,18 @@
   async function migrateBinderPages(){
     if(migrationRunning)return;
     if(typeof binderDb==='undefined'||!binderDb||typeof binderLayerReady==='undefined'||!binderLayerReady)return;
+    if(typeof dbAll!=='function'||typeof dbPut!=='function')return;
     migrationRunning=true;
     try{
-      const tx=binderDb.transaction('pages','readwrite');
-      const store=tx.objectStore('pages');
-      const req=store.getAll();
-      const pages=await new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error)});
+      const pages=await dbAll('pages');
       let changed=0;
       for(const page of pages){
         const fixed=repairEditorState(page?.state);
-        if(fixed!==page?.state){store.put({...page,state:fixed});changed++}
+        if(fixed!==page?.state){
+          await dbPut('pages',{...page,state:fixed});
+          changed++;
+        }
       }
-      await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error)});
       if(changed){
         document.documentElement.dataset.legacyArtworkMigrated=String(changed);
         console.info('Repaired legacy artwork URLs on',changed,'saved binder page(s).');
@@ -91,8 +91,7 @@
   }
 
   installCoreHooks();
-  scheduleMigration(500);
-  scheduleMigration(1800);
+  scheduleMigration(900);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')scheduleMigration(250)});
 
   /* Cloud restore/page navigation eventually calls rerenderEditor. Hooking it means
