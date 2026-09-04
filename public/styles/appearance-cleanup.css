@@ -1,0 +1,92 @@
+/* Binder Studio staging — compact appearance controls */
+.appearance-module{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:8px!important;
+}
+.appearance-module .color-control{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 42px!important;
+  align-items:center!important;
+  gap:10px!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:48px!important;
+  margin:0!important;
+  padding:7px 9px 7px 12px!important;
+  border:1px solid color-mix(in srgb,var(--line) 88%,transparent)!important;
+  border-radius:13px!important;
+  background:color-mix(in srgb,var(--surface2) 78%,transparent)!important;
+  color:var(--text)!important;
+  overflow:hidden!important;
+}
+.appearance-module .color-icon,
+.appearance-module .color-copy small{
+  display:none!important;
+}
+.appearance-module .color-copy{
+  display:block!important;
+  min-width:0!important;
+  width:auto!important;
+  overflow:visible!important;
+}
+.appearance-module .color-copy strong{
+  display:block!important;
+  margin:0!important;
+  color:var(--text)!important;
+  font-size:12px!important;
+  line-height:1.05!important;
+  font-weight:900!important;
+  letter-spacing:0!important;
+  white-space:nowrap!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+.appearance-module .color-control input[type="color"]{
+  justify-self:end!important;
+  display:block!important;
+  width:36px!important;
+  min-width:36px!important;
+  max-width:36px!important;
+  height:30px!important;
+  min-height:30px!important;
+  padding:2px!important;
+  margin:0!important;
+  border:1px solid var(--line)!important;
+  border-radius:9px!important;
+  background:var(--surface)!important;
+  cursor:pointer!important;
+}
+.appearance-module .color-control:focus-within{
+  border-color:var(--accent)!important;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 13%,transparent)!important;
+}
+
+/* The guided tour targets the color inputs by ID. Keep them easy to see/highlight. */
+.appearance-module input[type="color"].guided-demo-target{
+  position:relative!important;
+  z-index:4!important;
+  outline:2px solid var(--accent)!important;
+  outline-offset:3px!important;
+}
+
+@media(max-width:700px){
+  .appearance-module{
+    gap:6px!important;
+  }
+  .appearance-module .color-control{
+    grid-template-columns:minmax(0,1fr) 38px!important;
+    min-height:44px!important;
+    padding:6px 8px 6px 10px!important;
+  }
+  .appearance-module .color-copy strong{
+    font-size:11px!important;
+  }
+  .appearance-module .color-control input[type="color"]{
+    width:34px!important;
+    min-width:34px!important;
+    max-width:34px!important;
+    height:28px!important;
+    min-height:28px!important;
+  }
+}
