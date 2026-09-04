@@ -1,6 +1,20 @@
 /* Binder Studio v2.9.0 — local persistence safety guard */
 (function(){
   'use strict';
+
+  /* One-time V1 -> V2 sync migration safety.
+     Existing signed-in browsers have an owner marker but no V2 baseline hash yet.
+     Clear only the owner marker for that first V2 startup so cloud-sync treats any
+     meaningful local work conservatively and merges it instead of assuming clean state. */
+  try{
+    const owner=localStorage.getItem('kbsCloudOwnerV1');
+    const v2Hash=localStorage.getItem('kbsCloudLastHashV2');
+    if(owner&&!v2Hash){
+      sessionStorage.setItem('kbsCloudV2MigrationGuard','1');
+      localStorage.removeItem('kbsCloudOwnerV1');
+    }
+  }catch(e){console.warn('Could not initialize sync migration guard',e)}
+
   let wrapped=false,lastNotice=0;
 
   function notify(error){
