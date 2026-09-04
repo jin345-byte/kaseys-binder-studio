@@ -29,17 +29,18 @@ jobs:
             page.on('pageerror',e=>errors.push(e.message));
             await page.goto(URL,{waitUntil:'networkidle',timeout:60000});
             await page.waitForTimeout(1500);
-            const cssLoaded=await page.locator('link[href*="appearance-cleanup.css?v=2.8.25"]').count();
-            if(!cssLoaded)throw new Error('appearance cleanup stylesheet not loaded');
+            if(await page.locator('link[href*="appearance-cleanup.css?v=2.8.25"]').count()!==1)throw new Error('appearance cleanup stylesheet not loaded');
             const controls=page.locator('.appearance-module .color-control');
             if(await controls.count()!==3)throw new Error('Expected 3 appearance controls');
-            const labels=await page.locator('.appearance-module .color-copy strong').allTextContents();
-            if(JSON.stringify(labels)!==JSON.stringify(['Binder','Page','Sleeves']))throw new Error('Unexpected labels: '+JSON.stringify(labels));
+            const expected=['Binder','Page','Sleeves'];
+            for(let i=0;i<3;i++){
+              const label=(await page.locator('.appearance-module .color-copy strong').nth(i).textContent()||'').trim();
+              if(label!==expected[i])throw new Error('Unexpected label '+i+': '+label);
+            }
             for(const sel of ['.appearance-module .color-icon','.appearance-module .color-copy small']){
               const nodes=page.locator(sel);
-              for(let i=0;i<await nodes.count();i++){
-                if(await nodes.nth(i).isVisible())throw new Error(sel+' should be hidden');
-              }
+              const n=await nodes.count();
+              for(let i=0;i<n;i++)if(await nodes.nth(i).isVisible())throw new Error(sel+' should be hidden');
             }
             for(const id of ['#binderColor','#pageColor','#sleeveColor']){
               const el=page.locator(id);
@@ -49,14 +50,13 @@ jobs:
             }
             await page.click('#guidedTourLaunch');
             await page.waitForTimeout(8500);
-            const binder=page.locator('#binderColor');
             await page.waitForFunction(()=>document.querySelector('#guidedDemoTitle')?.textContent==='Choose the binder color',null,{timeout:8000});
-            if(!(await binder.isVisible()))throw new Error('Binder tour target hidden');
+            if(!(await page.locator('#binderColor').isVisible()))throw new Error('Binder tour target hidden');
             await page.waitForFunction(()=>document.querySelector('#guidedDemoTitle')?.textContent==='Choose the page color',null,{timeout:8000});
             if(!(await page.locator('#pageColor').isVisible()))throw new Error('Page tour target hidden');
             await page.waitForFunction(()=>document.querySelector('#guidedDemoTitle')?.textContent==='Choose the sleeve color',null,{timeout:8000});
             if(!(await page.locator('#sleeveColor').isVisible()))throw new Error('Sleeve tour target hidden');
-            console.log('APPEARANCE_PASS',JSON.stringify({labels,errors}));
+            console.log('APPEARANCE_PASS',JSON.stringify({labels:expected,errors}));
             if(errors.length)throw new Error('Runtime errors: '+errors.join(' | '));
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
