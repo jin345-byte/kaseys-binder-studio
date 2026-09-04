@@ -1,0 +1,47 @@
+name: Temporary Art Tray Sanity
+
+on:
+  push:
+    branches: [staging-ui-auth-test]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null
+      - name: Verify live Art Tray and size selector
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          const URL='https://kaseys-binder-studio-staging.jin345.workers.dev/?arttrayqa='+Date.now();
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1440,height:1100}});
+            await page.goto(URL,{waitUntil:'networkidle',timeout:60000});
+            await page.waitForTimeout(1500);
+            await page.click('#libraryArtworkTab');
+            await page.evaluate(()=>{
+              addArt('data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="420"><rect width="300" height="420" fill="%23888"/></svg>'),'QA Artwork','QA','2x1');
+            });
+            await page.waitForSelector('#arts .item .art-size',{state:'visible',timeout:5000});
+            const m=await page.evaluate(()=>{
+              const tray=document.querySelector('#arts'),sel=document.querySelector('#arts .art-size'),item=document.querySelector('#arts .item');
+              const tr=tray.getBoundingClientRect(),sr=sel.getBoundingClientRect(),ir=item.getBoundingClientRect();
+              const cs=getComputedStyle(tray);
+              return {trayH:tr.height,trayW:tr.width,display:cs.display,overflow:cs.overflowY,itemH:ir.height,selH:sr.height,selW:sr.width,selValue:sel.value,selVisible:sr.bottom>tr.top&&sr.top<tr.bottom};
+            });
+            console.log('ART_TRAY_METRICS',JSON.stringify(m));
+            if(m.trayH<200)throw new Error('Art Tray collapsed: '+JSON.stringify(m));
+            if(!m.selVisible||m.selH<20||m.selW<40)throw new Error('Art size selector is not usable: '+JSON.stringify(m));
+            if(m.selValue!=='2x1')throw new Error('Art size value did not render correctly: '+JSON.stringify(m));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
