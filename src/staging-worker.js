@@ -148,7 +148,7 @@ export default{
   async fetch(request,env,ctx){
     const url=new URL(request.url);
     if(request.method==='GET'&&url.pathname==='/api/art-image')return artworkImage(request);
-    if(request.method==='GET'&&url.pathname==='/api/art-feed')return artworkFeed(request);
+    if(request.method==='GET'&&(url.pathname==='/api/art-feed'||url.pathname==='/api/art-feed-v2'))return artworkFeed(request);
     if(request.method==='GET'&&url.pathname==='/api/card-search')return cardSearch(request);
 
     const noStorePaths=new Set(['/art-search-lab.css','/style.css','/features/art-search-lab.js','/features/catalog-lab.js','/features/mobile-lab.js','/features/staging-fetch-shim.js','/features/staging-polish.js','/features/help-lab.js','/features/staging-v287.js','/features/artwork-height-sync.js','/features/prebuilt-catalog-bootstrap.js','/features/data-safety.js','/features/cloud-sync.js','/features/cloud-sync.css','/features/guided-tour-auto-library.js','/features/guided-tour-finish.js','/features/guided-tour-step16-fix.js','/features/guided-finish.css','/features/artwork-legacy-repair.js','/features/art-source-links.js','/styles/staging-polish.css','/styles/staging-v287.css','/styles/staging-v288-fix.css','/styles/appearance-cleanup.css','/styles/mobile-lab.css','/styles/v2-visual.css']);
