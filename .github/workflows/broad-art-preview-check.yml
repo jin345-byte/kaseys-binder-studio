@@ -1,0 +1,45 @@
+name: Broad Artwork Preview Check
+
+on:
+  push:
+    branches: [prod-db-compat-preview]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: binder-studio-broad-art-preview
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Wait for broadened artwork Worker and verify Frieren
+        shell: bash
+        run: |
+          node <<'JS'
+          const BASE='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          (async()=>{
+            let response,payload;
+            for(let i=0;i<12;i++){
+              response=await fetch(BASE+'/api/art-feed?tag=frieren&pid=0',{cache:'no-store'}).catch(()=>null);
+              payload=response?await response.json().catch(()=>null):null;
+              const broad=response?.headers.get('x-kbs-art-broad')||'';
+              console.log('BROAD_ART_ATTEMPT',JSON.stringify({attempt:i+1,status:response?.status||0,broad,results:payload?.results?.length||0,queryTags:payload?.queryTags||[]}));
+              if(response?.ok&&broad==='1'&&payload?.broad===true)break;
+              await sleep(5000);
+            }
+            if(!response?.ok||response.headers.get('x-kbs-art-broad')!=='1'||payload?.broad!==true)throw new Error('Broadened artwork Worker did not become active');
+            const tags=payload.queryTags||[];
+            if(!tags.includes('frieren')||!tags.includes('frieren_(sousou_no_frieren)')||!tags.includes('frieren*'))throw new Error('Frieren query expansion missing: '+JSON.stringify(tags));
+            if(!Array.isArray(payload.results)||payload.results.length<10)throw new Error('Frieren search returned too few results: '+(payload.results?.length||0));
+            if(new Set(payload.results.map(x=>x.url)).size!==payload.results.length)throw new Error('Results are not deduplicated');
+            console.log('BROAD_ART_PASS',JSON.stringify({frierenResults:payload.results.length,queryTags:tags}));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
