@@ -1,4 +1,4 @@
-/* Binder Studio v2.8.13 staging — vertical page rail + desktop artwork height sync */
+/* Binder Studio v2.8.14 staging — vertical page rail + artwork height + tour finish */
 (function(){
   /* This staging hook is already proven to execute on the live Worker. Load the
      dedicated height module from a new URL so an old cached polish script cannot
@@ -8,6 +8,22 @@
     script.src='/features/artwork-height-sync.js?v=2.8.13';
     script.dataset.kbsArtworkHeightSync='1';
     document.head.appendChild(script);
+  }
+
+  /* Guided tour completion extension. Kept separate from the original tour so
+     the working demonstration remains untouched while its ending is upgraded. */
+  if(!document.querySelector('link[data-kbs-guided-finish]')){
+    const link=document.createElement('link');
+    link.rel='stylesheet';
+    link.href='/features/guided-finish.css?v=2.8.14';
+    link.dataset.kbsGuidedFinish='1';
+    document.head.appendChild(link);
+  }
+  if(!document.querySelector('script[data-kbs-guided-finish]')){
+    const script=document.createElement('script');
+    script.src='/features/guided-tour-finish.js?v=2.8.14';
+    script.dataset.kbsGuidedFinish='1';
+    document.body.appendChild(script);
   }
 
   const numbers=document.querySelector('#editorPageNumbers');
