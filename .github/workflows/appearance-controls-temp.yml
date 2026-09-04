@@ -1,0 +1,63 @@
+name: Temporary Appearance Controls Sanity
+
+on:
+  push:
+    branches: [staging-ui-auth-test]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null
+      - name: Verify compact appearance controls and tour targets
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          const URL='https://kaseys-binder-studio-staging.jin345.workers.dev/?appearanceqa='+Date.now();
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1440,height:1100}});
+            const errors=[];
+            page.on('pageerror',e=>errors.push(e.message));
+            await page.goto(URL,{waitUntil:'networkidle',timeout:60000});
+            await page.waitForTimeout(1500);
+            const cssLoaded=await page.locator('link[href*="appearance-cleanup.css?v=2.8.25"]').count();
+            if(!cssLoaded)throw new Error('appearance cleanup stylesheet not loaded');
+            const controls=page.locator('.appearance-module .color-control');
+            if(await controls.count()!==3)throw new Error('Expected 3 appearance controls');
+            const labels=await page.locator('.appearance-module .color-copy strong').allTextContents();
+            if(JSON.stringify(labels)!==JSON.stringify(['Binder','Page','Sleeves']))throw new Error('Unexpected labels: '+JSON.stringify(labels));
+            for(const sel of ['.appearance-module .color-icon','.appearance-module .color-copy small']){
+              const nodes=page.locator(sel);
+              for(let i=0;i<await nodes.count();i++){
+                if(await nodes.nth(i).isVisible())throw new Error(sel+' should be hidden');
+              }
+            }
+            for(const id of ['#binderColor','#pageColor','#sleeveColor']){
+              const el=page.locator(id);
+              if(!(await el.isVisible()))throw new Error(id+' is not visible');
+              const box=await el.boundingBox();
+              if(!box||box.width<30||box.height<24)throw new Error(id+' is too small: '+JSON.stringify(box));
+            }
+            await page.click('#guidedTourLaunch');
+            await page.waitForTimeout(8500);
+            const binder=page.locator('#binderColor');
+            await page.waitForFunction(()=>document.querySelector('#guidedDemoTitle')?.textContent==='Choose the binder color',null,{timeout:8000});
+            if(!(await binder.isVisible()))throw new Error('Binder tour target hidden');
+            await page.waitForFunction(()=>document.querySelector('#guidedDemoTitle')?.textContent==='Choose the page color',null,{timeout:8000});
+            if(!(await page.locator('#pageColor').isVisible()))throw new Error('Page tour target hidden');
+            await page.waitForFunction(()=>document.querySelector('#guidedDemoTitle')?.textContent==='Choose the sleeve color',null,{timeout:8000});
+            if(!(await page.locator('#sleeveColor').isVisible()))throw new Error('Sleeve tour target hidden');
+            console.log('APPEARANCE_PASS',JSON.stringify({labels,errors}));
+            if(errors.length)throw new Error('Runtime errors: '+errors.join(' | '));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
