@@ -11,8 +11,8 @@
       proxy.search=url.search;
       return nativeFetch(proxy.href,init);
     }
-    if(url.origin===location.origin&&url.pathname==='/api/art-feed'){
-      const proxy=new URL('/api/art-feed-v2',location.origin);
+    if(url.origin===location.origin&&(url.pathname==='/api/art-feed'||url.pathname==='/api/art-feed-v2')){
+      const proxy=new URL('/api/art-feed-v3',location.origin);
       proxy.search=url.search;
       return nativeFetch(proxy.href,init);
     }
