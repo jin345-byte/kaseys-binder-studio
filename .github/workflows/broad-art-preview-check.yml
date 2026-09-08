@@ -23,7 +23,7 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0 >/dev/null 2>&1
           npx playwright install chromium >/dev/null
-      - name: Wait for broadened artwork Worker and verify Frieren
+      - name: Verify broadened artwork and Zerochan source
         shell: bash
         run: |
           node <<'JS'
@@ -36,13 +36,15 @@ jobs:
               response=await fetch(BASE+'/api/art-feed-v2?tag=frieren&pid=0&qa='+Date.now(),{cache:'no-store'}).catch(()=>null);
               payload=response?await response.json().catch(()=>null):null;
               const broad=response?.headers.get('x-kbs-art-broad')||'';
-              console.log('BROAD_ART_ATTEMPT',JSON.stringify({attempt:i+1,status:response?.status||0,broad,results:payload?.results?.length||0,queryTags:payload?.queryTags||[]}));
-              if(response?.ok&&broad==='1'&&payload?.broad===true)break;
+              console.log('BROAD_ART_ATTEMPT',JSON.stringify({attempt:i+1,status:response?.status||0,broad,results:payload?.results?.length||0,queryTags:payload?.queryTags||[],zerochanConfigured:payload?.zerochanConfigured,sourceCounts:payload?.sourceCounts||{}}));
+              if(response?.ok&&broad==='1'&&payload?.broad===true&&payload?.zerochanConfigured===true)break;
               await sleep(5000);
             }
             if(!response?.ok||response.headers.get('x-kbs-art-broad')!=='1'||payload?.broad!==true)throw new Error('Broadened artwork Worker did not become active');
             const tags=payload.queryTags||[];
             if(!tags.includes('frieren')||!tags.includes('frieren_(sousou_no_frieren)')||!tags.includes('frieren*'))throw new Error('Frieren query expansion missing: '+JSON.stringify(tags));
+            if(payload.zerochanConfigured!==true)throw new Error('Zerochan is not configured on preview');
+            if(Number(payload?.sourceCounts?.zerochan||0)<1)throw new Error('Zerochan returned no Frieren results: '+JSON.stringify(payload?.sourceCounts||{}));
             if(!Array.isArray(payload.results)||payload.results.length<10)throw new Error('Frieren search returned too few results: '+(payload.results?.length||0));
             if(new Set(payload.results.map(x=>x.url)).size!==payload.results.length)throw new Error('Results are not deduplicated');
 
@@ -54,10 +56,11 @@ jobs:
             await page.fill('#artSearchQuery','Frieren');
             await page.click('#artSearchSubmit');
             await page.waitForFunction(()=>Number(document.querySelector('#autoArtworkCount')?.textContent||0)>=10,{timeout:45000});
-            const ui=await page.evaluate(()=>({count:Number(document.querySelector('#autoArtworkCount')?.textContent||0),status:document.querySelector('#autoArtworkStatus')?.textContent||'',cards:document.querySelectorAll('#autoArtworkResults .auto-art-card').length}));
+            const ui=await page.evaluate(()=>({count:Number(document.querySelector('#autoArtworkCount')?.textContent||0),status:document.querySelector('#autoArtworkStatus')?.textContent||'',cards:document.querySelectorAll('#autoArtworkResults .auto-art-card').length,zerochanLink:document.querySelector('#artSourceZerochan')?.href||''}));
             if(ui.count<10||ui.cards<10)throw new Error('Frieren UI search returned too few results: '+JSON.stringify(ui));
+            if(!ui.zerochanLink.toLowerCase().includes('frieren'))throw new Error('Zerochan tray link did not follow Frieren search: '+ui.zerochanLink);
             if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
             await browser.close();
-            console.log('BROAD_ART_PASS',JSON.stringify({endpointResults:payload.results.length,queryTags:tags,ui}));
+            console.log('BROAD_ART_ZEROCHAN_PASS',JSON.stringify({endpointResults:payload.results.length,queryTags:tags,sourceCounts:payload.sourceCounts,ui}));
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
