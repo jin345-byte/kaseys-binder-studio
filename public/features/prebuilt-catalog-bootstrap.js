@@ -45,10 +45,12 @@
       await Promise.all(workers);
       const all=results.flat();
       if(all.length!==manifest.cards)throw new Error(`Catalog count mismatch (${all.length}/${manifest.cards})`);
-      const english=all.filter(x=>x?.catalog!=='pocket'),pocket=all.filter(x=>x?.catalog==='pocket');
-      if(english.length<15000||pocket.length<500)throw new Error('Catalog data looked incomplete');
-      progress(manifest.chunks.length,manifest.chunks.length,'Installing card library…');
-      await Promise.all([replaceMaster(english,manifest.version),replacePocket(pocket,manifest.version)]);
+      const pokemon=all.filter(x=>x?.catalog==='english'||x?.game==='pokemon');
+      const pocket=all.filter(x=>x?.catalog==='pocket'||x?.game==='pokemon-pocket');
+      const unionArena=all.filter(x=>x?.catalog==='union-arena'||x?.game==='union-arena');
+      if(pokemon.length<15000||pocket.length<500||unionArena.length<6000)throw new Error(`Catalog data looked incomplete (Pokémon ${pokemon.length}, Pocket ${pocket.length}, Union Arena ${unionArena.length})`);
+      progress(manifest.chunks.length,manifest.chunks.length,'Installing multi-TCG card library…');
+      await Promise.all([replaceMaster([...pokemon,...unionArena],manifest.version),replacePocket(pocket,manifest.version)]);
       localStorage.setItem(VERSION_KEY,manifest.version);
       progress(1,1,`Unified Library Ready · ${all.length.toLocaleString()} cards`,true);
 
