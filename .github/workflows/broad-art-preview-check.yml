@@ -61,7 +61,7 @@ jobs:
             await page.click('#libraryArtworkTab');
             await page.fill('#artSearchQuery','Cynthia Pokémon Champion');
             await page.click('#artSearchSubmit');
-            await page.waitForFunction(()=>Number(document.querySelector('#autoArtworkCount')?.textContent||0)>=5,{timeout:45000});
+            await page.waitForFunction(()=>Number(document.querySelector('#autoArtworkCount')?.textContent||0)>=5,null,{timeout:90000});
             const ui=await page.evaluate(()=>({count:Number(document.querySelector('#autoArtworkCount')?.textContent||0),status:document.querySelector('#autoArtworkStatus')?.textContent||'',cards:document.querySelectorAll('#autoArtworkResults .auto-art-card').length,zerochanLink:document.querySelector('#artSourceZerochan')?.href||''}));
             if(ui.count<5||ui.cards<5)throw new Error('Cynthia UI search returned too few results: '+JSON.stringify(ui));
             if(!ui.zerochanLink.toLowerCase().includes('cynthia'))throw new Error('Zerochan source link did not follow character search');
