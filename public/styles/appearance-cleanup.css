@@ -62,6 +62,11 @@
   box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 13%,transparent)!important;
 }
 
+/* Card Library: keep the original Set dropdown as the single browsing filter. */
+.multi-tcg-filterbar{
+  display:none!important;
+}
+
 /* The guided tour targets the color inputs by ID. Keep them easy to see/highlight. */
 .appearance-module input[type="color"].guided-demo-target{
   position:relative!important;
