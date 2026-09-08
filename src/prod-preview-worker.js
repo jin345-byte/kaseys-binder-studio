@@ -23,22 +23,22 @@ function normalizedKey(raw){return tidyQuery(raw).toLowerCase().normalize('NFKD'
 function characterQueryPlan(raw){
   const original=tidyQuery(raw);if(!original)return [];
   const key=normalizedKey(original);
-  const out=[original];
-
   const fromMatch=original.match(/^(.+?)\s+from\s+(.+)$/i);
   if(fromMatch){
     const character=tidyQuery(fromMatch[1]),series=tidyQuery(fromMatch[2]);
-    if(character&&series)out.push(`${character} (${series})`);
+    if(character&&series)return [original,`${character} (${series})`];
   }
 
   const pokemonHint=/\b(?:pokemon|pokémon|gym\s*leader|trainer|champion|elite\s*four|professor)\b/i.test(original);
   const stripped=tidyQuery(original.replace(/\b(?:pokemon|pokémon|gym\s*leader|trainer|champion|elite\s*four|anime|cartoon|animated|character)\b/gi,' '));
   const alias=POKEMON_CHARACTER_ALIASES[key]||POKEMON_CHARACTER_ALIASES[normalizedKey(stripped)];
-  if(alias)out.push(alias);
-  if(pokemonHint&&stripped)out.push(`${stripped} (pokemon)`);
-  if(stripped&&stripped.toLowerCase()!==original.toLowerCase())out.push(stripped);
-
-  return [...new Set(out.filter(Boolean))].slice(0,3);
+  if(pokemonHint&&stripped){
+    const qualified=`${stripped} (pokemon)`;
+    return [...new Set(alias?[alias,qualified]:[original,qualified])].slice(0,2);
+  }
+  if(alias)return [...new Set([original,alias])].slice(0,2);
+  if(stripped&&stripped.toLowerCase()!==original.toLowerCase())return [original,stripped];
+  return [original];
 }
 
 async function callArtV2(request,env,ctx,query,pid){
@@ -46,7 +46,7 @@ async function callArtV2(request,env,ctx,query,pid){
   const inner=new Request(u.href,{method:'GET',headers:{accept:'application/json'}});
   const response=await stagingWorker.fetch(inner,env,ctx);
   let payload={};try{payload=await response.json()}catch{}
-  return {response,payload};
+  return {query,response,payload};
 }
 
 async function characterArtworkFeed(request,env,ctx){
@@ -54,10 +54,10 @@ async function characterArtworkFeed(request,env,ctx){
   const plan=characterQueryPlan(raw);
   if(!plan.length)return new Response(JSON.stringify({results:[],done:true,error:'Invalid artwork query'}),{status:400,headers:{'content-type':'application/json'}});
 
+  const fetched=await Promise.all(plan.map(query=>callArtV2(request,env,ctx,query,pid)));
   const merged=[],seen=new Set(),sources={safebooru:0,zerochan:0};
   let zerochanConfigured=false,hadError=false;
-  for(const query of plan){
-    const {response,payload}=await callArtV2(request,env,ctx,query,pid);
+  for(const {query,response,payload} of fetched){
     if(!response.ok)hadError=true;
     zerochanConfigured=zerochanConfigured||payload?.zerochanConfigured===true;
     for(const row of Array.isArray(payload?.results)?payload.results:[]){
@@ -65,6 +65,7 @@ async function characterArtworkFeed(request,env,ctx){
       seen.add(key);merged.push({...row,searchVariant:query});
       const source=String(row?.source||'').toLowerCase();
       if(source.includes('zerochan'))sources.zerochan++;else sources.safebooru++;
+      if(merged.length>=120)break;
     }
     if(merged.length>=120)break;
   }
