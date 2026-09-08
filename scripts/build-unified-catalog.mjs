@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import zlib from 'node:zlib';
 
 const ROOT=process.cwd();
 const OUT=path.join(ROOT,'public','catalog');
@@ -8,6 +9,7 @@ const RESULT=path.join(ROOT,'catalog-build-result.json');
 const RAW='https://raw.githubusercontent.com/PokemonTCG/pokemon-tcg-data/master';
 const POCKET_SERIES='https://api.tcgdex.net/v2/en/series/tcgp';
 const POCKET_SET='https://api.tcgdex.net/v2/en/sets/';
+const UNION_ARENA_FULL='https://github.com/HanClinto/tcgjson/releases/latest/download/union-arena.full.json.gz';
 const CHUNK_SIZE=4000;
 
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -17,7 +19,7 @@ async function fetchJson(url,{retries=4,delay=450}={}){
   let last;
   for(let i=0;i<=retries;i++){
     try{
-      const r=await fetch(url,{headers:{Accept:'application/json','User-Agent':'Kaseys-Binder-Studio-Catalog-Builder/1.0'}});
+      const r=await fetch(url,{headers:{Accept:'application/json','User-Agent':'Kaseys-Binder-Studio-Catalog-Builder/1.1'}});
       if(r.ok)return await r.json();
       last=new Error(`${r.status} ${r.statusText} for ${url}`);
       if(!(r.status===429||r.status>=500)||i===retries)throw last;
@@ -27,15 +29,35 @@ async function fetchJson(url,{retries=4,delay=450}={}){
   throw last||new Error(`Fetch failed: ${url}`);
 }
 
+async function fetchMaybeGzipJson(url,{retries=4,delay=700}={}){
+  let last;
+  for(let i=0;i<=retries;i++){
+    try{
+      const r=await fetch(url,{headers:{Accept:'application/octet-stream,application/gzip,application/json','User-Agent':'Kaseys-Binder-Studio-Catalog-Builder/1.1'}});
+      if(!r.ok){
+        last=new Error(`${r.status} ${r.statusText} for ${url}`);
+        if(!(r.status===429||r.status>=500)||i===retries)throw last;
+      }else{
+        const bytes=Buffer.from(await r.arrayBuffer());
+        const text=bytes[0]===0x1f&&bytes[1]===0x8b?zlib.gunzipSync(bytes).toString('utf8'):bytes.toString('utf8');
+        return JSON.parse(text);
+      }
+    }catch(e){last=e;if(i===retries)throw e;}
+    await sleep(Math.min(delay*Math.pow(2,i),6000));
+  }
+  throw last||new Error(`Fetch failed: ${url}`);
+}
+
 function searchKeys(row){
-  const nameLower=norm(row.name),illustratorLower=norm(row.illustrator||row.artist||'');
+  const nameLower=norm(row.name),illustratorLower=norm(row.illustrator||row.artist||''),seriesLower=norm(row.series||'');
   const pokedexNumbers=Array.isArray(row.pokedexNumbers)?row.pokedexNumbers.filter(Number.isFinite):[];
-  return {...row,nameLower,illustratorLower,namePrefix:nameLower.slice(0,3),pokedexNumbers,pokedexKey:pokedexNumbers.join(','),searchBlob:`${nameLower} ${illustratorLower} ${norm(row.setName||'')} ${norm(row.localId||'')} ${pokedexNumbers.join(' ')}`.trim()};
+  const extras=[row.gameLabel,row.catalogLabel,row.series,row.setName,row.localId,row.rarity,row.rarityName,row.supertype,row.color,row.cardType,row.activationEnergy,row.requiredEnergy,row.generatedEnergy,row.battlePoint,row.actionPointCost].map(norm).filter(Boolean);
+  return {...row,nameLower,illustratorLower,seriesLower,namePrefix:nameLower.slice(0,3),pokedexNumbers,pokedexKey:pokedexNumbers.join(','),searchBlob:`${nameLower} ${illustratorLower} ${extras.join(' ')} ${pokedexNumbers.join(' ')}`.trim()};
 }
 
 function englishRow(c,set){
   return searchKeys({
-    id:`ptcg:${c.id}`,primaryId:c.id,sourceKey:`ptcg:${c.id}`,language:'en',catalog:'english',catalogLabel:'English TCG',source:'pokemon-tcg-raw-github',
+    id:`ptcg:${c.id}`,primaryId:c.id,sourceKey:`ptcg:${c.id}`,language:'en',game:'pokemon',gameLabel:'Pokémon TCG',catalog:'english',catalogLabel:'Pokémon TCG',source:'pokemon-tcg-raw-github',
     name:c.name||'Unknown card',originalName:c.name||'',localId:String(c.number??''),setId:set.id||c.set?.id||'',rawSetId:set.id||c.set?.id||'',setName:set.name||c.set?.name||set.id||'',series:set.series||c.set?.series||'',releaseDate:set.releaseDate||c.set?.releaseDate||'',
     illustrator:c.artist||'',artist:c.artist||'',rarity:c.rarity||'',supertype:c.supertype||'',subtypes:Array.isArray(c.subtypes)?c.subtypes:[],pokedexNumbers:Array.isArray(c.nationalPokedexNumbers)?c.nationalPokedexNumbers:[],
     imageHigh:c.images?.large||c.images?.small||'',imageLow:c.images?.small||c.images?.large||'',imageFallbacks:[c.images?.large,c.images?.small].filter(Boolean),imageSource:'Pokémon TCG data',kind:'card'
@@ -50,9 +72,25 @@ function pocketImages(base){
 function pocketRow(c,setBrief,detail){
   const imgs=pocketImages(c.image),rawSet=String(setBrief.id||'unknown'),displaySet=setBrief.name||detail?.name||rawSet;
   return searchKeys({
-    id:`pocket:${c.id}`,primaryId:c.id,tcgdexId:c.id,sourceKey:`pocket:${c.id}`,language:'en',catalog:'pocket',catalogLabel:'TCG Pocket',source:'tcgdex-pocket',
+    id:`pocket:${c.id}`,primaryId:c.id,tcgdexId:c.id,sourceKey:`pocket:${c.id}`,language:'en',game:'pokemon-pocket',gameLabel:'Pokémon TCG Pocket',catalog:'pocket',catalogLabel:'TCG Pocket',source:'tcgdex-pocket',
     name:c.name||'Unknown card',originalName:c.name||'',localId:String(c.localId??''),setId:`pocket:${rawSet}`,rawSetId:`pocket:${rawSet}`,setName:`TCG Pocket · ${displaySet}`,series:'Pokémon TCG Pocket',releaseDate:detail?.releaseDate||'',
     illustrator:c.illustrator||'',artist:c.illustrator||'',rarity:c.rarity||'',supertype:c.category||c.type||'',subtypes:[],pokedexNumbers:[],imageHigh:imgs[0]||'',imageLow:imgs[1]||imgs[0]||'',imageFallbacks:imgs,imageSource:'TCGdex Pocket',kind:'card'
+  });
+}
+
+function unionArenaRow(p,set){
+  const meta=p?.metadata||{},a=meta.customAttributes||{};
+  const imageUrls=Array.isArray(p?.imageUrls)?p.imageUrls.filter(Boolean):[];
+  const cardTypes=Array.isArray(meta.cardTypes)?meta.cardTypes:(Array.isArray(a.cardType)?a.cardType:[a.cardType].filter(Boolean));
+  const rawSetId=String(p?.setId??set?.setId??'unknown');
+  const productId=String(p?.productId??'');
+  const rarity=String(p?.rarity??'');
+  return searchKeys({
+    id:`union-arena:${productId}`,primaryId:productId,sourceKey:`union-arena:${productId}`,language:'en',game:'union-arena',gameLabel:'Union Arena',catalog:'union-arena',catalogLabel:'Union Arena',source:'tcgjson-union-arena',
+    name:p?.name||'Unknown card',originalName:p?.name||'',localId:String(p?.collectorNumber||a.number||''),setId:`union-arena:${rawSetId}`,rawSetId,tcgplayerSetId:Number(p?.setId||set?.setId||0)||null,setName:set?.name||`Union Arena set ${rawSetId}`,series:a.seriesName||set?.name||'Union Arena',releaseDate:a.releaseDate||set?.releaseDate||'',
+    illustrator:'',artist:'',rarity,rarityName:a.rarityDbName||rarity,supertype:cardTypes[0]||'',cardType:cardTypes[0]||'',subtypes:cardTypes.slice(1),pokedexNumbers:[],
+    color:a.activationEnergy||'',activationEnergy:a.activationEnergy||'',requiredEnergy:String(a.requiredEnergy??''),generatedEnergy:String(a.generatedEnergy??''),actionPointCost:String(a.actionPointCost??''),battlePoint:String(a.battlePointBp??''),trigger:a.trigger||meta.trigger||'',rulesText:meta.rulesText||a.description||'',foilings:Array.isArray(p?.foilings)?p.foilings:[],
+    tcgplayerProductId:Number(p?.productId||0)||null,imageHigh:imageUrls[0]||'',imageLow:imageUrls[0]||'',imageFallbacks:imageUrls,imageSource:'TCGplayer CDN via tcgjson',kind:'card'
   });
 }
 
@@ -63,13 +101,13 @@ async function mapLimit(items,limit,fn){
 }
 
 async function buildEnglish(){
-  console.log('Fetching English set catalog…');
+  console.log('Fetching Pokémon English set catalog…');
   const sets=await fetchJson(`${RAW}/sets/en.json`);
   if(!Array.isArray(sets)||sets.length<100)throw new Error(`English set catalog looked incomplete (${sets?.length||0})`);
   let done=0;
   const chunks=await mapLimit(sets,10,async set=>{
     const cards=await fetchJson(`${RAW}/cards/en/${encodeURIComponent(set.id)}.json`);
-    done++;if(done%20===0||done===sets.length)console.log(`English sets ${done}/${sets.length}`);
+    done++;if(done%20===0||done===sets.length)console.log(`Pokémon English sets ${done}/${sets.length}`);
     return Array.isArray(cards)?cards.map(c=>englishRow(c,set)):[];
   });
   return chunks.flat();
@@ -89,17 +127,34 @@ async function buildPocket(){
   return chunks.flat();
 }
 
+async function buildUnionArena(){
+  console.log('Fetching tcgjson Union Arena full catalog…');
+  const catalog=await fetchMaybeGzipJson(UNION_ARENA_FULL);
+  const products=Array.isArray(catalog?.products)?catalog.products:[];
+  const sets=Array.isArray(catalog?.sets)?catalog.sets:[];
+  if(products.length<6000)throw new Error(`Union Arena catalog looked incomplete (${products.length})`);
+  if(sets.length<70)throw new Error(`Union Arena set catalog looked incomplete (${sets.length})`);
+  const setMap=new Map(sets.map(s=>[String(s.setId),s]));
+  const rows=products.filter(p=>p?.productId).map(p=>unionArenaRow(p,setMap.get(String(p.setId))||null));
+  const withImages=rows.filter(x=>x.imageHigh).length;
+  if(withImages<Math.floor(rows.length*.9))throw new Error(`Union Arena image coverage too low (${withImages}/${rows.length})`);
+  console.log(`Union Arena ${rows.length.toLocaleString()} cards · ${sets.length} sets · ${withImages.toLocaleString()} images`);
+  return rows;
+}
+
 await fs.mkdir(OUT,{recursive:true});
-const [english,pocket]=await Promise.all([buildEnglish(),buildPocket()]);
+const [english,pocket,unionArena]=await Promise.all([buildEnglish(),buildPocket(),buildUnionArena()]);
 if(english.length<15000)throw new Error(`English catalog too small: ${english.length}`);
 if(pocket.length<500)throw new Error(`Pocket catalog too small: ${pocket.length}`);
+if(unionArena.length<6000)throw new Error(`Union Arena catalog too small: ${unionArena.length}`);
 
-const all=[...english,...pocket].sort((a,b)=>a.id.localeCompare(b.id));
+const all=[...english,...pocket,...unionArena].sort((a,b)=>a.id.localeCompare(b.id));
 const stable=JSON.stringify(all);
 const contentHash=crypto.createHash('sha256').update(stable).digest('hex');
 const oldManifest=await fs.readFile(path.join(OUT,'manifest.json'),'utf8').then(JSON.parse).catch(()=>null);
+const counts={pokemon:english.length,pocket:pocket.length,unionArena:unionArena.length};
 if(oldManifest?.contentHash===contentHash){
-  await fs.writeFile(RESULT,JSON.stringify({changed:false,version:oldManifest.version,cards:all.length,english:english.length,pocket:pocket.length},null,2));
+  await fs.writeFile(RESULT,JSON.stringify({changed:false,version:oldManifest.version,cards:all.length,english:english.length,pocket:pocket.length,unionArena:unionArena.length,counts},null,2));
   console.log(`Catalog unchanged (${all.length.toLocaleString()} cards)`);
   process.exit(0);
 }
@@ -109,14 +164,15 @@ const chunkFiles=[];
 for(let i=0;i<all.length;i+=CHUNK_SIZE){
   const name=`cards-${String(i/CHUNK_SIZE+1).padStart(3,'0')}.json`;
   const rows=all.slice(i,i+CHUNK_SIZE);
-  await fs.writeFile(path.join(OUT,name),JSON.stringify(rows));
-  chunkFiles.push({file:name,count:rows.length,sha256:crypto.createHash('sha256').update(JSON.stringify(rows)).digest('hex')});
+  const encoded=JSON.stringify(rows);
+  await fs.writeFile(path.join(OUT,name),encoded);
+  chunkFiles.push({file:name,count:rows.length,sha256:crypto.createHash('sha256').update(encoded).digest('hex')});
 }
 for(const entry of await fs.readdir(OUT)){
   if(/^cards-\d+\.json$/.test(entry)&&!chunkFiles.some(x=>x.file===entry))await fs.rm(path.join(OUT,entry));
 }
 const sets=new Set(all.map(x=>x.setId).filter(Boolean));
-const manifest={schema:1,version,contentHash,generatedAt:new Date().toISOString(),cards:all.length,english:english.length,pocket:pocket.length,sets:sets.size,chunkSize:CHUNK_SIZE,chunks:chunkFiles};
+const manifest={schema:2,version,contentHash,generatedAt:new Date().toISOString(),cards:all.length,english:english.length,pocket:pocket.length,unionArena:unionArena.length,counts,sets:sets.size,chunkSize:CHUNK_SIZE,chunks:chunkFiles,sources:{pokemon:'PokemonTCG/pokemon-tcg-data',pocket:'TCGdex',unionArena:'HanClinto/tcgjson + TCGplayer CDN'}};
 await fs.writeFile(path.join(OUT,'manifest.json'),JSON.stringify(manifest,null,2));
 await fs.writeFile(RESULT,JSON.stringify({changed:true,...manifest},null,2));
-console.log(`Built ${all.length.toLocaleString()} cards (${english.length.toLocaleString()} English + ${pocket.length.toLocaleString()} Pocket) in ${chunkFiles.length} chunks; version ${version}`);
+console.log(`Built ${all.length.toLocaleString()} cards (${english.length.toLocaleString()} Pokémon + ${pocket.length.toLocaleString()} Pocket + ${unionArena.length.toLocaleString()} Union Arena) in ${chunkFiles.length} chunks; version ${version}`);
