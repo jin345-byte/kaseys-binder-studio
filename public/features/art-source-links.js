@@ -1,4 +1,4 @@
-/* Binder Studio v2.9.1 — compact external artwork source shortcuts. */
+/* Binder Studio v2.9.3 — compact external artwork source shortcuts. */
 (function(){
   'use strict';
   const section=document.querySelector('#autoArtworkSection');
@@ -11,6 +11,10 @@
     if(typeof pokemonSpeciesSlug==='function')return pokemonSpeciesSlug(raw);
     return clean(raw).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[.'’]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
   }
+  function zerochanPath(raw){
+    const q=clean(raw).replace(/\s+/g,' ');
+    return q?`https://www.zerochan.net/${encodeURIComponent(q).replace(/%20/g,'+')}`:'https://www.zerochan.net/';
+  }
 
   const row=document.createElement('div');
   row.className='art-source-links';
@@ -18,7 +22,8 @@
   row.innerHTML=`<span>More art:</span>
     <button type="button" class="art-source-chip art-source-primary" id="artSourcePkm">Art of Pokémon ↗</button>
     <a class="art-source-chip" id="artSourceDeviant" href="https://www.deviantart.com/" target="_blank" rel="noopener noreferrer">DeviantArt ↗</a>
-    <a class="art-source-chip" id="artSourceSafe" href="https://safebooru.org/" target="_blank" rel="noopener noreferrer">Safebooru ↗</a>`;
+    <a class="art-source-chip" id="artSourceSafe" href="https://safebooru.org/" target="_blank" rel="noopener noreferrer">Safebooru ↗</a>
+    <a class="art-source-chip" id="artSourceZerochan" href="https://www.zerochan.net/" target="_blank" rel="noopener noreferrer">Zerochan ↗</a>`;
 
   const searchTools=section.querySelector('.art-search-tools');
   if(searchTools)searchTools.insertAdjacentElement('afterend',row);
@@ -27,6 +32,7 @@
   const pkm=row.querySelector('#artSourcePkm');
   const dev=row.querySelector('#artSourceDeviant');
   const safe=row.querySelector('#artSourceSafe');
+  const zerochan=row.querySelector('#artSourceZerochan');
 
   function refresh(){
     const raw=query();
@@ -34,6 +40,8 @@
     dev.href=`https://www.deviantart.com/search?q=${encoded}`;
     const tag=booruTag(raw)||'pokemon';
     safe.href=`https://safebooru.org/index.php?page=post&s=list&tags=${encodeURIComponent(tag)}`;
+    zerochan.href=zerochanPath(raw);
+    zerochan.title=raw?`Open ${raw} on Zerochan`:'Open Zerochan';
     pkm.title=raw?`Open ${raw} on Art of Pokémon`:'Open Art of Pokémon';
   }
 
@@ -76,5 +84,5 @@
     body.mobile-lab-enabled .art-source-chip{min-height:25px!important;height:25px;font-size:8px}
   `;
   document.head.appendChild(style);
-  globalThis.KBSArtSourceLinks={refresh,query,openArtOfPokemon};
+  globalThis.KBSArtSourceLinks={refresh,query,openArtOfPokemon,zerochanPath};
 })();
