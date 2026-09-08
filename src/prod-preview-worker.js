@@ -33,11 +33,10 @@ function characterQueryPlan(raw){
 
   const pokemonHint=/\b(?:pokemon|pokémon|gym\s*leader|trainer|champion|elite\s*four|professor)\b/i.test(original);
   const stripped=tidyQuery(original.replace(/\b(?:pokemon|pokémon|gym\s*leader|trainer|champion|elite\s*four|anime|cartoon|animated|character)\b/gi,' '));
-  if(stripped&&stripped.toLowerCase()!==original.toLowerCase())out.push(stripped);
-  if(pokemonHint&&stripped)out.push(`${stripped} (pokemon)`);
-
   const alias=POKEMON_CHARACTER_ALIASES[key]||POKEMON_CHARACTER_ALIASES[normalizedKey(stripped)];
   if(alias)out.push(alias);
+  if(pokemonHint&&stripped)out.push(`${stripped} (pokemon)`);
+  if(stripped&&stripped.toLowerCase()!==original.toLowerCase())out.push(stripped);
 
   return [...new Set(out.filter(Boolean))].slice(0,3);
 }
