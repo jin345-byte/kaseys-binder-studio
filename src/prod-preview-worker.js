@@ -1,6 +1,6 @@
 import stagingWorker from './staging-worker.js';
 
-const PREVIEW_BUILD='2.9.4-character-search-prod-db-live-auth';
+const PREVIEW_BUILD='2.9.6-name-order-prod-db-live-auth';
 
 const POKEMON_CHARACTER_ALIASES={
   'ash':'satoshi_(pokemon)','ash ketchum':'satoshi_(pokemon)',
@@ -20,13 +20,24 @@ const POKEMON_CHARACTER_ALIASES={
 
 function tidyQuery(raw){return String(raw||'').trim().replace(/\s+/g,' ').slice(0,120)}
 function normalizedKey(raw){return tidyQuery(raw).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[’']/g,'')}
+function reversedTwoPartName(raw){
+  const clean=tidyQuery(raw);
+  const parts=clean.split(' ').filter(Boolean);
+  if(parts.length!==2)return '';
+  if(!parts.every(part=>/^[\p{L}\p{N}.'’\-]+$/u.test(part)))return '';
+  if(parts.some(part=>['from','the','and','of','pokemon','pokémon','anime','manga','trainer','champion'].includes(normalizedKey(part))))return '';
+  return `${parts[1]} ${parts[0]}`;
+}
 function characterQueryPlan(raw){
   const original=tidyQuery(raw);if(!original)return [];
   const key=normalizedKey(original);
   const fromMatch=original.match(/^(.+?)\s+from\s+(.+)$/i);
   if(fromMatch){
     const character=tidyQuery(fromMatch[1]),series=tidyQuery(fromMatch[2]);
-    if(character&&series)return [original,`${character} (${series})`];
+    if(character&&series){
+      const reversed=reversedTwoPartName(character);
+      return [...new Set([original,`${character} (${series})`,reversed?`${reversed} (${series})`:''].filter(Boolean))].slice(0,2);
+    }
   }
 
   const pokemonHint=/\b(?:pokemon|pokémon|gym\s*leader|trainer|champion|elite\s*four|professor)\b/i.test(original);
@@ -38,6 +49,8 @@ function characterQueryPlan(raw){
   }
   if(alias)return [...new Set([original,alias])].slice(0,2);
   if(stripped&&stripped.toLowerCase()!==original.toLowerCase())return [original,stripped];
+  const reversed=reversedTwoPartName(original);
+  if(reversed&&normalizedKey(reversed)!==key)return [original,reversed];
   return [original];
 }
 
