@@ -1,4 +1,4 @@
-/* Kasey's Binder Studio v2.8.10 — independent artwork search + open-ended paging */
+/* Kasey's Binder Studio v2.9.3 — independent artwork search + open-ended paging */
 (function(){
   const subject=document.querySelector('#subject');
   const searchBtn=document.querySelector('#searchBtn');
@@ -34,13 +34,14 @@
   function booruTag(raw){return cleanName(raw).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[’']/g,'').replace(/[^a-z0-9♀♂._-]+/g,'_').replace(/^-+|-+$/g,'').replace(/^_+|_+$/g,'');}
   function cacheKey(raw){return booruTag(raw).replace(/-/g,'_');}
   function safeUrl(v){v=String(v||'').trim();return /^https:\/\//i.test(v)?v:'';}
+  function isZerochanHost(host){return host==='static.zerochan.net'||/^s\d+\.zerochan\.net$/i.test(host);}
   function safeFanUrl(v){
     const raw=safeUrl(v);if(!raw)return '';
     try{
       const u=new URL(raw),host=u.hostname.toLowerCase();
-      const allowed=host==='safebooru.org'||host.endsWith('.safebooru.org')||host==='donmai.us'||host.endsWith('.donmai.us');
+      const allowed=host==='safebooru.org'||host.endsWith('.safebooru.org')||host==='donmai.us'||host.endsWith('.donmai.us')||isZerochanHost(host);
       if(!allowed)return '';
-      if(!/\.(?:jpe?g|png|webp|gif)$/i.test(u.pathname))return '';
+      if(!/\.(?:jpe?g|png|webp|gif|avif)$/i.test(u.pathname))return '';
       return u.href;
     }catch{return ''}
   }
@@ -50,7 +51,7 @@
       const u=new URL(raw);
       if(u.origin===location.origin&&u.pathname==='/api/art-image')return u.href;
       const host=u.hostname.toLowerCase();
-      if(host==='cdn.donmai.us'||host==='safebooru.org'||host==='raw.githubusercontent.com'||host==='cdn.artofpkm.com')return `${location.origin}/api/art-image?url=${encodeURIComponent(u.href)}`;
+      if(host==='cdn.donmai.us'||host==='safebooru.org'||host==='raw.githubusercontent.com'||host==='cdn.artofpkm.com'||isZerochanHost(host))return `${location.origin}/api/art-image?url=${encodeURIComponent(u.href)}`;
       return u.href;
     }catch{return raw}
   }
@@ -64,7 +65,7 @@
       const sourceThumb=safeFanUrl(p.thumb||p.preview_url||p.sample_url||p.url)||sourceFile;
       if(!sourceFile)return null;
       const file=deliveredUrl(sourceFile),thumb=deliveredUrl(sourceThumb)||file;
-      return {id:'fan-'+(p.id||`${key}-${i}`),url:file,thumb,title:cleanName(raw)+' fan art',artist:p.artist||'Community artwork',source:p.source||'Community fan art',width:Number(p.width||p.image_width)||0,height:Number(p.height||p.image_height)||0,fit:fitFor(p.width||p.image_width,p.height||p.image_height),official:false};
+      return {id:'fan-'+(p.id||`${key}-${i}`),url:file,thumb,title:p.title||cleanName(raw)+' fan art',artist:p.artist||'Community artwork',source:p.source||'Community fan art',width:Number(p.width||p.image_width)||0,height:Number(p.height||p.image_height)||0,fit:fitFor(p.width||p.image_width,p.height||p.image_height),official:false,sourcePage:p.sourcePage||''};
     }).filter(Boolean);
   }
 
