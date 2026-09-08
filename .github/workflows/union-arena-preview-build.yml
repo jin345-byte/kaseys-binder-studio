@@ -1,0 +1,149 @@
+name: Union Arena Preview Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [prod-db-compat-preview]
+    paths:
+      - 'scripts/build-unified-catalog.mjs'
+      - 'public/features/prebuilt-catalog-bootstrap.js'
+      - 'public/features/catalog-lab.js'
+      - '.github/workflows/union-arena-preview-build.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: binder-studio-union-arena-preview
+  cancel-in-progress: true
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: prod-db-compat-preview
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Syntax checks
+        run: |
+          node --check scripts/build-unified-catalog.mjs
+          node --check public/features/prebuilt-catalog-bootstrap.js
+          node --check public/features/catalog-lab.js
+
+      - name: Build Pokémon + Pocket + Union Arena catalog
+        run: node scripts/build-unified-catalog.mjs
+
+      - name: Validate Union Arena catalog
+        shell: bash
+        run: |
+          node <<'JS'
+          const fs=require('fs');
+          const m=JSON.parse(fs.readFileSync('public/catalog/manifest.json','utf8'));
+          if(m.schema<2)throw new Error('Expected game-aware manifest schema 2');
+          if(Number(m.counts?.pokemon||m.english||0)<15000)throw new Error('Pokémon count too low');
+          if(Number(m.counts?.pocket||m.pocket||0)<500)throw new Error('Pocket count too low');
+          if(Number(m.counts?.unionArena||m.unionArena||0)<6000)throw new Error('Union Arena count too low');
+          let all=[];
+          for(const c of m.chunks){
+            const rows=JSON.parse(fs.readFileSync('public/catalog/'+c.file,'utf8'));
+            if(rows.length!==c.count)throw new Error('Chunk count mismatch '+c.file);
+            all.push(...rows);
+          }
+          if(all.length!==m.cards)throw new Error(`Manifest count mismatch ${all.length}/${m.cards}`);
+          const ua=all.filter(x=>x.game==='union-arena');
+          if(ua.length<6000)throw new Error('Union Arena rows missing');
+          const sample=ua.find(x=>x.name==='Abengane')||ua.find(x=>x.imageHigh&&x.series&&x.localId);
+          if(!sample)throw new Error('No usable Union Arena sample');
+          for(const k of ['id','name','series','setName','localId','rarity','imageHigh','game'])if(!sample[k])throw new Error('Union Arena sample missing '+k);
+          if(!sample.imageHigh.startsWith('https://tcgplayer-cdn.tcgplayer.com/product/'))throw new Error('Unexpected Union Arena image source: '+sample.imageHigh);
+          if(!ua.some(x=>/bleach/i.test(x.series)||/bleach/i.test(x.setName)))throw new Error('BLEACH Union Arena data not found');
+          if(!ua.some(x=>/jujutsu/i.test(x.series)||/jujutsu/i.test(x.setName)))throw new Error('Jujutsu Kaisen Union Arena data not found');
+          console.log('UNION_ARENA_CATALOG_PASS',JSON.stringify({cards:m.cards,counts:m.counts,sets:m.sets,chunks:m.chunks.length,sample:{name:sample.name,series:sample.series,number:sample.localId,rarity:sample.rarity,image:sample.imageHigh}}));
+          JS
+
+      - name: Commit generated catalog snapshot
+        shell: bash
+        run: |
+          if git diff --quiet -- public/catalog; then
+            echo 'Catalog snapshot already current.'
+          else
+            git config user.name 'Binder Studio Catalog Bot'
+            git config user.email 'actions@users.noreply.github.com'
+            git add public/catalog
+            git commit -m 'Update multi-TCG catalog with Union Arena'
+            git push origin HEAD:prod-db-compat-preview
+          fi
+
+      - name: Install deploy and browser tooling
+        run: |
+          npm install --no-save wrangler@4 playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null
+
+      - name: Deploy production-database preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy --config=wrangler.prod-preview.jsonc
+
+      - name: Verify deployed Union Arena catalog and UI
+        shell: bash
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          const BASE='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          (async()=>{
+            let manifest;
+            for(let i=0;i<18;i++){
+              const r=await fetch(BASE+'/catalog/manifest.json?ua='+Date.now(),{cache:'no-store'}).catch(()=>null);
+              manifest=r?.ok?await r.json().catch(()=>null):null;
+              if(Number(manifest?.counts?.unionArena||manifest?.unionArena||0)>=6000)break;
+              await sleep(5000);
+            }
+            if(Number(manifest?.counts?.unionArena||manifest?.unionArena||0)<6000)throw new Error('Union Arena manifest did not propagate');
+            const firstChunk=await (await fetch(BASE+'/catalog/'+manifest.chunks[0].file+'?ua='+Date.now(),{cache:'no-store'})).json();
+            let image=firstChunk.find(x=>x.game==='union-arena')?.imageHigh||'';
+            if(!image){
+              for(const entry of manifest.chunks.slice(1)){
+                const rows=await (await fetch(BASE+'/catalog/'+entry.file+'?ua='+Date.now(),{cache:'no-store'})).json();
+                image=rows.find(x=>x.game==='union-arena')?.imageHigh||'';
+                if(image)break;
+              }
+            }
+            if(!image)throw new Error('No deployed Union Arena image URL found');
+            const imgResp=await fetch(image,{headers:{Range:'bytes=0-2047'}});
+            if(!(imgResp.ok||imgResp.status===206))throw new Error('TCGplayer Union Arena image unavailable: HTTP '+imgResp.status);
+
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1440,height:1100}});
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await page.goto(BASE+'/?unionarena='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForSelector('#tcgGameFilter',{timeout:20000});
+            await page.selectOption('#tcgGameFilter','union-arena');
+            await page.fill('#subject','Abengane');
+            await page.click('#searchBtn');
+            await page.waitForFunction(()=>document.querySelectorAll('#cards .card-item.is-union-card').length>0,null,{timeout:120000});
+            const ui=await page.evaluate(()=>({
+              game:document.querySelector('#tcgGameFilter')?.value,
+              cards:document.querySelectorAll('#cards .card-item.is-union-card').length,
+              firstName:document.querySelector('#cards .card-item.is-union-card .item-copy strong')?.textContent||'',
+              badge:document.querySelector('#cards .union-source-badge')?.textContent||'',
+              image:document.querySelector('#cards .card-item.is-union-card img')?.src||'',
+              seriesOptions:document.querySelector('#tcgSeriesFilter')?.options.length||0,
+              rarityOptions:document.querySelector('#tcgRarityFilter')?.options.length||0,
+              typeOptions:document.querySelector('#tcgTypeFilter')?.options.length||0
+            }));
+            if(ui.game!=='union-arena'||ui.cards<1||!/Union Arena/.test(ui.badge))throw new Error('Union Arena UI filter/search failed: '+JSON.stringify(ui));
+            if(!ui.image.includes('tcgplayer-cdn.tcgplayer.com'))throw new Error('Union Arena UI image source mismatch: '+ui.image);
+            if(ui.seriesOptions<5||ui.rarityOptions<3||ui.typeOptions<2)throw new Error('Union Arena filters were not populated: '+JSON.stringify(ui));
+            if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
+            await browser.close();
+            console.log('UNION_ARENA_UI_PASS',JSON.stringify({manifest:{cards:manifest.cards,counts:manifest.counts},ui}));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
