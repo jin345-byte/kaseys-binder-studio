@@ -33,15 +33,15 @@ jobs:
           git diff --stat bf6f0c1ca20a1c51b2d536c8ab79bf8d7f95695e..d53e4ef8e4157b5cce89e2fade6fd7265c00d3f7 > continuity-package/metadata/MAIN_TO_PREVIEW_DIFFSTAT.txt
           git diff --name-status bf6f0c1ca20a1c51b2d536c8ab79bf8d7f95695e..d53e4ef8e4157b5cce89e2fade6fd7265c00d3f7 > continuity-package/metadata/MAIN_TO_PREVIEW_CHANGED_FILES.txt
           git ls-tree -r --name-only d53e4ef8e4157b5cce89e2fade6fd7265c00d3f7 > continuity-package/metadata/PREVIEW_FILE_INVENTORY.txt
-          cat > continuity-package/metadata/BACKUP_POINTERS.txt <<'EOF'
-Repository: jin345-byte/kaseys-binder-studio
-Live production/main SHA: bf6f0c1ca20a1c51b2d536c8ab79bf8d7f95695e
-Backup branch: backup-main-live-production-2026-09-07
-Current development preview SHA: d53e4ef8e4157b5cce89e2fade6fd7265c00d3f7
-Backup branch: backup-prod-db-compat-preview-2026-09-07
-Phase 1-3 staging SHA: fec2bebb23744616c4a2f753201fcd078081cb7e
-Backup branch: backup-staging-phase123-2026-09-07
-EOF
+          printf '%s\n' \
+            'Repository: jin345-byte/kaseys-binder-studio' \
+            'Live production/main SHA: bf6f0c1ca20a1c51b2d536c8ab79bf8d7f95695e' \
+            'Backup branch: backup-main-live-production-2026-09-07' \
+            'Current development preview SHA: d53e4ef8e4157b5cce89e2fade6fd7265c00d3f7' \
+            'Backup branch: backup-prod-db-compat-preview-2026-09-07' \
+            'Phase 1-3 staging SHA: fec2bebb23744616c4a2f753201fcd078081cb7e' \
+            'Backup branch: backup-staging-phase123-2026-09-07' \
+            > continuity-package/metadata/BACKUP_POINTERS.txt
       - name: Upload source continuity artifact
         uses: actions/upload-artifact@v4
         with:
