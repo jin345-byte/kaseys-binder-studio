@@ -45,6 +45,15 @@ jobs:
             if(Number(frieren.p?.sourceCounts?.zerochan||0)<1)throw new Error('Zerochan returned no Frieren results: '+JSON.stringify(frieren.p.sourceCounts));
             if(!Array.isArray(frieren.p.results)||frieren.p.results.length<10)throw new Error('Frieren returned too few results');
 
+            const gojoWestern=await get('/api/art-feed-v3?tag='+encodeURIComponent('Satoru Gojo')+'&pid=0');
+            const gojoJapanese=await get('/api/art-feed-v3?tag='+encodeURIComponent('Gojo Satoru')+'&pid=0');
+            const westernPlan=(gojoWestern.p.queryPlan||[]).map(x=>x.toLowerCase());
+            const japanesePlan=(gojoJapanese.p.queryPlan||[]).map(x=>x.toLowerCase());
+            if(!westernPlan.includes('satoru gojo')||!westernPlan.includes('gojo satoru'))throw new Error('Satoru Gojo reversal missing: '+JSON.stringify(gojoWestern.p.queryPlan||[]));
+            if(!japanesePlan.includes('gojo satoru')||!japanesePlan.includes('satoru gojo'))throw new Error('Gojo Satoru reversal missing: '+JSON.stringify(gojoJapanese.p.queryPlan||[]));
+            if(!Array.isArray(gojoWestern.p.results)||gojoWestern.p.results.length<5)throw new Error('Satoru Gojo returned too few results: '+(gojoWestern.p.results?.length||0));
+            if(!Array.isArray(gojoJapanese.p.results)||gojoJapanese.p.results.length<5)throw new Error('Gojo Satoru returned too few results: '+(gojoJapanese.p.results?.length||0));
+
             const cynthia=await get('/api/art-feed-v3?tag='+encodeURIComponent('Cynthia Pokémon Champion')+'&pid=0');
             if(!cynthia.r.ok||cynthia.r.headers.get('x-kbs-character-search')!=='1')throw new Error('Cynthia character search failed');
             const cplan=cynthia.p.queryPlan||[];
@@ -62,13 +71,16 @@ jobs:
             const page=await browser.newPage({viewport:{width:1440,height:1100}});
             const errors=[];page.on('pageerror',e=>errors.push(e.message));
             await page.goto(BASE+'/?charactersearch='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
-
-            // A fresh browser may install a newer static card catalog and reload once.
-            // Wait until that one-time install is complete before interacting with Artwork UI.
             await page.waitForFunction(v=>localStorage.getItem('kbsPrebuiltCatalogVersion')===v,manifest.version,{timeout:120000});
             await page.waitForTimeout(2500);
             await page.waitForSelector('#libraryArtworkTab',{timeout:30000});
             await page.click('#libraryArtworkTab');
+            await page.fill('#artSearchQuery','Satoru Gojo');
+            await page.click('#artSearchSubmit');
+            await page.waitForFunction(()=>Number(document.querySelector('#autoArtworkCount')?.textContent||0)>=5,null,{timeout:90000});
+            const gojoUi=await page.evaluate(()=>({count:Number(document.querySelector('#autoArtworkCount')?.textContent||0),cards:document.querySelectorAll('#autoArtworkResults .auto-art-card').length,status:document.querySelector('#autoArtworkStatus')?.textContent||''}));
+            if(gojoUi.count<5||gojoUi.cards<5)throw new Error('Satoru Gojo UI search returned too few results: '+JSON.stringify(gojoUi));
+
             await page.fill('#artSearchQuery','Cynthia Pokémon Champion');
             await page.click('#artSearchSubmit');
             await page.waitForFunction(()=>Number(document.querySelector('#autoArtworkCount')?.textContent||0)>=5,null,{timeout:90000});
@@ -77,6 +89,6 @@ jobs:
             if(!ui.zerochanLink.toLowerCase().includes('cynthia'))throw new Error('Zerochan source link did not follow character search');
             if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
             await browser.close();
-            console.log('CHARACTER_SEARCH_PASS',JSON.stringify({frieren:{results:frieren.p.results.length,sources:frieren.p.sourceCounts},cynthia:{results:cynthia.p.results.length,plan:cplan},ravenPlan:raven.p.queryPlan,ui,catalogVersion:manifest.version}));
+            console.log('CHARACTER_SEARCH_PASS',JSON.stringify({frieren:{results:frieren.p.results.length,sources:frieren.p.sourceCounts},gojo:{westernPlan:gojoWestern.p.queryPlan,westernResults:gojoWestern.p.results.length,japanesePlan:gojoJapanese.p.queryPlan,japaneseResults:gojoJapanese.p.results.length,ui:gojoUi},cynthia:{results:cynthia.p.results.length,plan:cplan},ravenPlan:raven.p.queryPlan,ui,catalogVersion:manifest.version}));
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
