@@ -1,7 +1,13 @@
 import productionWorker from './worker.js';
 
-const STAGING_BUILD='2.9.2-broad-art-search';
+const STAGING_BUILD='2.9.3-zerochan-art-search';
 const ART_IMAGE_HOSTS=new Set(['cdn.donmai.us','safebooru.org','raw.githubusercontent.com','cdn.artofpkm.com']);
+
+function isZerochanImageHost(hostname){
+  const host=String(hostname||'').toLowerCase();
+  return host==='static.zerochan.net'||/^s\d+\.zerochan\.net$/.test(host);
+}
+function isApprovedArtHost(hostname){return ART_IMAGE_HOSTS.has(String(hostname||'').toLowerCase())||isZerochanImageHost(hostname)}
 
 function noStoreResponse(response){
   const headers=new Headers(response.headers);
@@ -28,11 +34,12 @@ function artworkRequestHeaders(hostname){
   const headers={'accept':'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8','user-agent':'Mozilla/5.0 Kaseys-Binder-Studio/2.9'};
   if(host==='safebooru.org')headers.referer='https://safebooru.org/';
   else if(host==='cdn.donmai.us')headers.referer='https://safebooru.donmai.us/';
+  else if(isZerochanImageHost(host))headers.referer='https://www.zerochan.net/';
   return headers;
 }
 function allowedArtworkUrl(raw){
   let u;try{u=new URL(raw)}catch{return null}
-  if(u.protocol!=='https:'||!ART_IMAGE_HOSTS.has(u.hostname.toLowerCase()))return null;
+  if(u.protocol!=='https:'||!isApprovedArtHost(u.hostname))return null;
   return u;
 }
 async function fetchAllowedArtwork(start){
@@ -81,6 +88,42 @@ function normalizeSafebooruPosts(payload){
   return rows;
 }
 
+function safeZerochanImage(raw){
+  const value=String(raw||'').trim();if(!value)return '';
+  try{const u=new URL(value);return u.protocol==='https:'&&isZerochanImageHost(u.hostname)?u.href:''}catch{return ''}
+}
+function normalizeZerochanPosts(payload,raw){
+  const items=Array.isArray(payload)?payload:(Array.isArray(payload?.items)?payload.items:[]),rows=[],seen=new Set();
+  for(const item of items){
+    const id=Number(item?.id)||0;if(id<1)continue;
+    const full=safeZerochanImage(item?.full||item?.medium||item?.thumbnail||item?.small);
+    const thumb=safeZerochanImage(item?.thumbnail||item?.small||item?.medium||item?.full)||full;
+    if(!full||seen.has(full))continue;
+    seen.add(full);
+    const primary=String(item?.tag||item?.primary||raw||'Zerochan').trim();
+    rows.push({id:`zerochan-${id}`,url:full,thumb,width:Number(item?.width||0),height:Number(item?.height||0),title:`${primary} artwork`,artist:primary,source:'Zerochan artwork',sourcePage:`https://www.zerochan.net/${id}`});
+  }
+  return rows;
+}
+function zerochanTag(raw){return String(raw||'').trim().replace(/_/g,' ').replace(/\s+/g,' ').slice(0,100)}
+async function fetchZerochan(raw,pid,env){
+  const username=String(env?.ZEROCHAN_USERNAME||'').trim();
+  if(!username)return {rows:[],configured:false,error:''};
+  const tag=zerochanTag(raw);if(!tag)return {rows:[],configured:true,error:''};
+  const path=encodeURIComponent(tag).replace(/%20/g,'+');
+  const target=new URL(`https://www.zerochan.net/${path}`);
+  target.searchParams.set('json','1');
+  target.searchParams.set('p',String(pid+1));
+  target.searchParams.set('l','40');
+  target.searchParams.set('s','fav');
+  target.searchParams.set('t','0');
+  try{
+    const upstream=await fetch(target.href,{headers:{accept:'application/json','user-agent':`Kaseys Binder Studio - ${username}`},signal:AbortSignal.timeout(8000),cf:{cacheEverything:true,cacheTtl:300}});
+    if(!upstream.ok){try{await upstream.body?.cancel()}catch{}return {rows:[],configured:true,error:`HTTP ${upstream.status}`};}
+    return {rows:normalizeZerochanPosts(await upstream.json(),tag),configured:true,error:''};
+  }catch(e){return {rows:[],configured:true,error:String(e?.message||e)}}
+}
+
 function normalizeArtTag(raw){
   return String(raw||'').trim().toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[’']/g,'').replace(/\s+/g,'_');
 }
@@ -123,20 +166,25 @@ async function fetchSafebooruTag(tag,pid){
     return {rows:normalizeSafebooruPosts(await upstream.json()),error:''};
   }catch(e){return {rows:[],error:String(e?.message||e)}}
 }
-async function artworkFeed(request){
+async function artworkFeed(request,env){
   const incoming=new URL(request.url),raw=String(incoming.searchParams.get('tag')||'').trim(),pid=Math.max(0,Number.parseInt(incoming.searchParams.get('pid')||'0',10)||0);
   const tags=artworkTagPlan(raw);
   if(!tags.length||!tags.every(validArtworkQuery))return artJson({results:[],done:true,error:'Invalid artwork tag'},400);
-  const fetched=await Promise.all(tags.map(tag=>fetchSafebooruTag(tag,pid)));
-  const merged=[],seen=new Set();let hadNetworkError=false;
+  const [fetched,zerochan]=await Promise.all([Promise.all(tags.map(tag=>fetchSafebooruTag(tag,pid))),fetchZerochan(raw,pid,env)]);
+  const merged=[],seen=new Set();let hadNetworkError=false,safebooruCount=0,zerochanCount=0;
   fetched.forEach((result,index)=>{
     if(result.error)hadNetworkError=true;
     for(const row of result.rows){
       if(!row.url||seen.has(row.url))continue;
-      seen.add(row.url);merged.push({...row,matchedTag:tags[index]});
+      seen.add(row.url);merged.push({...row,matchedTag:tags[index]});safebooruCount++;
     }
   });
-  return artJson({results:merged,pid,nextPid:pid+1,done:merged.length===0&&!hadNetworkError,queryTags:tags,broad:true,error:merged.length?'':(hadNetworkError?'Artwork feed temporarily unavailable':'')},200,{'x-kbs-art-query-count':String(tags.length),'x-kbs-art-broad':'1'});
+  if(zerochan.error)hadNetworkError=true;
+  for(const row of zerochan.rows){
+    if(!row.url||seen.has(row.url))continue;
+    seen.add(row.url);merged.push(row);zerochanCount++;
+  }
+  return artJson({results:merged,pid,nextPid:pid+1,done:merged.length===0&&!hadNetworkError,queryTags:tags,broad:true,zerochanConfigured:zerochan.configured,sourceCounts:{safebooru:safebooruCount,zerochan:zerochanCount},error:merged.length?'':(hadNetworkError?'One or more artwork sources are temporarily unavailable':'')},200,{'x-kbs-art-query-count':String(tags.length),'x-kbs-art-broad':'1','x-kbs-zerochan-configured':zerochan.configured?'1':'0'});
 }
 function emptyCardSearch(upstreamStatus=''){const headers=new Headers({'content-type':'application/json; charset=utf-8','cache-control':'no-store','access-control-allow-origin':'*','x-content-type-options':'nosniff','x-kbs-card-search':'proxy'});if(upstreamStatus)headers.set('x-kbs-card-upstream-status',String(upstreamStatus));return new Response(JSON.stringify({data:[],page:1,pageSize:250,count:0,totalCount:0}),{status:200,headers})}
 async function cardSearch(request){
@@ -148,7 +196,7 @@ export default{
   async fetch(request,env,ctx){
     const url=new URL(request.url);
     if(request.method==='GET'&&url.pathname==='/api/art-image')return artworkImage(request);
-    if(request.method==='GET'&&(url.pathname==='/api/art-feed'||url.pathname==='/api/art-feed-v2'))return artworkFeed(request);
+    if(request.method==='GET'&&(url.pathname==='/api/art-feed'||url.pathname==='/api/art-feed-v2'))return artworkFeed(request,env);
     if(request.method==='GET'&&url.pathname==='/api/card-search')return cardSearch(request);
 
     const noStorePaths=new Set(['/art-search-lab.css','/style.css','/features/art-search-lab.js','/features/catalog-lab.js','/features/mobile-lab.js','/features/staging-fetch-shim.js','/features/staging-polish.js','/features/help-lab.js','/features/staging-v287.js','/features/artwork-height-sync.js','/features/prebuilt-catalog-bootstrap.js','/features/data-safety.js','/features/cloud-sync.js','/features/cloud-sync.css','/features/guided-tour-auto-library.js','/features/guided-tour-finish.js','/features/guided-tour-step16-fix.js','/features/guided-finish.css','/features/artwork-legacy-repair.js','/features/art-source-links.js','/styles/staging-polish.css','/styles/staging-v287.css','/styles/staging-v288-fix.css','/styles/appearance-cleanup.css','/styles/mobile-lab.css','/styles/v2-visual.css']);
