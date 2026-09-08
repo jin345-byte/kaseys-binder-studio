@@ -1,6 +1,6 @@
 import stagingWorker from './staging-worker.js';
 
-const PREVIEW_BUILD='2.9.4-character-search';
+const PREVIEW_BUILD='2.9.4-character-search-prod-db-live-auth';
 
 const POKEMON_CHARACTER_ALIASES={
   'ash':'satoshi_(pokemon)','ash ketchum':'satoshi_(pokemon)',
