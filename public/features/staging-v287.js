@@ -1,5 +1,13 @@
 /* Binder Studio v2.9.1 staging — vertical page rail + artwork compatibility helpers */
 (function(){
+  function loadStyle(href,id){
+    if(document.getElementById(id))return;
+    const l=document.createElement('link');
+    l.id=id;
+    l.rel='stylesheet';
+    l.href=href;
+    document.head.appendChild(l);
+  }
   function loadScript(src,id){
     if(document.getElementById(id))return;
     const s=document.createElement('script');
@@ -8,6 +16,8 @@
     s.defer=false;
     document.head.appendChild(s);
   }
+  loadStyle('styles/full-themes.css?v=3.0.0','kbsFullThemesStyle');
+  loadScript('features/full-themes.js?v=3.0.0','kbsFullThemesScript');
   loadScript('features/artwork-legacy-repair.js?v=2.9.1','kbsArtworkLegacyRepairScript');
   loadScript('features/art-source-links.js?v=2.9.1','kbsArtSourceLinksScript');
 
