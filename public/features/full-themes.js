@@ -25,6 +25,7 @@
     ensureStylesheet('kbsThemePickerFitStyle','styles/theme-picker-fit.css?v=3.0.2');
     ensureStylesheet('kbsThemeBrandingStyle','styles/theme-branding.css?v=3.0.4');
     ensureStylesheet('kbsThemeUnifiedFontStyle','styles/theme-font-unified.css?v=3.0.4');
+    ensureStylesheet('kbsThemeLayoutLockStyle','styles/theme-layout-lock.css?v=3.0.5');
   }
   function readStored(){
     try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')||{}}catch{return {}}
@@ -87,7 +88,7 @@
     if(!appearance||document.querySelector('#fullThemeSelect'))return;
     const control=document.createElement('label');
     control.className='full-theme-control';
-    control.title='Theme changes the app, panels, buttons, binder material, page texture, sleeve styling and accents.';
+    control.title='Theme changes colors, materials, textures and accents while keeping the same app layout and control sizing.';
     control.innerHTML=`
       <span class="full-theme-copy">
         <strong>Theme</strong>
