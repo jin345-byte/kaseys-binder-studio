@@ -15,6 +15,14 @@
     'retro-card-shop':{label:'Retro Card Shop',description:'Warm wood, paper labels and hobby-store nostalgia',tier:'premium',meta:'#f0d6a7',palette:['#7b5138','#d4bb8f','#a77855']}
   };
 
+  function ensureFitStyles(){
+    if(document.querySelector('#kbsThemePickerFitStyle'))return;
+    const link=document.createElement('link');
+    link.id='kbsThemePickerFitStyle';
+    link.rel='stylesheet';
+    link.href='styles/theme-picker-fit.css?v=3.0.2';
+    document.head.appendChild(link);
+  }
   function readStored(){
     try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')||{}}catch{return {}}
   }
@@ -71,24 +79,29 @@
   }
 
   function installPicker(){
+    ensureFitStyles();
     const appearance=document.querySelector('.appearance-module');
     if(!appearance||document.querySelector('#fullThemeSelect'))return;
     const control=document.createElement('label');
     control.className='full-theme-control';
+    control.title='Theme changes the app, panels, buttons, binder material, page texture, sleeve styling, accents and fonts.';
     control.innerHTML=`
       <span class="full-theme-copy">
         <strong>Theme</strong>
         <small id="fullThemeDescription">Complete app + binder style</small>
       </span>
-      <select id="fullThemeSelect" aria-label="Full binder theme"></select>
+      <select id="fullThemeSelect" aria-label="Full binder theme" title="Choose a full app and binder theme"></select>
       <span class="full-theme-palette" id="fullThemePalette" aria-hidden="true"></span>`;
     appearance.prepend(control);
     const select=control.querySelector('#fullThemeSelect');
     for(const [id,t] of Object.entries(THEMES)){
       const option=document.createElement('option');
-      option.value=id;option.textContent=t.label+(t.tier==='premium'?' · Theme Pack':'');
+      option.value=id;
+      option.textContent=t.label;
+      option.dataset.tier=t.tier;
       select.appendChild(option);
     }
+    select.dataset.fitReady='1';
     select.addEventListener('change',()=>applyFullTheme(select.value,{persist:true,applyPalette:true}));
 
     const stored=readStored();
@@ -104,6 +117,7 @@
     get current(){return document.body.dataset.theme||'jolteon';}
   };
 
+  ensureFitStyles();
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installPicker,{once:true});
   else installPicker();
 })();
