@@ -1,5 +1,8 @@
-/* Kasey's Binder Studio v3.2.0 — physical binder preview mode. */
-.physical-binder-viewer .viewer-shell{max-width:min(1400px,96vw);overflow:hidden}
+/* Kasey's Binder Studio v3.2.1 — physical binder preview mode. */
+body.physical-preview-open{overflow:hidden}
+.physical-binder-viewer{z-index:1400!important;isolation:isolate}
+.physical-binder-viewer.open{display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important}
+.physical-binder-viewer .viewer-shell{max-width:min(1400px,96vw);overflow:hidden;position:relative;z-index:1}
 .physical-binder-viewer .viewer-page{min-height:560px;display:grid;place-items:center;padding:18px 10px 26px;background:radial-gradient(circle at 50% 20%,rgba(255,255,255,.045),transparent 45%),linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.22));perspective:1800px}
 .physical-preview-options{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:8px 12px;margin:0 0 8px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(0,0,0,.16);font-size:12px}
 .physical-preview-options label{display:inline-flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap}
