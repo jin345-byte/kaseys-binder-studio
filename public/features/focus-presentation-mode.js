@@ -1,4 +1,4 @@
-/* Kasey's Binder Studio v3.3.0 — clean focus / presentation mode. */
+/* Kasey's Binder Studio v3.3.2 — clean two-page focus / presentation mode. */
 (function(){
   let installed=false;
   let open=false;
@@ -29,18 +29,18 @@
     overlay.setAttribute('aria-hidden','true');
     overlay.innerHTML=`<div class="focus-presentation-stage" id="focusPresentationStage" role="region" aria-label="Binder presentation preview"></div>
       <button type="button" class="focus-presentation-exit" id="focusPresentationExit" aria-label="Exit binder preview" title="Exit preview (Esc)">×</button>
-      <div class="focus-presentation-hint" id="focusPresentationHint" aria-hidden="true">← → change pages · Esc exits</div>`;
+      <div class="focus-presentation-hint" id="focusPresentationHint" aria-hidden="true">← → change spreads · Esc exits</div>`;
     document.body.appendChild(overlay);
     overlay.querySelector('#focusPresentationExit').onclick=exit;
     overlay.addEventListener('click',e=>{
       if(e.target.closest('#focusPresentationExit'))return;
       const x=e.clientX/window.innerWidth;
-      if(x<.24)changePage(-1);else if(x>.76)changePage(1);
+      if(x<.20)changeSpread(-1);else if(x>.80)changeSpread(1);
     });
     overlay.addEventListener('touchstart',e=>{touchStartX=e.changedTouches?.[0]?.clientX||0},{passive:true});
     overlay.addEventListener('touchend',e=>{
       const end=e.changedTouches?.[0]?.clientX||0,d=end-touchStartX;
-      if(Math.abs(d)>55)changePage(d<0?1:-1);
+      if(Math.abs(d)>55)changeSpread(d<0?1:-1);
     },{passive:true});
   }
 
@@ -58,26 +58,39 @@
     return wrap.innerHTML;
   }
 
+  function pageMarkup(page,index){
+    const markup=typeof fullViewerMarkup==='function'?fullViewerMarkup(page):document.querySelector('#grid')?.outerHTML||'';
+    return `<div class="focus-page-shell" data-focus-page="${esc(page.id)}" data-focus-page-number="${index+1}">${cleanViewerMarkup(markup)}</div>`;
+  }
+
   function render(){
     const stage=document.querySelector('#focusPresentationStage');
     if(!stage)return;
-    const page=previewPages[previewIndex];
-    if(!page){
+    if(!previewPages.length){
       const live=document.querySelector('#grid');
-      stage.innerHTML=live?`<div class="focus-page-shell">${cleanViewerMarkup(live.outerHTML)}</div>`:'<div class="focus-preview-empty">No binder page to preview.</div>';
+      stage.innerHTML=live?`<div class="focus-spread focus-spread-single"><div class="focus-page-shell">${cleanViewerMarkup(live.outerHTML)}</div></div>`:'<div class="focus-preview-empty">No binder page to preview.</div>';
+      stage.dataset.spreadStart='0';
+      stage.dataset.pageCount='0';
       return;
     }
-    const markup=typeof fullViewerMarkup==='function'?fullViewerMarkup(page):document.querySelector('#grid')?.outerHTML||'';
-    stage.innerHTML=`<div class="focus-page-shell" data-focus-page="${esc(page.id)}">${cleanViewerMarkup(markup)}</div>`;
+    const start=Math.floor(previewIndex/2)*2;
+    const left=previewPages[start];
+    const right=previewPages[start+1];
+    const pages=[left,right].filter(Boolean);
+    stage.innerHTML=`<div class="focus-spread${pages.length===1?' focus-spread-single':''}">${pages.map((page,i)=>pageMarkup(page,start+i)).join('')}</div>`;
+    stage.dataset.spreadStart=String(start);
     stage.dataset.pageIndex=String(previewIndex);
     stage.dataset.pageCount=String(previewPages.length);
+    stage.dataset.visiblePages=String(pages.length);
   }
 
-  function changePage(delta){
+  function changeSpread(delta){
     if(!open||previewPages.length<2)return;
-    const next=Math.max(0,Math.min(previewPages.length-1,previewIndex+delta));
-    if(next===previewIndex)return;
-    previewIndex=next;
+    const start=Math.floor(previewIndex/2)*2;
+    const maxStart=Math.floor((previewPages.length-1)/2)*2;
+    const nextStart=Math.max(0,Math.min(maxStart,start+(delta*2)));
+    if(nextStart===start)return;
+    previewIndex=nextStart;
     const stage=document.querySelector('#focusPresentationStage');
     if(stage&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
       stage.classList.remove('focus-page-changing');void stage.offsetWidth;stage.classList.add('focus-page-changing');
@@ -89,7 +102,8 @@
   async function enter(){
     ensureOverlay();
     previewPages=await loadPages();
-    previewIndex=Math.max(0,previewPages.findIndex(p=>p.id===activePageId));
+    const found=previewPages.findIndex(p=>p.id===activePageId);
+    previewIndex=found>=0?found:0;
     const overlay=document.querySelector('#focusPresentation');
     open=true;
     document.body.classList.add('focus-presentation-mode');
@@ -97,7 +111,7 @@
     overlay.setAttribute('aria-hidden','false');
     render();
     const hint=document.querySelector('#focusPresentationHint');
-    if(hint&&previewPages.length>1){hint.classList.add('show');setTimeout(()=>hint.classList.remove('show'),2200)}
+    if(hint&&previewPages.length>2){hint.classList.add('show');setTimeout(()=>hint.classList.remove('show'),2200)}
   }
 
   function exit(){
@@ -112,8 +126,8 @@
   function onKey(e){
     if(!open)return;
     if(e.key==='Escape'){e.preventDefault();exit()}
-    else if(e.key==='ArrowRight'||e.key==='PageDown'){e.preventDefault();changePage(1)}
-    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();changePage(-1)}
+    else if(e.key==='ArrowRight'||e.key==='PageDown'){e.preventDefault();changeSpread(1)}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();changeSpread(-1)}
   }
 
   function install(){
@@ -121,7 +135,7 @@
     ensureButton();ensureOverlay();
     document.addEventListener('keydown',onKey);
     new MutationObserver(ensureButton).observe(document.body,{childList:true,subtree:true});
-    globalThis.KBSFocusPresentation={open:enter,close:exit,next:()=>changePage(1),previous:()=>changePage(-1),isOpen:()=>open};
+    globalThis.KBSFocusPresentation={open:enter,close:exit,next:()=>changeSpread(1),previous:()=>changeSpread(-1),isOpen:()=>open};
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
