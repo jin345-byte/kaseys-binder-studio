@@ -1,136 +1,18 @@
-/* Kasey's Binder Studio v3.0.3 — theme-aware top-left brand treatment. */
-
-body[data-theme]{
-  --theme-logo-mark:"⚡";
-  --theme-logo-fg:#111820;
-  --theme-logo-bg-a:var(--accent);
-  --theme-logo-bg-b:var(--accent2);
-  --theme-logo-ring:color-mix(in srgb,var(--accent2) 58%,transparent);
-  --theme-logo-glow:color-mix(in srgb,var(--accent) 34%,transparent);
-  --theme-brand-a:var(--text);
-  --theme-brand-b:var(--accent2);
-}
-
-body[data-theme] .brand-modern{
-  display:flex!important;
-  align-items:center!important;
-  gap:10px!important;
-}
+/* Kasey's Binder Studio v3.0.4 — fixed glass brand across all themes. */
+body[data-theme] .brand-modern{display:flex!important;align-items:center!important;gap:10px!important}
 body[data-theme] .brand-modern .k-logo{
-  position:relative!important;
-  display:grid!important;
-  place-items:center!important;
-  flex:0 0 auto!important;
-  width:42px!important;
-  height:42px!important;
-  border:1px solid var(--theme-logo-ring)!important;
-  border-radius:13px!important;
-  overflow:hidden!important;
-  color:var(--theme-logo-fg)!important;
-  background:
-    radial-gradient(circle at 28% 22%,rgba(255,255,255,.38),transparent 30%),
-    linear-gradient(145deg,var(--theme-logo-bg-a),var(--theme-logo-bg-b))!important;
-  box-shadow:
-    0 0 0 3px color-mix(in srgb,var(--theme-logo-ring) 38%,transparent),
-    0 8px 22px var(--theme-logo-glow),
-    inset 0 1px rgba(255,255,255,.25)!important;
-  transform:translateZ(0);
-  transition:background .28s ease,border-color .28s ease,box-shadow .28s ease,border-radius .28s ease,transform .28s ease!important;
+  position:relative!important;display:grid!important;place-items:center!important;flex:0 0 auto!important;
+  width:42px!important;height:42px!important;border:1px solid rgba(218,239,255,.45)!important;
+  border-radius:13px!important;overflow:hidden!important;color:#f4fbff!important;
+  background:linear-gradient(145deg,rgba(255,255,255,.10),rgba(145,205,255,.035))!important;
+  box-shadow:0 0 0 2px rgba(178,224,255,.08),0 0 20px rgba(132,205,255,.30),0 8px 24px rgba(0,0,0,.22),inset 0 1px rgba(255,255,255,.18)!important;
+  backdrop-filter:blur(9px) saturate(1.08)!important;-webkit-backdrop-filter:blur(9px) saturate(1.08)!important;
+  transform:none!important;filter:none!important;transition:box-shadow .2s ease,border-color .2s ease,background .2s ease!important;
 }
-body[data-theme] .brand-modern .k-logo::after{
-  content:"";
-  position:absolute;
-  inset:4px;
-  border:1px solid rgba(255,255,255,.18);
-  border-radius:inherit;
-  pointer-events:none;
-}
-body[data-theme] .brand-modern .k-logo span{
-  display:grid!important;
-  place-items:center!important;
-  width:100%!important;
-  height:100%!important;
-  font-size:0!important;
-  line-height:1!important;
-  color:inherit!important;
-}
-body[data-theme] .brand-modern .k-logo span::before{
-  content:var(--theme-logo-mark);
-  font-family:var(--theme-font,inherit)!important;
-  font-size:21px!important;
-  line-height:1!important;
-  font-weight:950!important;
-  color:inherit!important;
-  text-shadow:0 1px rgba(255,255,255,.16);
-}
-body[data-theme] .brand-modern .brand-copy h1{
-  color:var(--theme-brand-a)!important;
-  background:linear-gradient(90deg,var(--theme-brand-a),var(--theme-brand-b));
-  -webkit-background-clip:text;
-  background-clip:text;
-  -webkit-text-fill-color:transparent;
-  transition:filter .28s ease,color .28s ease!important;
-}
-body.theme-switching .brand-modern .k-logo{animation:kbsBrandThemePop .38s cubic-bezier(.2,.8,.25,1)}
-@keyframes kbsBrandThemePop{0%{transform:scale(.88) rotate(-5deg);filter:saturate(.72)}70%{transform:scale(1.06) rotate(2deg)}100%{transform:none;filter:none}}
-
-body[data-theme="jolteon"]{
-  --theme-logo-mark:"⚡";--theme-logo-fg:#111820;--theme-logo-bg-a:#f5d52f;--theme-logo-bg-b:#63d4e5;
-  --theme-logo-ring:#f5d52f99;--theme-logo-glow:#f5d52f55;--theme-brand-a:#fffbe6;--theme-brand-b:#63d4e5;
-}
-body[data-theme="pokedex"]{
-  --theme-logo-mark:"◉";--theme-logo-fg:#fff8eb;--theme-logo-bg-a:#ff3b3f;--theme-logo-bg-b:#871b27;
-  --theme-logo-ring:#8ee7ffbb;--theme-logo-glow:#8ee7ff55;--theme-brand-a:#fff8eb;--theme-brand-b:#8ee7ff;
-}
-body[data-theme="pokedex"] .brand-modern .k-logo{border-radius:50%!important}
-body[data-theme="game-boy"]{
-  --theme-logo-mark:"▦";--theme-logo-fg:#202617;--theme-logo-bg-a:#d8e59d;--theme-logo-bg-b:#7d934e;
-  --theme-logo-ring:#d8e59d77;--theme-logo-glow:#a7c95744;--theme-brand-a:#d8e59d;--theme-brand-b:#a7c957;
-}
-body[data-theme="game-boy"] .brand-modern .k-logo{border-radius:5px!important;box-shadow:4px 4px 0 #0f130c99!important}
-body[data-theme="neo-genesis"]{
-  --theme-logo-mark:"✦";--theme-logo-fg:#251d38;--theme-logo-bg-a:#f3c75f;--theme-logo-bg-b:#8fd6c8;
-  --theme-logo-ring:#b6a5ff99;--theme-logo-glow:#b6a5ff55;--theme-brand-a:#fff8e8;--theme-brand-b:#8fd6c8;
-}
-body[data-theme="neo-genesis"] .brand-modern .k-logo{border-radius:50% 38% 50% 38%!important}
-body[data-theme="team-rocket"]{
-  --theme-logo-mark:"R";--theme-logo-fg:#ffffff;--theme-logo-bg-a:#e51937;--theme-logo-bg-b:#17191f;
-  --theme-logo-ring:#e51937aa;--theme-logo-glow:#e5193755;--theme-brand-a:#ffffff;--theme-brand-b:#e51937;
-}
-body[data-theme="team-rocket"] .brand-modern .k-logo{border-radius:7px!important;transform:skew(-5deg)}
-body[data-theme="team-rocket"].theme-switching .brand-modern .k-logo{animation:kbsBrandThemePop .38s cubic-bezier(.2,.8,.25,1)}
-body[data-theme="lavender"]{
-  --theme-logo-mark:"✧";--theme-logo-fg:#24182f;--theme-logo-bg-a:#d3b7ff;--theme-logo-bg-b:#8e72bd;
-  --theme-logo-ring:#d3b7ff88;--theme-logo-glow:#b792e655;--theme-brand-a:#fbf7ff;--theme-brand-b:#d3b7ff;
-}
-body[data-theme="cyberpunk"]{
-  --theme-logo-mark:"◇";--theme-logo-fg:#071016;--theme-logo-bg-a:#39f5e3;--theme-logo-bg-b:#ff3bd4;
-  --theme-logo-ring:#39f5e3cc;--theme-logo-glow:#ff3bd466;--theme-brand-a:#ecffff;--theme-brand-b:#39f5e3;
-}
-body[data-theme="cyberpunk"] .brand-modern .k-logo{border-radius:3px 14px 3px 14px!important;box-shadow:0 0 0 2px #39f5e355,0 0 22px #ff3bd477!important}
-body[data-theme="cozy-sakura"]{
-  --theme-logo-mark:"✿";--theme-logo-fg:#5e3440;--theme-logo-bg-a:#ffe3e8;--theme-logo-bg-b:#d39aa8;
-  --theme-logo-ring:#bf7b8b88;--theme-logo-glow:#bf7b8b44;--theme-brand-a:#56343e;--theme-brand-b:#a65f72;
-}
-body[data-theme="cozy-sakura"] .brand-modern .k-logo{border-radius:50%!important}
-body[data-theme="dark-academia"]{
-  --theme-logo-mark:"◆";--theme-logo-fg:#f1ddbd;--theme-logo-bg-a:#5b3e2c;--theme-logo-bg-b:#241912;
-  --theme-logo-ring:#b08b65aa;--theme-logo-glow:#00000055;--theme-brand-a:#f1ddbd;--theme-brand-b:#b08b65;
-}
-body[data-theme="dark-academia"] .brand-modern .k-logo{border-radius:4px!important;box-shadow:inset 0 0 0 2px #21140c,0 7px 18px #0007!important}
-body[data-theme="e-ink"]{
-  --theme-logo-mark:"K";--theme-logo-fg:#f2f0e9;--theme-logo-bg-a:#494741;--theme-logo-bg-b:#77736b;
-  --theme-logo-ring:#68655e88;--theme-logo-glow:transparent;--theme-brand-a:#25231f;--theme-brand-b:#68655e;
-}
-body[data-theme="e-ink"] .brand-modern .k-logo{border-radius:2px!important;box-shadow:none!important;filter:grayscale(1)}
-body[data-theme="retro-card-shop"]{
-  --theme-logo-mark:"★";--theme-logo-fg:#fff2d1;--theme-logo-bg-a:#9b5f37;--theme-logo-bg-b:#4e2f22;
-  --theme-logo-ring:#d5a36faa;--theme-logo-glow:#7b513855;--theme-brand-a:#4f3021;--theme-brand-b:#9b5f37;
-}
-body[data-theme="retro-card-shop"] .brand-modern .k-logo{border-radius:8px!important;box-shadow:inset 0 0 0 2px #f1d09b44,3px 4px 0 #4b2d2099!important}
-
-@media(max-width:700px){
-  body[data-theme] .brand-modern .k-logo{width:38px!important;height:38px!important;border-radius:11px!important}
-  body[data-theme] .brand-modern .k-logo span::before{font-size:19px!important}
-}
-@media(prefers-reduced-motion:reduce){body.theme-switching .brand-modern .k-logo{animation:none!important}}
+body[data-theme] .brand-modern .k-logo::after{content:"";position:absolute;inset:4px;border:1px solid rgba(255,255,255,.10);border-radius:9px;pointer-events:none}
+body[data-theme] .brand-modern .k-logo span{display:grid!important;place-items:center!important;width:100%!important;height:100%!important;font-size:21px!important;line-height:1!important;font-weight:900!important;color:#f4fbff!important;text-shadow:0 0 8px rgba(178,224,255,.55),0 1px 2px rgba(0,0,0,.4)!important}
+body[data-theme] .brand-modern .k-logo span::before,body[data-theme] .brand-modern .k-logo span::after{content:none!important}
+body[data-theme] .brand-modern .brand-copy h1{color:#eef8ff!important;background:none!important;-webkit-background-clip:initial!important;background-clip:initial!important;-webkit-text-fill-color:#eef8ff!important;text-shadow:0 0 16px rgba(127,198,255,.20),0 1px 2px rgba(0,0,0,.42)!important;filter:none!important;text-transform:none!important;letter-spacing:normal!important}
+body[data-theme] .k-logo{border-radius:13px!important;transform:none!important;filter:none!important;background:linear-gradient(145deg,rgba(255,255,255,.10),rgba(145,205,255,.035))!important;border-color:rgba(218,239,255,.45)!important;box-shadow:0 0 0 2px rgba(178,224,255,.08),0 0 20px rgba(132,205,255,.30),0 8px 24px rgba(0,0,0,.22),inset 0 1px rgba(255,255,255,.18)!important}
+body.theme-switching .brand-modern .k-logo{animation:none!important}
+@media(max-width:700px){body[data-theme] .brand-modern .k-logo{width:38px!important;height:38px!important;border-radius:11px!important}body[data-theme] .brand-modern .k-logo span{font-size:19px!important}}
