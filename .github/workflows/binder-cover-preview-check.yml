@@ -28,10 +28,11 @@ jobs:
       - name: Static cover checks
         run: |
           node --check public/features/binder-cover-designer.js
-          grep -q 'binder-cover-designer.css?v=3.1.0' public/features/staging-v287.js
-          grep -q 'binder-cover-designer.js?v=3.1.0' public/features/staging-v287.js
+          grep -q 'binder-cover-designer.css?v=3.1.1' public/features/staging-v287.js
+          grep -q 'binder-cover-designer.js?v=3.1.1' public/features/staging-v287.js
           grep -q 'KBSBinderCovers' public/features/binder-cover-designer.js
           grep -q 'binder-shelf' public/styles/binder-cover-designer.css
+          grep -q 'MutationObserver' public/features/binder-cover-designer.js
       - name: Install browser tooling
         run: |
           npm install --no-save playwright@1.55.0 >/dev/null 2>&1
@@ -46,13 +47,16 @@ jobs:
           (async()=>{
             let live=false;
             for(let i=0;i<30;i++){
-              const r=await fetch(BASE+'/features/binder-cover-designer.js?qa='+Date.now(),{cache:'no-store'}).catch(()=>null);
+              const [r,l]=await Promise.all([
+                fetch(BASE+'/features/binder-cover-designer.js?qa='+Date.now(),{cache:'no-store'}).catch(()=>null),
+                fetch(BASE+'/features/staging-v287.js?qa='+Date.now(),{cache:'no-store'}).catch(()=>null)
+              ]);
               const t=r?.ok?await r.text().catch(()=>''):'';
-              if(t.includes('KBSBinderCovers')&&t.includes('Cover image optimized')){live=true;break;}
+              const lt=l?.ok?await l.text().catch(()=>''):'';
+              if(t.includes('KBSBinderCovers')&&t.includes('MutationObserver')&&lt.includes('binder-cover-designer.js?v=3.1.1')){live=true;break;}
               await sleep(6000);
             }
-            if(!live)throw new Error('Binder cover assets did not propagate');
-
+            if(!live)throw new Error('Binder cover v3.1.1 assets did not propagate');
             const browser=await chromium.launch({headless:true});
             const page=await browser.newPage({viewport:{width:1440,height:1100}});
             const errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -60,7 +64,7 @@ jobs:
             await page.waitForSelector('#openBinders',{timeout:30000});
             await page.click('#openBinders');
             await page.waitForSelector('#designBinderCover',{timeout:30000});
-            await page.waitForSelector('.binder-cover-card',{timeout:30000});
+            await page.waitForFunction(()=>document.querySelectorAll('.binder-cover-card').length>0,{timeout:30000});
             await page.click('#designBinderCover');
             await page.waitForSelector('#binderCoverDesigner.open',{timeout:10000});
             await page.fill('#binderCoverTitle','Eeveelution Art Binder');
@@ -71,18 +75,15 @@ jobs:
             await page.$eval('#binderCoverColor',el=>{el.value='#7a4967';el.dispatchEvent(new Event('input',{bubbles:true}))});
             await page.click('#binderCoverSave');
             await page.waitForFunction(()=>!document.querySelector('#binderCoverDesigner')?.classList.contains('open'));
-            await page.waitForFunction(()=>document.querySelector('.binder-cover-card strong')?.textContent?.includes('Eeveelution Art Binder'));
-            const saved=await page.evaluate(async()=>{
-              const b=await dbGet('binders',activeBinderId);
-              return {name:b?.name,cover:b?.cover,shelf:document.querySelector('#binderList')?.classList.contains('binder-shelf'),cards:document.querySelectorAll('.binder-cover-card').length};
-            });
+            await page.waitForFunction(()=>document.querySelector('.binder-cover-card .binder-cover-footer strong')?.textContent?.includes('Eeveelution Art Binder'));
+            const saved=await page.evaluate(async()=>{const b=await dbGet('binders',activeBinderId);return{name:b?.name,cover:b?.cover,shelf:document.querySelector('#binderList')?.classList.contains('binder-shelf'),cards:document.querySelectorAll('.binder-cover-card').length}});
             if(saved.name!=='Eeveelution Art Binder')throw new Error('Binder title was not saved');
             if(saved.cover?.subtitle!=='Illustration rares + matching artwork'||saved.cover?.spineText!=='EEVEELUTIONS'||saved.cover?.character!=='Sylveon'||saved.cover?.icon!=='♥'||saved.cover?.color!=='#7a4967')throw new Error('Cover metadata mismatch '+JSON.stringify(saved));
             if(!saved.shelf||saved.cards<1)throw new Error('Binder shelf did not render');
             await page.reload({waitUntil:'domcontentloaded',timeout:60000});
             await page.click('#openBinders');
-            await page.waitForSelector('.binder-cover-card',{timeout:30000});
-            const persisted=await page.$eval('.binder-cover-card strong',el=>el.textContent);
+            await page.waitForFunction(()=>document.querySelectorAll('.binder-cover-card').length>0,{timeout:30000});
+            const persisted=await page.$eval('.binder-cover-card .binder-cover-footer strong',el=>el.textContent);
             if(!persisted.includes('Eeveelution Art Binder'))throw new Error('Cover did not persist after reload');
             if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
             await browser.close();
