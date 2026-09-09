@@ -6,6 +6,7 @@ on:
     paths:
       - 'public/styles/theme-picker-fit.css'
       - 'public/features/theme-picker-fit.js'
+      - 'public/features/full-themes.js'
       - 'public/features/staging-v287.js'
       - '.github/workflows/theme-picker-fit-check.yml'
   workflow_dispatch:
@@ -23,6 +24,7 @@ jobs:
           node-version: 22
       - name: Static checks
         run: |
+          node --check public/features/full-themes.js
           node --check public/features/theme-picker-fit.js
           node --check public/features/staging-v287.js
           grep -q 'container-type:inline-size' public/styles/theme-picker-fit.css
@@ -41,12 +43,12 @@ jobs:
           (async()=>{
             let live=false;
             for(let i=0;i<30;i++){
-              const r=await fetch(BASE+'/styles/theme-picker-fit.css?qa='+Date.now(),{cache:'no-store'}).catch(()=>null);
+              const r=await fetch(BASE+'/features/full-themes.js?qa='+Date.now(),{cache:'no-store'}).catch(()=>null);
               const t=r?.ok?await r.text().catch(()=>''):'';
-              if(t.includes('container-type:inline-size')&&t.includes('@container (max-width:180px)')){live=true;break;}
+              if(t.includes("theme-picker-fit.css?v=3.0.2")&&t.includes("option.textContent=t.label")){live=true;break;}
               await sleep(6000);
             }
-            if(!live)throw new Error('Theme picker fit CSS did not propagate');
+            if(!live)throw new Error('Compact full-themes asset did not propagate');
 
             const browser=await chromium.launch({headless:true});
             const page=await browser.newPage({viewport:{width:1440,height:1000}});
@@ -54,6 +56,7 @@ jobs:
             await page.goto(BASE+'/?themefitqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
             await page.waitForSelector('#fullThemeSelect',{timeout:30000});
             await page.waitForFunction(()=>document.querySelector('#fullThemeSelect')?.dataset.fitReady==='1',{timeout:10000});
+            await page.waitForFunction(()=>document.querySelector('#kbsThemePickerFitStyle'),{timeout:10000});
 
             const result=await page.evaluate(()=>{
               const appearance=document.querySelector('.appearance-module');
