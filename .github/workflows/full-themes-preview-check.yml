@@ -1,0 +1,99 @@
+name: Full Themes Preview Check
+
+on:
+  push:
+    branches: [prod-db-compat-preview]
+    paths:
+      - 'public/styles/full-themes.css'
+      - 'public/features/full-themes.js'
+      - 'public/features/staging-v287.js'
+      - '.github/workflows/full-themes-preview-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: binder-studio-full-themes-preview
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Static theme checks
+        run: |
+          node --check public/features/full-themes.js
+          node --check public/features/staging-v287.js
+          grep -q 'body\[data-theme="pokedex"\]' public/styles/full-themes.css
+          grep -q 'body\[data-theme="game-boy"\]' public/styles/full-themes.css
+          grep -q 'body\[data-theme="neo-genesis"\]' public/styles/full-themes.css
+          grep -q 'body\[data-theme="team-rocket"\]' public/styles/full-themes.css
+          grep -q 'body\[data-theme="lavender"\]' public/styles/full-themes.css
+          grep -q 'body\[data-theme="cyberpunk"\]' public/styles/full-themes.css
+          grep -q 'body\[data-theme="cozy-sakura"\]' public/styles/full-themes.css
+          grep -q 'body\[data-theme="dark-academia"\]' public/styles/full-themes.css
+          grep -q 'body\[data-theme="e-ink"\]' public/styles/full-themes.css
+          grep -q 'body\[data-theme="retro-card-shop"\]' public/styles/full-themes.css
+      - name: Install browser tooling
+        run: |
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null
+      - name: Verify deployed theme picker, visuals and persistence
+        shell: bash
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          const BASE='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          const expected=['jolteon','pokedex','game-boy','neo-genesis','team-rocket','lavender','cyberpunk','cozy-sakura','dark-academia','e-ink','retro-card-shop'];
+          (async()=>{
+            let live=false;
+            for(let i=0;i<30;i++){
+              const r=await fetch(BASE+'/features/full-themes.js?qa='+Date.now(),{cache:'no-store'}).catch(()=>null);
+              const text=r?.ok?await r.text().catch(()=>''):'';
+              if(text.includes('KBSFullThemes')&&text.includes("'retro-card-shop'")){live=true;break;}
+              await sleep(6000);
+            }
+            if(!live)throw new Error('Full theme assets did not propagate to preview');
+
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1440,height:1100}});
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await page.goto(BASE+'/?themesqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForSelector('#fullThemeSelect',{timeout:30000});
+            const base=await page.evaluate(()=>({
+              options:[...document.querySelector('#fullThemeSelect').options].map(o=>o.value),
+              colors:['#binderColor','#pageColor','#sleeveColor'].filter(s=>document.querySelector(s)).length,
+              themeApi:typeof window.KBSFullThemes==='object'
+            }));
+            if(JSON.stringify(base.options)!==JSON.stringify(expected))throw new Error('Theme options mismatch '+JSON.stringify(base.options));
+            if(base.colors!==3)throw new Error('Appearance color controls changed unexpectedly');
+            if(!base.themeApi)throw new Error('Theme API unavailable');
+
+            const snapshots=[];
+            for(const id of expected){
+              await page.selectOption('#fullThemeSelect',id);
+              await page.waitForFunction(x=>document.body.dataset.theme===x,id);
+              snapshots.push(await page.evaluate(()=>{
+                const cs=getComputedStyle(document.body),grid=getComputedStyle(document.querySelector('#grid'));
+                return {id:document.body.dataset.theme,accent:cs.getPropertyValue('--accent').trim(),font:cs.fontFamily,gridBackground:grid.backgroundImage,binder:document.querySelector('#binderColor').value,page:document.querySelector('#pageColor').value,sleeve:document.querySelector('#sleeveColor').value,stored:JSON.parse(localStorage.getItem('michiStandaloneState')||'{}').theme||''};
+              }));
+            }
+            if(snapshots.some(x=>!x.accent||!x.gridBackground||x.stored!==x.id))throw new Error('Theme application/persistence failed '+JSON.stringify(snapshots));
+            if(new Set(snapshots.map(x=>x.accent)).size<8)throw new Error('Themes are not visually distinct enough');
+
+            await page.reload({waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForSelector('#fullThemeSelect',{timeout:30000});
+            await page.waitForFunction(()=>document.body.dataset.theme==='retro-card-shop');
+            const persisted=await page.$eval('#fullThemeSelect',el=>el.value);
+            if(persisted!=='retro-card-shop')throw new Error('Theme did not survive reload: '+persisted);
+            if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
+            await browser.close();
+            console.log('FULL_THEMES_PASS',JSON.stringify({count:expected.length,persisted,snapshots}));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
