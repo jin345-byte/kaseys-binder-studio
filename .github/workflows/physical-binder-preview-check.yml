@@ -1,0 +1,91 @@
+name: Physical Binder Preview Check
+
+on:
+  push:
+    branches: [prod-db-compat-preview]
+    paths:
+      - 'public/features/physical-binder-preview.js'
+      - 'public/styles/physical-binder-preview.css'
+      - 'public/features/staging-v287.js'
+      - '.github/workflows/physical-binder-preview-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: binder-studio-physical-preview
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Static physical preview checks
+        run: |
+          node --check public/features/physical-binder-preview.js
+          grep -q 'physical-binder-preview.css?v=3.2.0' public/features/staging-v287.js
+          grep -q 'physical-binder-preview.js?v=3.2.0' public/features/staging-v287.js
+          grep -q 'KBSPhysicalBinderPreview' public/features/physical-binder-preview.js
+          grep -q 'prefers-reduced-motion' public/styles/physical-binder-preview.css
+          grep -q 'physical-rings' public/styles/physical-binder-preview.css
+      - name: Install browser tooling
+        run: |
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null
+      - name: Verify deployed physical binder preview
+        shell: bash
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          const BASE='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          (async()=>{
+            let live=false;
+            for(let i=0;i<30;i++){
+              const [r,l]=await Promise.all([
+                fetch(BASE+'/features/physical-binder-preview.js?qa='+Date.now(),{cache:'no-store'}).catch(()=>null),
+                fetch(BASE+'/features/staging-v287.js?qa='+Date.now(),{cache:'no-store'}).catch(()=>null)
+              ]);
+              const t=r?.ok?await r.text().catch(()=>''):'';
+              const lt=l?.ok?await l.text().catch(()=>''):'';
+              if(t.includes('KBSPhysicalBinderPreview')&&t.includes('physicalStep')&&lt.includes('physical-binder-preview.js?v=3.2.0')){live=true;break;}
+              await sleep(6000);
+            }
+            if(!live)throw new Error('Physical binder preview assets did not propagate');
+
+            const manifestResp=await fetch(BASE+'/catalog/manifest.json?qa='+Date.now(),{cache:'no-store'});
+            if(!manifestResp.ok)throw new Error('Could not load catalog manifest');
+            const manifest=await manifestResp.json();
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1440,height:1100}});
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await page.goto(BASE+'/?physicalqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForFunction(v=>localStorage.getItem('kbsPrebuiltCatalogVersion')===v,manifest.version,{timeout:120000});
+            await page.waitForTimeout(2200);
+            await page.waitForSelector('#openBinders',{timeout:30000});
+            await page.click('#openBinders');
+            await page.waitForSelector('#physicalBinderPreview',{timeout:30000});
+            await page.click('#physicalBinderPreview');
+            await page.waitForSelector('#binderViewer.open .physical-closed-binder',{timeout:15000});
+            const cover=await page.evaluate(()=>({counter:document.querySelector('#viewerCounter')?.textContent||'',title:document.querySelector('.physical-cover-copy strong')?.textContent||'',button:document.querySelector('#physicalBinderPreview')?.textContent||''}));
+            if(cover.counter!=='Cover'||!cover.title||!cover.button.includes('Physical'))throw new Error('Cover view mismatch '+JSON.stringify(cover));
+            await page.click('#viewerNext');
+            await page.waitForSelector('#binderViewer.open .physical-spread',{timeout:15000});
+            const spread=await page.evaluate(()=>({counter:document.querySelector('#viewerCounter')?.textContent||'',leaves:document.querySelectorAll('.physical-leaf').length,rings:document.querySelectorAll('.physical-rings i').length,glare:document.querySelectorAll('.physical-plastic-glare').length}));
+            if(spread.leaves!==2||spread.rings!==4||spread.glare<1||!spread.counter.toLowerCase().includes('page'))throw new Error('Spread view mismatch '+JSON.stringify(spread));
+            await page.check('#physicalReducedMotion');
+            const reduced=await page.$eval('#binderViewer',el=>el.classList.contains('physical-reduced-motion'));
+            if(!reduced)throw new Error('Reduced motion toggle did not apply');
+            await page.uncheck('#physicalRings');
+            const noRings=await page.$eval('#binderViewer',el=>el.classList.contains('physical-no-rings'));
+            if(!noRings)throw new Error('Ring toggle did not apply');
+            if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
+            await browser.close();
+            console.log('PHYSICAL_BINDER_PREVIEW_PASS',JSON.stringify({cover,spread,reduced,noRings,catalogVersion:manifest.version}));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
