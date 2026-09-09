@@ -1,7 +1,14 @@
-/* Binder Studio v3.0.1 — narrow Appearance/theme control fit.
+/* Binder Studio v3.0.2 — narrow Appearance/theme control fit.
    Keeps the Theme picker and Binder/Page/Sleeves controls usable inside the
    slim live-binder sidebar without allowing native select min-widths to force
    the entire module wider than its column. */
+
+/* The library build/status card is no longer shown in the live-page rail.
+   Its underlying build/sync logic remains intact; only the redundant visual
+   status block is removed from the interface. */
+.canvas-side-controls > .library-module{
+  display:none!important;
+}
 
 .appearance-module{
   container-type:inline-size;
@@ -157,8 +164,14 @@
 }
 
 /* At true phone widths, keep the control comfortable to tap while still
-   respecting the available card/side-panel width. */
+   respecting the available card/side-panel width. With the library status card
+   hidden, compact the remaining controls upward so no empty first row remains. */
 @media(max-width:700px){
+  .canvas-side-controls > .mobile-page-actions{grid-row:1!important}
+  .canvas-side-controls > .selected-module{grid-row:2!important}
+  .canvas-side-controls > .appearance-module{grid-row:3!important}
+  .canvas-side-controls > .binder-heading-module{grid-row:1 / span 3!important}
+
   #fullThemeSelect{
     min-height:44px!important;
     height:44px!important;
