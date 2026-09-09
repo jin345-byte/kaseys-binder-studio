@@ -23,7 +23,8 @@
   }
   function ensureThemeStyles(){
     ensureStylesheet('kbsThemePickerFitStyle','styles/theme-picker-fit.css?v=3.0.2');
-    ensureStylesheet('kbsThemeBrandingStyle','styles/theme-branding.css?v=3.0.3');
+    ensureStylesheet('kbsThemeBrandingStyle','styles/theme-branding.css?v=3.0.4');
+    ensureStylesheet('kbsThemeUnifiedFontStyle','styles/theme-font-unified.css?v=3.0.4');
   }
   function readStored(){
     try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')||{}}catch{return {}}
@@ -86,7 +87,7 @@
     if(!appearance||document.querySelector('#fullThemeSelect'))return;
     const control=document.createElement('label');
     control.className='full-theme-control';
-    control.title='Theme changes the app, panels, buttons, binder material, page texture, sleeve styling, accents, fonts and top-left branding.';
+    control.title='Theme changes the app, panels, buttons, binder material, page texture, sleeve styling and accents.';
     control.innerHTML=`
       <span class="full-theme-copy">
         <strong>Theme</strong>
@@ -111,7 +112,6 @@
     applyFullTheme(initial,{persist:false,applyPalette:false});
   }
 
-  /* Replace the old one-theme function so binder/page reloads can restore any supported theme. */
   globalThis.applyTheme=applyFullTheme;
   globalThis.KBSFullThemes={
     list:()=>Object.entries(THEMES).map(([id,t])=>({id,...t})),
