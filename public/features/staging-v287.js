@@ -16,10 +16,10 @@
     s.defer=false;
     document.head.appendChild(s);
   }
-  loadStyle('styles/full-themes.css?v=3.0.0','kbsFullThemesStyle');
-  loadStyle('styles/theme-picker-fit.css?v=3.0.1','kbsThemePickerFitStyle');
-  loadScript('features/full-themes.js?v=3.0.0','kbsFullThemesScript');
-  loadScript('features/theme-picker-fit.js?v=3.0.1','kbsThemePickerFitScript');
+  loadStyle('styles/full-themes.css?v=3.0.5','kbsFullThemesStyle');
+  loadStyle('styles/theme-picker-fit.css?v=3.0.2','kbsThemePickerFitStyle');
+  loadScript('features/full-themes.js?v=3.0.5','kbsFullThemesScript');
+  loadScript('features/theme-picker-fit.js?v=3.0.2','kbsThemePickerFitScript');
   loadScript('features/artwork-legacy-repair.js?v=2.9.1','kbsArtworkLegacyRepairScript');
   loadScript('features/art-source-links.js?v=2.9.1','kbsArtSourceLinksScript');
 
