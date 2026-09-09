@@ -11,6 +11,12 @@ body[data-theme]{
 body[data-theme] .panel{
   border-radius:10px!important;
 }
+body[data-theme] .browser-pane,
+body[data-theme] .control-module,
+body[data-theme] .appearance-module,
+body[data-theme] .build-info-content section{
+  border-radius:14px!important;
+}
 body[data-theme] .btn,
 body[data-theme] .page-arrow,
 body[data-theme] .page-number,
@@ -37,7 +43,9 @@ body[data-theme] textarea{
 body.theme-switching .panel,
 body.theme-switching .grid,
 body.theme-switching .btn,
-body.theme-switching .control-module{
+body.theme-switching .control-module,
+body.theme-switching .browser-pane,
+body.theme-switching .appearance-module{
   animation:none!important;
   transform:none!important;
 }
