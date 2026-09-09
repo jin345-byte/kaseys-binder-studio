@@ -1,1 +1,168 @@
-/* Temporary placeholder; responsive theme picker fix will be filled in next commit. */
+/* Binder Studio v3.0.1 — narrow Appearance/theme control fit.
+   Keeps the Theme picker and Binder/Page/Sleeves controls usable inside the
+   slim live-binder sidebar without allowing native select min-widths to force
+   the entire module wider than its column. */
+
+.appearance-module{
+  container-type:inline-size;
+  min-width:0!important;
+  width:100%!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+}
+
+.appearance-module > *{
+  min-width:0!important;
+  max-width:100%!important;
+}
+
+/* Theme is intentionally a vertical control: label, full-width select, palette.
+   A native select is easier to use than a tiny custom flyout and works well on
+   both desktop and touch devices. */
+.full-theme-control{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  gap:6px!important;
+  align-items:stretch!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  min-height:0!important;
+  padding:8px!important;
+  overflow:hidden!important;
+}
+
+.full-theme-copy{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  gap:2px!important;
+  min-width:0!important;
+  width:100%!important;
+}
+
+.full-theme-copy strong,
+.full-theme-copy small{
+  min-width:0!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+
+.full-theme-copy strong{
+  font-size:11px!important;
+  line-height:1.1!important;
+}
+
+.full-theme-copy small{
+  font-size:8.5px!important;
+  line-height:1.15!important;
+}
+
+#fullThemeSelect{
+  display:block!important;
+  grid-column:1!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  min-height:40px!important;
+  height:40px!important;
+  margin:0!important;
+  padding:7px 28px 7px 9px!important;
+  border-radius:10px!important;
+  font-size:11px!important;
+  line-height:1!important;
+  font-weight:850!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+}
+
+.full-theme-palette{
+  grid-column:1!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  height:4px!important;
+  margin:0!important;
+}
+
+/* The three manual color controls remain available, but use a compact flexible
+   text column so their labels never get pushed out of the visible module. */
+.appearance-module .color-control{
+  grid-template-columns:minmax(0,1fr) 34px!important;
+  gap:6px!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  min-height:42px!important;
+  padding:6px 7px 6px 9px!important;
+  overflow:hidden!important;
+}
+
+.appearance-module .color-copy{
+  min-width:0!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+}
+
+.appearance-module .color-copy strong{
+  min-width:0!important;
+  max-width:100%!important;
+  font-size:10.5px!important;
+  line-height:1.05!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+
+.appearance-module .color-control input[type="color"]{
+  justify-self:end!important;
+  width:30px!important;
+  min-width:30px!important;
+  max-width:30px!important;
+  height:28px!important;
+  min-height:28px!important;
+  padding:2px!important;
+}
+
+/* Extra-narrow desktop side rails / forced phone previews. */
+@container (max-width:180px){
+  .full-theme-control{
+    gap:5px!important;
+    padding:7px!important;
+  }
+  .full-theme-copy small{display:none!important}
+  #fullThemeSelect{
+    min-height:38px!important;
+    height:38px!important;
+    padding-left:7px!important;
+    padding-right:24px!important;
+    font-size:10px!important;
+  }
+  .appearance-module .color-control{
+    grid-template-columns:minmax(0,1fr) 30px!important;
+    gap:4px!important;
+    min-height:39px!important;
+    padding:5px 6px 5px 7px!important;
+  }
+  .appearance-module .color-copy strong{font-size:9.5px!important}
+  .appearance-module .color-control input[type="color"]{
+    width:27px!important;
+    min-width:27px!important;
+    max-width:27px!important;
+    height:25px!important;
+    min-height:25px!important;
+  }
+}
+
+/* At true phone widths, keep the control comfortable to tap while still
+   respecting the available card/side-panel width. */
+@media(max-width:700px){
+  #fullThemeSelect{
+    min-height:44px!important;
+    height:44px!important;
+    font-size:12px!important;
+  }
+  .appearance-module .color-control{min-height:44px!important}
+}
