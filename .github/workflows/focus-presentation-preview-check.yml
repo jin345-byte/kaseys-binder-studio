@@ -28,10 +28,11 @@ jobs:
       - name: Static checks
         run: |
           node --check public/features/focus-presentation-mode.js
-          grep -q 'focus-presentation-mode.css?v=3.3.0' public/features/staging-v287.js
+          grep -q 'focus-presentation-mode.css?v=3.3.1' public/features/staging-v287.js
           grep -q 'focus-presentation-mode.js?v=3.3.0' public/features/staging-v287.js
           grep -q 'KBSFocusPresentation' public/features/focus-presentation-mode.js
-          grep -q 'focus-presentation-mode' public/styles/focus-presentation-mode.css
+          grep -q 'object-fit:contain' public/styles/focus-presentation-mode.css
+          grep -q '62vh' public/styles/focus-presentation-mode.css
       - name: Install browser tooling
         run: |
           npm install --no-save playwright@1.55.0 >/dev/null 2>&1
@@ -46,35 +47,47 @@ jobs:
           (async()=>{
             let live=false;
             for(let i=0;i<30;i++){
-              const r=await fetch(BASE+'/features/focus-presentation-mode.js?qa='+Date.now(),{cache:'no-store'}).catch(()=>null);
+              const [r,c]=await Promise.all([
+                fetch(BASE+'/features/focus-presentation-mode.js?qa='+Date.now(),{cache:'no-store'}).catch(()=>null),
+                fetch(BASE+'/styles/focus-presentation-mode.css?qa='+Date.now(),{cache:'no-store'}).catch(()=>null)
+              ]);
               const t=r?.ok?await r.text().catch(()=>''):'';
-              if(t.includes('KBSFocusPresentation')&&t.includes('Preview Binder')){live=true;break;}
+              const css=c?.ok?await c.text().catch(()=>''):'';
+              if(t.includes('KBSFocusPresentation')&&t.includes('Preview Binder')&&css.includes('v3.3.1')&&css.includes('62vh')){live=true;break;}
               await sleep(6000);
             }
             if(!live)throw new Error('Focus presentation assets did not propagate');
             const browser=await chromium.launch({headless:true});
-            const page=await browser.newPage({viewport:{width:1440,height:1100}});
-            const errors=[];page.on('pageerror',e=>errors.push(e.message));
-            await page.goto(BASE+'/?focusqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
-            await page.waitForSelector('#previewBinder',{timeout:30000});
-            const before=await page.$eval('#previewBinder',el=>({text:el.textContent,visible:!!(el.offsetWidth||el.offsetHeight)}));
-            if(!before.visible||!before.text.includes('Preview Binder'))throw new Error('Preview Binder button missing');
-            await page.click('#previewBinder');
-            await page.waitForSelector('#focusPresentation.open .focus-page-shell',{timeout:15000});
-            const state=await page.evaluate(()=>({
-              body:document.body.classList.contains('focus-presentation-mode'),
-              overlay:document.querySelector('#focusPresentation')?.classList.contains('open'),
-              appVisibility:getComputedStyle(document.querySelector('.app')).visibility,
-              grid:document.querySelectorAll('#focusPresentation .grid').length,
-              exit:!!document.querySelector('#focusPresentationExit')
-            }));
-            if(!state.body||!state.overlay||state.appVisibility!=='hidden'||state.grid<1||!state.exit)throw new Error('Focus mode state mismatch '+JSON.stringify(state));
-            await page.keyboard.press('Escape');
-            await page.waitForFunction(()=>!document.body.classList.contains('focus-presentation-mode'));
-            const after=await page.evaluate(()=>({overlay:document.querySelector('#focusPresentation')?.classList.contains('open'),appVisibility:getComputedStyle(document.querySelector('.app')).visibility}));
-            if(after.overlay||after.appVisibility==='hidden')throw new Error('Focus mode did not restore app '+JSON.stringify(after));
-            if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
+            for(const viewport of [{width:1440,height:900},{width:950,height:700},{width:390,height:844}]){
+              const page=await browser.newPage({viewport});
+              const errors=[];page.on('pageerror',e=>errors.push(e.message));
+              await page.goto(BASE+'/?focusqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForSelector('#previewBinder',{timeout:30000});
+              await page.click('#previewBinder');
+              await page.waitForSelector('#focusPresentation.open .focus-page-shell .grid',{timeout:15000});
+              const state=await page.evaluate(()=>{
+                const grid=document.querySelector('#focusPresentation .grid');
+                const r=grid.getBoundingClientRect();
+                const imgs=[...grid.querySelectorAll('.pocket img')];
+                return {
+                  body:document.body.classList.contains('focus-presentation-mode'),
+                  overlay:document.querySelector('#focusPresentation')?.classList.contains('open'),
+                  appVisibility:getComputedStyle(document.querySelector('.app')).visibility,
+                  exit:!!document.querySelector('#focusPresentationExit'),
+                  rect:{left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height},
+                  viewport:{width:innerWidth,height:innerHeight},
+                  imageFits:imgs.every(img=>{const s=getComputedStyle(img);return s.objectFit==='contain'||img.closest('.pocket')?.classList.contains('art')})
+                };
+              });
+              if(!state.body||!state.overlay||state.appVisibility!=='hidden'||!state.exit)throw new Error('Focus mode state mismatch '+JSON.stringify(state));
+              if(state.rect.left<0||state.rect.top<0||state.rect.right>state.viewport.width||state.rect.bottom>state.viewport.height)throw new Error('Focus grid clipped '+JSON.stringify(state));
+              if(!state.imageFits)throw new Error('Card images are not contained '+JSON.stringify(state));
+              await page.keyboard.press('Escape');
+              await page.waitForFunction(()=>!document.body.classList.contains('focus-presentation-mode'));
+              if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
+              await page.close();
+            }
             await browser.close();
-            console.log('FOCUS_PRESENTATION_PASS',JSON.stringify({before,state,after}));
+            console.log('FOCUS_PRESENTATION_FIT_PASS');
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
