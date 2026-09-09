@@ -1,4 +1,4 @@
-/* Kasey's Binder Studio v3.2.0 — physical binder preview mode. */
+/* Kasey's Binder Studio v3.2.1 — physical binder preview mode. */
 (function(){
   const SETTINGS_KEY='kbsPhysicalBinderPreviewSettings';
   const DEFAULTS={shadows:true,glare:true,rings:true,reducedMotion:false};
@@ -6,6 +6,7 @@
   let physicalPages=[];
   let physicalStep=0; // 0 = cover, 1+ = page spreads.
   let installed=false;
+  let restoreLibraryOnClose=false;
 
   function loadSettings(){
     try{
@@ -36,7 +37,7 @@
     const btn=document.createElement('button');
     btn.type='button';btn.className='btn ghost';btn.id='physicalBinderPreview';btn.textContent='Physical preview';
     btn.title='Preview this binder as a physical cover and two-page spreads';
-    btn.onclick=()=>openPhysicalBinder(activeBinderId).catch(e=>{console.error(e);toast('Could not open physical binder preview')});
+    btn.onclick=e=>{e?.preventDefault();e?.stopPropagation();openPhysicalBinder(activeBinderId).catch(err=>{console.error(err);toast('Could not open physical binder preview')})};
     const before=document.querySelector('#designBinderCover')||document.querySelector('#renameBinder')||document.querySelector('#binderStatus');
     toolbar.insertBefore(btn,before||null);
   }
@@ -72,10 +73,10 @@
     document.querySelector('#viewerEdit').onclick=()=>{
       if(physicalStep===0)return toast('Turn to a page before editing');
       const p=physicalPages[(physicalStep-1)*2];
-      if(p){closePhysical();loadPageIntoEditor(p.id)}
+      if(p){closePhysical({restoreLibrary:false});loadPageIntoEditor(p.id)}
     };
-    document.querySelector('#closeViewer').onclick=closePhysical;
-    document.querySelector('#binderViewer').addEventListener('click',e=>{if(e.target?.id==='binderViewer')closePhysical()});
+    document.querySelector('#closeViewer').onclick=()=>closePhysical({restoreLibrary:true});
+    document.querySelector('#binderViewer').addEventListener('click',e=>{if(e.target?.id==='binderViewer')closePhysical({restoreLibrary:true})});
   }
 
   function applyEffectClasses(){
@@ -154,6 +155,8 @@
 
   function renderPhysical(){
     if(!physicalBinder)return;
+    const viewer=document.querySelector('#binderViewer');
+    if(viewer&&!viewer.classList.contains('open')){viewer.classList.add('open');viewer.setAttribute('aria-hidden','false')}
     applyEffectClasses();
     document.querySelector('#viewerTitle').textContent=physicalBinder.name||'Binder';
     if(physicalStep===0)renderCover();else renderSpread();
@@ -167,10 +170,22 @@
     physicalBinder=b;physicalPages=await pagesForBinder(b.id);
     physicalStep=startPageId?1+Math.floor(Math.max(0,physicalPages.findIndex(p=>p.id===startPageId))/2):0;
     ensureViewerUi();applyEffectClasses();
-    const viewer=document.querySelector('#binderViewer');viewer.classList.add('open');viewer.setAttribute('aria-hidden','false');
+    const library=document.querySelector('#binderModal');
+    restoreLibraryOnClose=Boolean(library?.classList.contains('open'));
+    if(restoreLibraryOnClose&&typeof closeBinderLibrary==='function')closeBinderLibrary();
+    const viewer=document.querySelector('#binderViewer');
+    viewer.classList.add('open','physical-preview-active');viewer.setAttribute('aria-hidden','false');
+    document.body.classList.add('physical-preview-open');
     renderPhysical();
   }
-  function closePhysical(){const viewer=document.querySelector('#binderViewer');viewer?.classList.remove('open','physical-turning');viewer?.setAttribute('aria-hidden','true')}
+  function closePhysical({restoreLibrary=true}={}){
+    const viewer=document.querySelector('#binderViewer');
+    viewer?.classList.remove('open','physical-turning','physical-preview-active');viewer?.setAttribute('aria-hidden','true');
+    document.body.classList.remove('physical-preview-open');
+    const shouldRestore=restoreLibrary&&restoreLibraryOnClose;
+    restoreLibraryOnClose=false;
+    if(shouldRestore&&typeof openBinderLibrary==='function')setTimeout(()=>openBinderLibrary(),0);
+  }
 
   function patchPageView(){
     // Existing page cards continue to say View, but now open the page in its physical spread.
@@ -185,7 +200,7 @@
     ensurePreviewButton();ensureViewerUi();patchPageView();
     const modal=document.querySelector('#binderModal');
     if(modal)new MutationObserver(()=>ensurePreviewButton()).observe(modal,{childList:true,subtree:true});
-    globalThis.KBSPhysicalBinderPreview={open:openPhysicalBinder,render:renderPhysical,settings:()=>({...settings})};
+    globalThis.KBSPhysicalBinderPreview={open:openPhysicalBinder,close:closePhysical,render:renderPhysical,settings:()=>({...settings})};
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
