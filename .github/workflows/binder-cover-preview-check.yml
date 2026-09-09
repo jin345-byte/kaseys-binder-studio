@@ -57,13 +57,21 @@ jobs:
               await sleep(6000);
             }
             if(!live)throw new Error('Binder cover v3.1.1 assets did not propagate');
+
+            const manifestResp=await fetch(BASE+'/catalog/manifest.json?coverqa='+Date.now(),{cache:'no-store'});
+            if(!manifestResp.ok)throw new Error('Could not read deployed catalog manifest');
+            const manifest=await manifestResp.json();
+
             const browser=await chromium.launch({headless:true});
             const page=await browser.newPage({viewport:{width:1440,height:1100}});
             const errors=[];page.on('pageerror',e=>errors.push(e.message));
             await page.goto(BASE+'/?coverqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForFunction(v=>localStorage.getItem('kbsPrebuiltCatalogVersion')===v,manifest.version,{timeout:120000});
+            await page.waitForTimeout(2500);
             await page.waitForSelector('#openBinders',{timeout:30000});
             await page.click('#openBinders');
-            await page.waitForSelector('#designBinderCover',{timeout:30000});
+            await page.waitForSelector('#binderModal.open',{timeout:10000});
+            await page.waitForSelector('#designBinderCover',{state:'visible',timeout:30000});
             await page.waitForFunction(()=>document.querySelectorAll('.binder-cover-card').length>0,{timeout:30000});
             await page.click('#designBinderCover');
             await page.waitForSelector('#binderCoverDesigner.open',{timeout:10000});
@@ -81,12 +89,13 @@ jobs:
             if(saved.cover?.subtitle!=='Illustration rares + matching artwork'||saved.cover?.spineText!=='EEVEELUTIONS'||saved.cover?.character!=='Sylveon'||saved.cover?.icon!=='♥'||saved.cover?.color!=='#7a4967')throw new Error('Cover metadata mismatch '+JSON.stringify(saved));
             if(!saved.shelf||saved.cards<1)throw new Error('Binder shelf did not render');
             await page.reload({waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForTimeout(1500);
             await page.click('#openBinders');
             await page.waitForFunction(()=>document.querySelectorAll('.binder-cover-card').length>0,{timeout:30000});
             const persisted=await page.$eval('.binder-cover-card .binder-cover-footer strong',el=>el.textContent);
             if(!persisted.includes('Eeveelution Art Binder'))throw new Error('Cover did not persist after reload');
             if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
             await browser.close();
-            console.log('BINDER_COVER_PASS',JSON.stringify({saved,persisted}));
+            console.log('BINDER_COVER_PASS',JSON.stringify({saved,persisted,catalogVersion:manifest.version}));
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
