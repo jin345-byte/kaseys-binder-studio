@@ -1,0 +1,24 @@
+/* Kasey's Binder Studio v3.0.4 — unified Sakura typography.
+   Keep theme colors/materials distinct while using one consistent type family. */
+body[data-theme]{
+  --theme-font:Georgia,"Times New Roman",serif!important;
+  --font-display:Georgia,"Times New Roman",serif!important;
+  --font-ui:Georgia,"Times New Roman",serif!important;
+  --font-body:Georgia,"Times New Roman",serif!important;
+  font-family:Georgia,"Times New Roman",serif!important;
+}
+body[data-theme] .app,
+body[data-theme] h1,
+body[data-theme] h2,
+body[data-theme] h3,
+body[data-theme] button,
+body[data-theme] input,
+body[data-theme] select,
+body[data-theme] textarea,
+body[data-theme] .item-copy,
+body[data-theme] .set-chip,
+body[data-theme] .badge,
+body[data-theme] .status,
+body[data-theme] small{
+  font-family:Georgia,"Times New Roman",serif!important;
+}
