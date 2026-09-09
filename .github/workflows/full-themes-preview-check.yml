@@ -5,6 +5,9 @@ on:
     branches: [prod-db-compat-preview]
     paths:
       - 'public/styles/full-themes.css'
+      - 'public/styles/theme-layout-lock.css'
+      - 'public/styles/theme-font-unified.css'
+      - 'public/styles/theme-branding.css'
       - 'public/features/full-themes.js'
       - 'public/features/staging-v287.js'
       - '.github/workflows/full-themes-preview-check.yml'
@@ -39,11 +42,13 @@ jobs:
           grep -q 'body\[data-theme="dark-academia"\]' public/styles/full-themes.css
           grep -q 'body\[data-theme="e-ink"\]' public/styles/full-themes.css
           grep -q 'body\[data-theme="retro-card-shop"\]' public/styles/full-themes.css
+          grep -q 'kbsThemeLayoutLockStyle' public/features/full-themes.js
+          grep -q 'Theme switching should be visual only' public/styles/theme-layout-lock.css
       - name: Install browser tooling
         run: |
           npm install --no-save playwright@1.55.0 >/dev/null 2>&1
           npx playwright install chromium >/dev/null
-      - name: Verify deployed theme picker, visuals and persistence
+      - name: Verify deployed theme picker, visuals, geometry and persistence
         shell: bash
         run: |
           node <<'JS'
@@ -51,15 +56,20 @@ jobs:
           const BASE='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';
           const sleep=ms=>new Promise(r=>setTimeout(r,ms));
           const expected=['jolteon','pokedex','game-boy','neo-genesis','team-rocket','lavender','cyberpunk','cozy-sakura','dark-academia','e-ink','retro-card-shop'];
+          const round=n=>Math.round(n*10)/10;
           (async()=>{
             let live=false;
             for(let i=0;i<30;i++){
-              const r=await fetch(BASE+'/features/full-themes.js?qa='+Date.now(),{cache:'no-store'}).catch(()=>null);
-              const text=r?.ok?await r.text().catch(()=>''):'';
-              if(text.includes('KBSFullThemes')&&text.includes("'retro-card-shop'")){live=true;break;}
+              const [js,css]=await Promise.all([
+                fetch(BASE+'/features/full-themes.js?qa='+Date.now(),{cache:'no-store'}).catch(()=>null),
+                fetch(BASE+'/styles/theme-layout-lock.css?qa='+Date.now(),{cache:'no-store'}).catch(()=>null)
+              ]);
+              const jst=js?.ok?await js.text().catch(()=>''):'';
+              const csst=css?.ok?await css.text().catch(()=>''):'';
+              if(jst.includes('kbsThemeLayoutLockStyle')&&csst.includes('Theme switching should be visual only')){live=true;break;}
               await sleep(6000);
             }
-            if(!live)throw new Error('Full theme assets did not propagate to preview');
+            if(!live)throw new Error('Theme layout-lock assets did not propagate to preview');
 
             const browser=await chromium.launch({headless:true});
             const page=await browser.newPage({viewport:{width:1440,height:1100}});
@@ -75,10 +85,42 @@ jobs:
             if(base.colors!==3)throw new Error('Appearance color controls changed unexpectedly');
             if(!base.themeApi)throw new Error('Theme API unavailable');
 
+            const measure=()=>page.evaluate(()=>{
+              const pick=(sel)=>{
+                const el=[...document.querySelectorAll(sel)].find(x=>{const s=getComputedStyle(x),r=x.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0;});
+                if(!el)return null;
+                const r=el.getBoundingClientRect(),s=getComputedStyle(el);
+                return {left:r.left,top:r.top,width:r.width,height:r.height,radius:s.borderRadius,font:s.fontFamily,fontSize:s.fontSize,padding:s.padding};
+              };
+              return {
+                panel:pick('.panel'),
+                button:pick('.btn'),
+                browser:pick('.browser-pane'),
+                appearance:pick('.appearance-module'),
+                themeControl:pick('.full-theme-control'),
+                themeSelect:pick('#fullThemeSelect')
+              };
+            });
+            const same=(a,b,label)=>{
+              if(!a||!b)return;
+              for(const k of ['left','top','width','height']){
+                if(Math.abs(a[k]-b[k])>1)throw new Error(`${label}.${k} moved/resized: ${a[k]} -> ${b[k]}`);
+              }
+              for(const k of ['radius','font','fontSize','padding']){
+                if(a[k]!==b[k])throw new Error(`${label}.${k} changed: ${a[k]} -> ${b[k]}`);
+              }
+            };
+
+            await page.selectOption('#fullThemeSelect','jolteon');
+            await sleep(550);
+            const geometryBaseline=await measure();
             const snapshots=[];
             for(const id of expected){
               await page.selectOption('#fullThemeSelect',id);
               await page.waitForFunction(x=>document.body.dataset.theme===x,id);
+              await sleep(550);
+              const geometry=await measure();
+              for(const key of Object.keys(geometryBaseline))same(geometryBaseline[key],geometry[key],`${id}:${key}`);
               snapshots.push(await page.evaluate(()=>{
                 const cs=getComputedStyle(document.body),grid=getComputedStyle(document.querySelector('#grid'));
                 return {id:document.body.dataset.theme,accent:cs.getPropertyValue('--accent').trim(),font:cs.fontFamily,gridBackground:grid.backgroundImage,binder:document.querySelector('#binderColor').value,page:document.querySelector('#pageColor').value,sleeve:document.querySelector('#sleeveColor').value,stored:JSON.parse(localStorage.getItem('michiStandaloneState')||'{}').theme||''};
@@ -94,6 +136,6 @@ jobs:
             if(persisted!=='retro-card-shop')throw new Error('Theme did not survive reload: '+persisted);
             if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
             await browser.close();
-            console.log('FULL_THEMES_PASS',JSON.stringify({count:expected.length,persisted,snapshots}));
+            console.log('FULL_THEMES_LAYOUT_LOCK_PASS',JSON.stringify({count:expected.length,persisted,geometryBaseline,snapshots:snapshots.map(x=>({id:x.id,accent:x.accent}))}));
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
