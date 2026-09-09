@@ -15,13 +15,15 @@
     'retro-card-shop':{label:'Retro Card Shop',description:'Warm wood, paper labels and hobby-store nostalgia',tier:'premium',meta:'#f0d6a7',palette:['#7b5138','#d4bb8f','#a77855']}
   };
 
-  function ensureFitStyles(){
-    if(document.querySelector('#kbsThemePickerFitStyle'))return;
+  function ensureStylesheet(id,href){
+    if(document.querySelector('#'+id))return;
     const link=document.createElement('link');
-    link.id='kbsThemePickerFitStyle';
-    link.rel='stylesheet';
-    link.href='styles/theme-picker-fit.css?v=3.0.2';
+    link.id=id;link.rel='stylesheet';link.href=href;
     document.head.appendChild(link);
+  }
+  function ensureThemeStyles(){
+    ensureStylesheet('kbsThemePickerFitStyle','styles/theme-picker-fit.css?v=3.0.2');
+    ensureStylesheet('kbsThemeBrandingStyle','styles/theme-branding.css?v=3.0.3');
   }
   function readStored(){
     try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')||{}}catch{return {}}
@@ -79,12 +81,12 @@
   }
 
   function installPicker(){
-    ensureFitStyles();
+    ensureThemeStyles();
     const appearance=document.querySelector('.appearance-module');
     if(!appearance||document.querySelector('#fullThemeSelect'))return;
     const control=document.createElement('label');
     control.className='full-theme-control';
-    control.title='Theme changes the app, panels, buttons, binder material, page texture, sleeve styling, accents and fonts.';
+    control.title='Theme changes the app, panels, buttons, binder material, page texture, sleeve styling, accents, fonts and top-left branding.';
     control.innerHTML=`
       <span class="full-theme-copy">
         <strong>Theme</strong>
@@ -117,7 +119,7 @@
     get current(){return document.body.dataset.theme||'jolteon';}
   };
 
-  ensureFitStyles();
+  ensureThemeStyles();
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installPicker,{once:true});
   else installPicker();
 })();
