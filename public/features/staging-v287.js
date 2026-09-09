@@ -18,8 +18,10 @@
   }
   loadStyle('styles/full-themes.css?v=3.0.5','kbsFullThemesStyle');
   loadStyle('styles/theme-picker-fit.css?v=3.0.2','kbsThemePickerFitStyle');
+  loadStyle('styles/binder-cover-designer.css?v=3.1.0','kbsBinderCoverDesignerStyle');
   loadScript('features/full-themes.js?v=3.0.5','kbsFullThemesScript');
   loadScript('features/theme-picker-fit.js?v=3.0.2','kbsThemePickerFitScript');
+  loadScript('features/binder-cover-designer.js?v=3.1.0','kbsBinderCoverDesignerScript');
   loadScript('features/artwork-legacy-repair.js?v=2.9.1','kbsArtworkLegacyRepairScript');
   loadScript('features/art-source-links.js?v=2.9.1','kbsArtSourceLinksScript');
 
