@@ -1,0 +1,99 @@
+name: Theme Picker Fit Check
+
+on:
+  push:
+    branches: [prod-db-compat-preview]
+    paths:
+      - 'public/styles/theme-picker-fit.css'
+      - 'public/features/theme-picker-fit.js'
+      - 'public/features/staging-v287.js'
+      - '.github/workflows/theme-picker-fit-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Static checks
+        run: |
+          node --check public/features/theme-picker-fit.js
+          node --check public/features/staging-v287.js
+          grep -q 'container-type:inline-size' public/styles/theme-picker-fit.css
+          grep -q 'width:100%!important' public/styles/theme-picker-fit.css
+      - name: Install browser tooling
+        run: |
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null
+      - name: Verify narrow Appearance panel fit
+        shell: bash
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          const BASE='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          (async()=>{
+            let live=false;
+            for(let i=0;i<30;i++){
+              const r=await fetch(BASE+'/styles/theme-picker-fit.css?qa='+Date.now(),{cache:'no-store'}).catch(()=>null);
+              const t=r?.ok?await r.text().catch(()=>''):'';
+              if(t.includes('container-type:inline-size')&&t.includes('@container (max-width:180px)')){live=true;break;}
+              await sleep(6000);
+            }
+            if(!live)throw new Error('Theme picker fit CSS did not propagate');
+
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1440,height:1000}});
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await page.goto(BASE+'/?themefitqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForSelector('#fullThemeSelect',{timeout:30000});
+            await page.waitForFunction(()=>document.querySelector('#fullThemeSelect')?.dataset.fitReady==='1',{timeout:10000});
+
+            const result=await page.evaluate(()=>{
+              const appearance=document.querySelector('.appearance-module');
+              appearance.style.width='138px';
+              appearance.style.maxWidth='138px';
+              appearance.style.minWidth='138px';
+              const targets=[
+                document.querySelector('.full-theme-control'),
+                document.querySelector('#fullThemeSelect'),
+                ...document.querySelectorAll('.appearance-module .color-control')
+              ];
+              const rects=targets.map(el=>({
+                cls:el.id||el.className,
+                clientWidth:el.clientWidth,
+                scrollWidth:el.scrollWidth,
+                left:el.getBoundingClientRect().left,
+                right:el.getBoundingClientRect().right,
+                parentLeft:appearance.getBoundingClientRect().left,
+                parentRight:appearance.getBoundingClientRect().right
+              }));
+              return {
+                appearance:{clientWidth:appearance.clientWidth,scrollWidth:appearance.scrollWidth},
+                rects,
+                labels:[...document.querySelector('#fullThemeSelect').options].map(o=>o.textContent),
+                colorLabels:[...document.querySelectorAll('.appearance-module .color-copy strong')].map(x=>x.textContent)
+              };
+            });
+
+            if(result.appearance.scrollWidth>result.appearance.clientWidth+1)throw new Error('Appearance module overflows '+JSON.stringify(result));
+            for(const r of result.rects){
+              if(r.scrollWidth>r.clientWidth+2)throw new Error('Control overflows internally '+JSON.stringify(r));
+              if(r.left<r.parentLeft-1||r.right>r.parentRight+1)throw new Error('Control escapes panel '+JSON.stringify(r));
+            }
+            if(result.labels.some(x=>/Theme Pack/i.test(x)))throw new Error('Theme option labels are still too long '+JSON.stringify(result.labels));
+            if(result.colorLabels.join('|')!=='Binder|Page|Sleeves')throw new Error('Color controls changed '+JSON.stringify(result.colorLabels));
+
+            await page.selectOption('#fullThemeSelect','team-rocket');
+            await page.waitForFunction(()=>document.body.dataset.theme==='team-rocket');
+            if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
+            await browser.close();
+            console.log('THEME_PICKER_FIT_PASS',JSON.stringify(result));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
