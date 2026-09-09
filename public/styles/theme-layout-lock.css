@@ -1,0 +1,63 @@
+/* Kasey's Binder Studio v3.0.5 — lock UI geometry across themes.
+   Themes may change color, material, texture, shadow and accent treatment, but
+   must not move, resize, reshape or reflow controls/panels when switched. */
+
+body[data-theme]{
+  --theme-panel-radius:10px!important;
+  --theme-button-radius:5px!important;
+}
+
+/* Keep the same panel/control geometry regardless of active theme. */
+body[data-theme] .panel{
+  border-radius:10px!important;
+}
+body[data-theme] .btn,
+body[data-theme] .page-arrow,
+body[data-theme] .page-number,
+body[data-theme] .library-build-cta,
+body[data-theme] .artlink,
+body[data-theme] .version-link{
+  border-radius:5px!important;
+  text-transform:none!important;
+  letter-spacing:normal!important;
+}
+
+/* Prevent theme-specific typography treatments from changing measured width. */
+body[data-theme] .brand h1,
+body[data-theme] .eyebrow,
+body[data-theme] button,
+body[data-theme] input,
+body[data-theme] select,
+body[data-theme] textarea{
+  text-transform:none!important;
+  letter-spacing:normal!important;
+}
+
+/* Theme switching should be visual only. Do not translate/scale the interface. */
+body.theme-switching .panel,
+body.theme-switching .grid,
+body.theme-switching .btn,
+body.theme-switching .control-module{
+  animation:none!important;
+  transform:none!important;
+}
+
+/* Lock the Appearance theme control to one stable geometry as well. */
+body[data-theme] .full-theme-control{
+  border-radius:13px!important;
+}
+body[data-theme] #fullThemeSelect{
+  border-radius:5px!important;
+}
+
+/* Some theme personalities previously altered component presentation. Keep
+   those effects cosmetic only and never let them affect box geometry. */
+body[data-theme="game-boy"] .panel,
+body[data-theme="team-rocket"] .panel,
+body[data-theme="cyberpunk"] .panel,
+body[data-theme="cozy-sakura"] .panel,
+body[data-theme="dark-academia"] .panel,
+body[data-theme="e-ink"] .panel,
+body[data-theme="retro-card-shop"] .panel{
+  transform:none!important;
+}
