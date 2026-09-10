@@ -7,7 +7,7 @@
   loadStyle('styles/binder-cover-designer.css?v=3.1.1','kbsBinderCoverDesignerStyle');
   loadStyle('styles/focus-presentation-mode.css?v=3.3.2','kbsFocusPresentationStyle');
   loadStyle('styles/responsive-button-fit.css?v=3.3.4','kbsResponsiveButtonFitStyle');
-  loadScript('features/full-themes.js?v=3.0.5','kbsFullThemesScript');
+  loadScript('features/full-themes.js?v=3.4.0','kbsFullThemesScript');
   loadScript('features/theme-picker-fit.js?v=3.0.2','kbsThemePickerFitScript');
   loadScript('features/binder-cover-designer.js?v=3.1.1','kbsBinderCoverDesignerScript');
   loadScript('features/focus-presentation-mode.js?v=3.3.2','kbsFocusPresentationScript');
