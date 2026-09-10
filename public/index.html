@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Kasey's Binder Studio">
+<meta name="kbs-build" content="4.0.3-staging-preview">
 <title>Kasey's Binder Studio</title>
 <link rel="stylesheet" href="style.css?v=2.9.0">
 <link rel="stylesheet" href="styles/v2-visual.css?v=2.9.0">
@@ -21,14 +22,13 @@
 <link rel="stylesheet" href="features/guided-finish.css?v=2.9.0">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap">
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#f5d52f">
 </head>
 <body data-theme="jolteon">
 <div class="theme-scene" aria-hidden="true"><span class="theme-orb orb-a"></span><span class="theme-orb orb-b"></span><span class="theme-orb orb-c"></span><span class="theme-ribbon ribbon-a"></span><span class="theme-ribbon ribbon-b"></span></div>
 <div class="app">
   <div class="top">
     <div class="brand brand-modern"><div class="k-logo" aria-hidden="true"><span>K</span></div><div class="brand-copy"><h1>Kasey's Binder Studio</h1></div></div>
-    <div class="top-actions"><button class="version-link" id="versionLink" type="button" title="Build information">v2.9.0 STAGING</button><button class="btn mobile-preview-toggle" id="mobilePreviewToggle" type="button" aria-pressed="false" title="Force the phone layout in this desktop browser">▣ Mobile Preview</button><button class="btn guided-tour-launch" id="guidedTourLaunch" type="button" title="Show me how Binder Studio works">▶ Guided Tour</button></div>
+    <div class="top-actions"><button class="version-link" id="versionLink" type="button" title="Build information">v4.0.3 STAGING</button><button class="btn mobile-preview-toggle" id="mobilePreviewToggle" type="button" aria-pressed="false" title="Force the phone layout in this desktop browser">▣ Mobile Preview</button><button class="btn guided-tour-launch" id="guidedTourLaunch" type="button" title="Show me how Binder Studio works">▶ Guided Tour</button></div>
   </div>
   <section class="controls panel command-deck">
     <label><span>Pokémon or Trainer</span><div class="searchrow"><input id="subject" type="search" placeholder="Try Gardevoir, Pikachu, or Lillie"><button class="btn" id="searchBtn">Search</button></div></label>
@@ -74,11 +74,11 @@
 <div class="binder-viewer" id="binderViewer" aria-hidden="true"><div class="viewer-shell panel"><header class="viewer-head"><div><span class="eyebrow">Binder viewer</span><h2 id="viewerTitle">Binder</h2></div><button class="modal-close" id="closeViewer">×</button></header><div class="viewer-nav"><button class="btn ghost" id="viewerPrev">‹ Previous</button><div class="viewer-pages"><span id="viewerCounter">Page 1</span><div class="page-numbers viewer-page-numbers" id="viewerPageNumbers" aria-label="Viewer page numbers"></div></div><button class="btn ghost" id="viewerNext">Next ›</button><button class="btn" id="viewerEdit">Edit this page</button></div><div id="viewerPage" class="viewer-page"></div></div></div><div class="toast" id="toast"></div>
 <div class="feature-drawer" id="cardDetailsDrawer" aria-hidden="true"><div class="feature-drawer-shell"><header class="feature-drawer-head"><div><span class="eyebrow">Card inspector</span><h2 id="cardDetailsTitle">Card details</h2></div><button class="btn feature-close" id="cardDetailsClose" type="button">×</button></header><div class="card-details-body" id="cardDetailsBody"></div></div></div>
 <div class="hover-card-preview" id="hoverCardPreview" hidden></div><div class="search-suggestions" id="searchSuggestions" hidden></div>
-<div class="build-info-modal" id="buildInfoModal" hidden><div class="build-info-shell" role="dialog" aria-modal="true" aria-labelledby="buildInfoTitle"><div class="build-info-head"><div><span class="eyebrow">Build information</span><h2 id="buildInfoTitle">Kasey’s Binder Studio v2.9.0 Staging</h2></div><button class="btn build-info-close" id="buildInfoClose" type="button">×</button></div><div class="build-info-content"><section><strong>v2.9.0 Staging</strong><p>Data-safety, multi-device sync, and runtime cleanup integration build.</p></section></div></div></div>
+<div class="build-info-modal" id="buildInfoModal" hidden><div class="build-info-shell" role="dialog" aria-modal="true" aria-labelledby="buildInfoTitle"><div class="build-info-head"><div><span class="eyebrow">Build information</span><h2 id="buildInfoTitle">Kasey’s Binder Studio v4.0.3 Staging</h2></div><button class="btn build-info-close" id="buildInfoClose" type="button">×</button></div><div class="build-info-content"><section><strong>v4.0.3 Staging Preview</strong><p>Deep-clean and performance hardening build.</p><p>Fixed stale preview cache-busting, removed the nonexistent animated-accent script request, made lazy feature loads retryable after transient failures, tightened image optimizer cleanup, and aligned the visible build number with the performance/runtime build.</p><p>Validation now checks local asset references, JavaScript syntax, runtime errors, themes, binder tools, artwork, layouts, focus mode, mobile navigation, printing hooks, image optimization, and preview-only deployment safety.</p></section></div></div></div>
 <div id="runtimeErrorBanner" class="runtime-error-banner" hidden><div><strong>App notice</strong><small id="runtimeErrorText"></small></div><button type="button" id="runtimeErrorDismiss">×</button></div>
 <script src="features/staging-fetch-shim.js?v=2.9.0"></script>
 <script src="app.js?v=2.9.0"></script>
-<script src="features/performance-core.js?v=4.0.1"></script>
+<script src="features/performance-core.js?v=4.0.3"></script>
 <script src="features/cards-lab.js?v=2.9.0"></script>
 <script src="features/catalog-lab.js?v=2.9.0"></script>
 <script src="features/binder-lab.js?v=2.9.0"></script>
@@ -93,7 +93,7 @@
 <script src="features/art-search-lab.js?v=2.9.0"></script>
 <script src="features/mobile-lab.js?v=2.9.0"></script>
 <script src="features/artwork-height-sync.js?v=2.9.0"></script>
-<script src="features/staging-v287.js?v=2.9.0"></script>
+<script src="features/staging-v287.js?v=4.0.3"></script>
 <script src="features/staging-polish.js?v=2.9.0"></script>
 <script src="features/cloud-sync.js?v=2.9.0"></script>
 </body></html>
