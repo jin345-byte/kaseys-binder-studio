@@ -1,4 +1,4 @@
-/* Binder Studio v4.0.1 preview — page rail + compatibility + lazy feature loading */
+/* Binder Studio v4.0.2 preview — page rail + compatibility + safe lazy feature loading */
 (function(){
   function loadStyle(href,id){
     if(document.getElementById(id))return;
@@ -16,16 +16,20 @@
     events.forEach(name=>document.addEventListener(name,handler,{capture:true,once:false,passive:name==='pointerdown'||name==='touchstart'}));
   }
 
-  /* Required immediately: core themes, responsive/readability CSS and legacy artwork repair. */
+  /* Required immediately: visual system, focus mode, responsive/readability CSS and legacy artwork repair. */
   loadStyle('styles/full-themes.css?v=3.0.5','kbsFullThemesStyle');
   loadStyle('styles/theme-picker-fit.css?v=3.0.2','kbsThemePickerFitStyle');
   loadStyle('styles/responsive-button-fit.css?v=3.3.4','kbsResponsiveButtonFitStyle');
   loadStyle('styles/ui-readability-fixes.css?v=3.5.4','kbsUiReadabilityFixesStyle');
+  loadStyle('styles/theme-animated-accents.css?v=3.4.1','kbsThemeAnimatedAccentsStyle');
+  loadStyle('styles/focus-presentation-mode.css?v=3.3.2','kbsFocusPresentationStyle');
   loadScript('features/full-themes.js?v=3.4.1','kbsFullThemesScript');
   loadScript('features/theme-picker-fit.js?v=3.0.2','kbsThemePickerFitScript');
+  loadScript('features/theme-animated-accents.js?v=3.4.1','kbsThemeAnimatedAccentsScript');
+  loadScript('features/focus-presentation-mode.js?v=3.3.2','kbsFocusPresentationScript');
   loadScript('features/artwork-legacy-repair.js?v=2.9.1','kbsArtworkLegacyRepairScript');
 
-  /* Binder cover assets are loaded only when the binder library is opened. */
+  /* Binder cover assets load only when the binder library is first opened. */
   let coverLoaded=false;
   async function loadCoverDesigner(){
     if(coverLoaded)return;coverLoaded=true;
@@ -35,7 +39,7 @@
   document.querySelector('#openBinders')?.addEventListener('click',loadCoverDesigner,{once:true,capture:true});
   document.querySelector('#mobilePageBinders')?.addEventListener('click',loadCoverDesigner,{once:true,capture:true});
 
-  /* Artwork source helper is loaded only when the Artwork surface is opened. */
+  /* Artwork source helper loads only when the Artwork surface is first opened. */
   let sourceLinksLoaded=false;
   async function loadArtworkSources(){
     if(sourceLinksLoaded)return;sourceLinksLoaded=true;
@@ -44,13 +48,9 @@
   document.querySelector('#libraryArtworkTab')?.addEventListener('click',loadArtworkSources,{once:true,capture:true});
   document.querySelector('[data-mobile-lab="art"]')?.addEventListener('click',loadArtworkSources,{once:true,capture:true});
 
-  /* Decorative/advanced modules wait for real user interaction instead of blocking startup. */
+  /* Advanced productivity tools wait for the first real user interaction. */
   onceAny(['pointerdown','keydown','touchstart'],()=>{
-    loadStyle('styles/theme-animated-accents.css?v=3.4.1','kbsThemeAnimatedAccentsStyle');
-    loadStyle('styles/focus-presentation-mode.css?v=3.3.2','kbsFocusPresentationStyle');
     loadStyle('styles/productivity-suite.css?v=3.5.0','kbsProductivitySuiteStyle');
-    loadScript('features/theme-animated-accents.js?v=3.4.1','kbsThemeAnimatedAccentsScript').catch(console.warn);
-    loadScript('features/focus-presentation-mode.js?v=3.3.2','kbsFocusPresentationScript').catch(console.warn);
     loadScript('features/productivity-suite.js?v=3.5.0','kbsProductivitySuiteScript').catch(console.warn);
   });
 
