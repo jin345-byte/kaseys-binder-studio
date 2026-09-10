@@ -28,11 +28,15 @@ jobs:
           set -euo pipefail
           node --check public/features/performance-core.js
           node --check public/features/staging-v287.js
-          grep -q 'features/performance-core.js?v=4.0.1' public/index.html
+          grep -q 'features/performance-core.js' public/index.html
+          grep -q "PERF_VERSION='4.0.2'" public/features/performance-core.js
           grep -q "ensureGame('union-arena')" public/features/performance-core.js
           grep -q 'virtualLimit=60' public/features/performance-core.js
           grep -q 'optimizeImageFile' public/features/performance-core.js
+          grep -q 'thumbnailBytes' public/features/performance-core.js
+          grep -q 'stopImmediatePropagation' public/features/performance-core.js
           grep -q 'KBSModules' public/features/performance-core.js
+          grep -q 'Binder Studio v4.0.2 preview' public/features/staging-v287.js
           echo PERFORMANCE_STATIC_PASS
 
       - name: Install Playwright
@@ -49,18 +53,27 @@ jobs:
           const sleep=ms=>new Promise(r=>setTimeout(r,ms));
           (async()=>{
             let live=false;
-            for(let i=0;i<48;i++){
-              const r=await fetch(BASE+'/features/performance-core.js?perf='+Date.now(),{cache:'no-store'}).catch(()=>null);
-              const text=r?.ok?await r.text():'';
-              if(text.includes("PERF_VERSION='4.0.1'")){live=true;break}
+            for(let i=0;i<60;i++){
+              const stamp=Date.now();
+              const [perfRes,loaderRes,indexRes]=await Promise.all([
+                fetch(BASE+'/features/performance-core.js?perf='+stamp,{cache:'no-store'}).catch(()=>null),
+                fetch(BASE+'/features/staging-v287.js?perf='+stamp,{cache:'no-store'}).catch(()=>null),
+                fetch(BASE+'/?perfassets='+stamp,{cache:'no-store'}).catch(()=>null)
+              ]);
+              const [perf,loader,index]=await Promise.all([
+                perfRes?.ok?perfRes.text().catch(()=>''):'',
+                loaderRes?.ok?loaderRes.text().catch(()=>''):'',
+                indexRes?.ok?indexRes.text().catch(()=>''):''
+              ]);
+              if(perf.includes("PERF_VERSION='4.0.2'") && loader.includes('Binder Studio v4.0.2 preview') && index.includes('features/performance-core.js')){live=true;break}
               await sleep(5000);
             }
-            if(!live)throw new Error('Performance core 4.0.1 did not propagate');
+            if(!live)throw new Error('Matching performance 4.0.2 preview assets did not propagate');
             const browser=await chromium.launch({headless:true});
             const page=await browser.newPage({viewport:{width:390,height:844}});
             const errors=[];page.on('pageerror',e=>errors.push(e.message));
             await page.goto(BASE+'/?perfcheck='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
-            await page.waitForFunction(()=>globalThis.KBSModules?.version==='4.0.1',{timeout:20000});
+            await page.waitForFunction(()=>globalThis.KBSModules?.version==='4.0.2',{timeout:20000});
             await page.waitForTimeout(1800);
             const state=await page.evaluate(()=>({
               version:KBSModules.version,
@@ -70,12 +83,15 @@ jobs:
               searchSize:KBSModules.search.size,
               virtualLimit:KBSModules.virtualization.limit,
               coverLoaded:!!document.querySelector('#kbsBinderCoverDesignerScript'),
-              sourceLinksLoaded:!!document.querySelector('#kbsArtSourceLinksScript')
+              sourceLinksLoaded:!!document.querySelector('#kbsArtSourceLinksScript'),
+              animatedLoaded:!!document.querySelector('#kbsThemeAnimatedAccentsScript'),
+              focusLoaded:!!document.querySelector('#kbsFocusPresentationScript')
             }));
-            if(state.version!=='4.0.1')throw new Error('Wrong performance version');
+            if(state.version!=='4.0.2')throw new Error('Wrong performance version');
             if(!state.modules.includes('catalog')||!state.modules.includes('search')||!state.modules.includes('images')||!state.modules.includes('lazy'))throw new Error('Missing modular boundary: '+JSON.stringify(state));
             if(state.virtualLimit!==60)throw new Error('Virtualization baseline mismatch: '+state.virtualLimit);
-            if(state.coverLoaded||state.sourceLinksLoaded)throw new Error('Optional features loaded before use: '+JSON.stringify(state));
+            if(state.coverLoaded||state.sourceLinksLoaded)throw new Error('Optional on-demand features loaded before use: '+JSON.stringify(state));
+            if(!state.animatedLoaded||!state.focusLoaded)throw new Error('Required visual behavior was accidentally deferred: '+JSON.stringify(state));
             await page.click('#openBinders');
             await page.waitForFunction(()=>!!document.querySelector('#kbsBinderCoverDesignerScript'),{timeout:10000});
             await page.click('#closeBinders').catch(()=>{});
