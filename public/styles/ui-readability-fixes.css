@@ -36,8 +36,8 @@ button:focus-visible,.btn:focus-visible,[role="button"]:focus-visible,input:focu
   #libraryBuildLabel,body.mobile-lab-enabled #libraryBuildLabel,.canvas-side-controls #libraryBuildLabel{display:block!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;line-height:1.25!important;font-size:11px!important}
   #libraryBuildHint,body.mobile-lab-enabled #libraryBuildHint,.canvas-side-controls #libraryBuildHint{display:block!important;margin-top:4px!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;font-size:10px!important;line-height:1.25!important;opacity:.92!important}
   /* mobile-lab moves this CTA inline and replaces its inner copy with compact
-     pseudo labels. Override the generic CTA sizing with that intended compact
-     layout so the absolute labels do not create artificial scroll overflow. */
+     pseudo labels. Override generic sizing so the absolute labels remain inside
+     the button instead of contributing artificial scroll overflow. */
   body.mobile-lab-enabled #librarySetupCard.mobile-library-inline #syncMasterLibrary{
     box-sizing:border-box!important;display:flex!important;width:100%!important;height:44px!important;min-height:44px!important;max-height:44px!important;padding:0 42px!important;line-height:1!important;overflow:hidden!important;align-items:center!important;justify-content:center!important;white-space:nowrap!important
   }
@@ -50,5 +50,5 @@ button:focus-visible,.btn:focus-visible,[role="button"]:focus-visible,input:focu
   .binder-heading-module .page-number,body.mobile-lab-enabled .canvas .binder-heading-module .page-number,body.mobile-lab-enabled #editorPageNumbers .page-number{width:36px!important;min-width:36px!important;max-width:36px!important;height:36px!important;min-height:36px!important;max-height:36px!important;overflow:visible!important}
   .binder-shell{max-width:calc(100vw - 16px)!important;max-height:calc(100dvh - 16px)!important}.binder-toolbar{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}.binder-toolbar .btn,.binder-toolbar button{width:100%!important;min-height:44px!important;padding:8px 7px!important;font-size:12px!important}.binder-toolbar .binder-status,#binderStatus{grid-column:1 / -1!important}.page-browser{grid-template-columns:minmax(0,1fr)!important;gap:12px!important}.page-card-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}.page-card-actions button,.page-card-actions .btn{min-height:44px!important;padding:8px!important;font-size:12px!important}.viewer-nav .btn,.viewer-nav button{flex:1 1 140px!important;min-height:44px!important;font-size:12px!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important}
 }
-@media(max-width:430px){.binder-toolbar{grid-template-columns:minmax(0,1fr))!important}.binder-toolbar .binder-status,#binderStatus{grid-column:auto!important}.page-card-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:430px){.binder-toolbar{grid-template-columns:minmax(0,1fr)!important}.binder-toolbar .binder-status,#binderStatus{grid-column:auto!important}.page-card-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media(max-width:390px){.pocket:not(.filled)>small{font-size:9px!important;padding:2px 3px!important}.pocket:not(.filled)>b{padding:2px 3px!important}}
