@@ -1,10 +1,10 @@
-/* Kasey's Binder Studio v4.0.2 — performance architecture preview
+/* Kasey's Binder Studio v4.0.3 — performance architecture preview
    Preview-only layer for catalog partitioning, indexed search, result virtualization,
    feature lazy-loading helpers, image optimization, and modular runtime boundaries. */
 (function(){
   'use strict';
 
-  const PERF_VERSION='4.0.2';
+  const PERF_VERSION='4.0.3';
   const loadedGames=new Set();
   const loadingGames=new Map();
   const indexState={ready:false,building:false,version:0,grams:new Map(),byId:new Map(),set:new Map(),artist:new Map(),game:new Map()};
@@ -196,20 +196,25 @@
   async function optimizeImageFile(file){
     if(!file||!String(file.type||'').startsWith('image/'))throw new Error('Not an image');
     const bitmap=await createImageBitmap(file);
-    const maxEdge=3600,scale=Math.min(1,maxEdge/Math.max(bitmap.width,bitmap.height));
-    const w=Math.max(1,Math.round(bitmap.width*scale)),h=Math.max(1,Math.round(bitmap.height*scale));
-    const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
-    const ctx=canvas.getContext('2d',{alpha:true});ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(bitmap,0,0,w,h);
-    let quality=.93,data=canvasData(canvas,quality);
-    while(dataUrlBytes(data)>1200000&&quality>.72){quality-=.05;data=canvasData(canvas,quality)}
+    try{
+      const maxEdge=3600,scale=Math.min(1,maxEdge/Math.max(bitmap.width,bitmap.height));
+      const w=Math.max(1,Math.round(bitmap.width*scale)),h=Math.max(1,Math.round(bitmap.height*scale));
+      const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+      const ctx=canvas.getContext('2d',{alpha:true});
+      if(!ctx)throw new Error('Canvas is unavailable');
+      ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(bitmap,0,0,w,h);
+      let quality=.93,data=canvasData(canvas,quality);
+      while(dataUrlBytes(data)>1200000&&quality>.72){quality-=.05;data=canvasData(canvas,quality)}
 
-    const thumbScale=Math.min(1,480/Math.max(bitmap.width,bitmap.height));
-    const tw=Math.max(1,Math.round(bitmap.width*thumbScale)),th=Math.max(1,Math.round(bitmap.height*thumbScale));
-    const thumb=document.createElement('canvas');thumb.width=tw;thumb.height=th;
-    const tctx=thumb.getContext('2d',{alpha:true});tctx.imageSmoothingEnabled=true;tctx.imageSmoothingQuality='high';tctx.drawImage(bitmap,0,0,tw,th);
-    const thumbnail=canvasData(thumb,.78);
-    bitmap.close?.();
-    return {data,thumbnail,width:w,height:h,thumbWidth:tw,thumbHeight:th,bytes:dataUrlBytes(data),thumbnailBytes:dataUrlBytes(thumbnail),quality,sourceBytes:file.size||0,name:file.name||'Uploaded image'};
+      const thumbScale=Math.min(1,480/Math.max(bitmap.width,bitmap.height));
+      const tw=Math.max(1,Math.round(bitmap.width*thumbScale)),th=Math.max(1,Math.round(bitmap.height*thumbScale));
+      const thumb=document.createElement('canvas');thumb.width=tw;thumb.height=th;
+      const tctx=thumb.getContext('2d',{alpha:true});
+      if(!tctx)throw new Error('Thumbnail canvas is unavailable');
+      tctx.imageSmoothingEnabled=true;tctx.imageSmoothingQuality='high';tctx.drawImage(bitmap,0,0,tw,th);
+      const thumbnail=canvasData(thumb,.78);
+      return {data,thumbnail,width:w,height:h,thumbWidth:tw,thumbHeight:th,bytes:dataUrlBytes(data),thumbnailBytes:dataUrlBytes(thumbnail),quality,sourceBytes:file.size||0,name:file.name||'Uploaded image'};
+    }finally{bitmap.close?.()}
   }
 
   async function processUploadFiles(input,files){
@@ -250,12 +255,24 @@
 
   const lazyRegistry=new Map();
   function loadScript(src,id){
-    if(id&&document.getElementById(id))return Promise.resolve();
+    const existing=id?document.getElementById(id):null;
+    if(existing?.dataset?.kbsLoaded==='1')return Promise.resolve();
     if(lazyRegistry.has(src))return lazyRegistry.get(src);
-    const p=new Promise((resolve,reject)=>{const s=document.createElement('script');if(id)s.id=id;s.src=src;s.onload=()=>resolve();s.onerror=()=>reject(new Error(`Could not load ${src}`));document.head.appendChild(s)});
+    if(existing)existing.remove();
+    const p=new Promise((resolve,reject)=>{
+      const s=document.createElement('script');if(id)s.id=id;s.src=src;
+      s.onload=()=>{s.dataset.kbsLoaded='1';resolve()};
+      s.onerror=()=>{s.remove();reject(new Error(`Could not load ${src}`))};
+      document.head.appendChild(s);
+    }).catch(err=>{lazyRegistry.delete(src);throw err});
     lazyRegistry.set(src,p);return p;
   }
-  function loadStyle(href,id){if(id&&document.getElementById(id))return;const l=document.createElement('link');if(id)l.id=id;l.rel='stylesheet';l.href=href;document.head.appendChild(l)}
+  function loadStyle(href,id){
+    if(id&&document.getElementById(id))return;
+    const l=document.createElement('link');if(id)l.id=id;l.rel='stylesheet';l.href=href;
+    l.onerror=()=>l.remove();
+    document.head.appendChild(l);
+  }
 
   setTimeout(()=>rebuildSearchIndex(getMasterRows()),1200);
 
