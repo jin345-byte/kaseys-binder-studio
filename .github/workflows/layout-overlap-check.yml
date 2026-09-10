@@ -1,0 +1,109 @@
+name: Layout Overlap Check
+
+on:
+  push:
+    branches: [prod-db-compat-preview]
+    paths:
+      - 'public/**'
+      - '.github/workflows/layout-overlap-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: binder-studio-layout-overlap-check
+  cancel-in-progress: true
+
+jobs:
+  overlap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify overlap stylesheet is wired
+        run: |
+          grep -q "layout-overlap-fixes.css?v=4.0.3.1" public/features/staging-v287.js
+          grep -q "binder-cover-footer" public/styles/layout-overlap-fixes.css
+          grep -q "card-detail-row" public/styles/layout-overlap-fixes.css
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null
+      - name: Check card and binder geometry
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          const BASE='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          async function waitLive(){
+            for(let i=0;i<60;i++){
+              const s=Date.now();
+              const r=await fetch(BASE+'/features/staging-v287.js?overlap='+s,{cache:'no-store'}).catch(()=>null);
+              const t=r?.ok?await r.text():'';
+              if(t.includes('layout-overlap-fixes.css?v=4.0.3.1'))return;
+              await sleep(5000);
+            }
+            throw new Error('Overlap fix loader did not propagate');
+          }
+          const overlap=(a,b,tol=0)=>Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>tol && Math.min(a.right,b.right)-Math.max(a.left,b.left)>tol;
+          (async()=>{
+            await waitLive();
+            const browser=await chromium.launch({headless:true});
+            const failures=[];
+            const themes=['jolteon','pokedex','game-boy','neo-genesis','team-rocket','lavender','cyberpunk','cozy-sakura','dark-academia','e-ink','retro-card-shop'];
+            for(const vp of [{name:'desktop',width:1440,height:1000},{name:'narrow',width:900,height:900},{name:'mobile',width:390,height:844}]){
+              const page=await browser.newPage({viewport:{width:vp.width,height:vp.height}});
+              await page.goto(BASE+'/?focus=3.3.2&build=4.0.3&overlap='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForFunction(()=>document.querySelector('#kbsLayoutOverlapFixesStyle')&&globalThis.KBSFullThemes?.list?.().length===11,{timeout:60000});
+              await page.evaluate(()=>{
+                const cards=document.querySelector('#cards');
+                cards.innerHTML=`<article class="item card-item" draggable="true" data-kind="card" data-id="qa-card"><button class="pick" data-kind="card"><span class="card-image-wrap"><img alt="QA"></span><span class="item-copy"><strong>Pikachu ex Extremely Long Readability Test</strong><span class="card-detail-row"><small class="card-number">#094</small><small class="card-artist" title="Very Long Artist Name For Overflow Testing">Very Long Artist Name For Overflow Testing</small></span></span></button></article>`;
+              });
+              if(vp.name==='mobile'){
+                await page.evaluate(()=>document.querySelector('[data-mobile-lab="cards"]')?.click());
+              }
+              for(const theme of themes){
+                await page.evaluate(t=>globalThis.KBSFullThemes.apply(t,{persist:false,applyPalette:false}),theme);
+                const card=await page.evaluate(()=>{
+                  const root=document.querySelector('#cards .card-item'),copy=root?.querySelector('.item-copy'),detail=root?.querySelector('.card-detail-row'),num=root?.querySelector('.card-number'),artist=root?.querySelector('.card-artist');
+                  if(!root||!copy||!detail||!num||!artist)return null;
+                  const rr=root.getBoundingClientRect(),cr=copy.getBoundingClientRect(),dr=detail.getBoundingClientRect(),nr=num.getBoundingClientRect(),ar=artist.getBoundingClientRect();
+                  return {rr,cr,dr,nr,ar,rootScroll:root.scrollHeight,rootClient:root.clientHeight,copyScroll:copy.scrollHeight,copyClient:copy.clientHeight,numLine:getComputedStyle(num).lineHeight,artistLine:getComputedStyle(artist).lineHeight};
+                });
+                if(!card){failures.push(`${vp.name}/${theme}: missing QA card`);continue}
+                if(card.cr.bottom>card.rr.bottom+1||card.dr.bottom>card.rr.bottom+1||card.nr.bottom>card.rr.bottom+1||card.ar.bottom>card.rr.bottom+1)failures.push(`${vp.name}/${theme}: card metadata clips past card`);
+                if(card.rootScroll>card.rootClient+1)failures.push(`${vp.name}/${theme}: card has hidden vertical overflow ${card.rootScroll}/${card.rootClient}`);
+                if(card.copyScroll>card.copyClient+1)failures.push(`${vp.name}/${theme}: card copy vertically clipped ${card.copyScroll}/${card.copyClient}`);
+              }
+
+              if(vp.name==='desktop') await page.locator('#openBinders:visible').click();
+              else await page.evaluate(()=>document.querySelector('#mobilePageBinders')?.click()||document.querySelector('#openBinders')?.click());
+              await page.waitForSelector('#binderModal.open',{timeout:15000});
+              await page.waitForFunction(()=>!!document.querySelector('#kbsBinderCoverDesignerScript'),{timeout:15000});
+              await page.waitForSelector('#binderList .binder-cover-card',{timeout:15000});
+              for(const theme of themes){
+                await page.evaluate(t=>globalThis.KBSFullThemes.apply(t,{persist:false,applyPalette:false}),theme);
+                const g=await page.evaluate(()=>{
+                  const card=document.querySelector('#binderList .binder-cover-card'),face=card?.querySelector('.binder-cover-face'),footer=card?.querySelector('.binder-cover-footer');
+                  const pageCard=document.querySelector('#pageBrowser .page-card'),title=pageCard?.querySelector('.page-card-meta>strong'),actions=pageCard?.querySelector('.page-card-actions');
+                  if(!card||!face||!footer)return null;
+                  const c=card.getBoundingClientRect(),f=face.getBoundingClientRect(),ft=footer.getBoundingClientRect();
+                  const p=pageCard?.getBoundingClientRect(),tr=title?.getBoundingClientRect(),ar=actions?.getBoundingClientRect();
+                  return {c,f,ft,p,tr,ar,cardScroll:card.scrollHeight,cardClient:card.clientHeight};
+                });
+                if(!g){failures.push(`${vp.name}/${theme}: binder cover missing`);continue}
+                if(g.ft.top<g.f.bottom-1)failures.push(`${vp.name}/${theme}: binder footer overlaps cover by ${(g.f.bottom-g.ft.top).toFixed(1)}px`);
+                if(g.ft.bottom>g.c.bottom+1)failures.push(`${vp.name}/${theme}: binder footer clips outside card`);
+                if(g.cardScroll>g.cardClient+1)failures.push(`${vp.name}/${theme}: binder card has hidden vertical overflow ${g.cardScroll}/${g.cardClient}`);
+                if(g.tr&&g.ar&&g.ar.top<g.tr.bottom-1)failures.push(`${vp.name}/${theme}: page actions overlap page title`);
+              }
+              await page.close();
+            }
+            await browser.close();
+            if(failures.length)throw new Error(failures.join('\n'));
+            console.log('LAYOUT_OVERLAP_CHECK_PASS');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
