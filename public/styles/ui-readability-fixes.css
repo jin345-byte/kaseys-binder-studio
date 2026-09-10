@@ -25,14 +25,14 @@
 button:focus-visible,.btn:focus-visible,[role="button"]:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent,#f5d52f)!important;outline-offset:2px!important}
 
 @media(max-width:760px){
-  /* The Library CTA has a title plus three catalog counts. Some themes add line
-     height/padding, so reserve enough vertical room instead of clipping it. */
+  /* The Library CTA has a title plus three catalog counts. Theme typography can
+     increase its content height to ~135px, so keep a safety margin on mobile. */
   #syncMasterLibrary,
   body.mobile-lab-enabled #syncMasterLibrary,
   body.mobile-lab-enabled .library #syncMasterLibrary,
   body.mobile-lab-enabled .canvas-side-controls #syncMasterLibrary,
   .canvas-side-controls #syncMasterLibrary{
-    box-sizing:border-box!important;height:auto!important;min-height:96px!important;max-height:none!important;padding:10px 42px 10px 10px!important;line-height:1.25!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;align-items:center!important
+    box-sizing:border-box!important;height:auto!important;min-height:148px!important;max-height:none!important;padding:12px 42px 12px 10px!important;line-height:1.25!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;align-items:center!important
   }
   #syncMasterLibrary .library-build-copy,body.mobile-lab-enabled #syncMasterLibrary .library-build-copy,.canvas-side-controls #syncMasterLibrary .library-build-copy{display:block!important;min-width:0!important;width:100%!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important}
   #libraryBuildLabel,body.mobile-lab-enabled #libraryBuildLabel,.canvas-side-controls #libraryBuildLabel{display:block!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;line-height:1.25!important;font-size:11px!important}
