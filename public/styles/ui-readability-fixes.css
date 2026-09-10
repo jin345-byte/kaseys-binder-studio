@@ -25,18 +25,18 @@
 button:focus-visible,.btn:focus-visible,[role="button"]:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent,#f5d52f)!important;outline-offset:2px!important}
 
 @media(max-width:760px){
-  /* Library build CTA contains a title plus three catalog counts. Force enough
-     vertical room on narrow screens so no theme can collapse it back to 34px. */
+  /* The Library CTA has a title plus three catalog counts. Some themes add line
+     height/padding, so reserve enough vertical room instead of clipping it. */
   #syncMasterLibrary,
   body.mobile-lab-enabled #syncMasterLibrary,
   body.mobile-lab-enabled .library #syncMasterLibrary,
   body.mobile-lab-enabled .canvas-side-controls #syncMasterLibrary,
   .canvas-side-controls #syncMasterLibrary{
-    box-sizing:border-box!important;height:auto!important;min-height:64px!important;max-height:none!important;padding:8px 42px 8px 10px!important;line-height:1.2!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;align-items:center!important
+    box-sizing:border-box!important;height:auto!important;min-height:96px!important;max-height:none!important;padding:10px 42px 10px 10px!important;line-height:1.25!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;align-items:center!important
   }
   #syncMasterLibrary .library-build-copy,body.mobile-lab-enabled #syncMasterLibrary .library-build-copy,.canvas-side-controls #syncMasterLibrary .library-build-copy{display:block!important;min-width:0!important;width:100%!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important}
-  #libraryBuildLabel,body.mobile-lab-enabled #libraryBuildLabel,.canvas-side-controls #libraryBuildLabel{display:block!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;line-height:1.2!important;font-size:11px!important}
-  #libraryBuildHint,body.mobile-lab-enabled #libraryBuildHint,.canvas-side-controls #libraryBuildHint{display:block!important;margin-top:3px!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;font-size:9px!important;line-height:1.2!important;opacity:.92!important}
+  #libraryBuildLabel,body.mobile-lab-enabled #libraryBuildLabel,.canvas-side-controls #libraryBuildLabel{display:block!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;line-height:1.25!important;font-size:11px!important}
+  #libraryBuildHint,body.mobile-lab-enabled #libraryBuildHint,.canvas-side-controls #libraryBuildHint{display:block!important;margin-top:4px!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;font-size:10px!important;line-height:1.25!important;opacity:.92!important}
   #searchBtn{width:auto!important;min-width:68px!important;min-height:44px!important;font-size:12px!important}#guidedTourLaunch{width:100%!important;min-width:0!important;height:auto!important;min-height:44px!important;font-size:12px!important;white-space:normal!important}
   .artadd label.btn,.artadd .btn[for="artFile"],.artadd .upload.btn,.artadd label.upload{min-height:44px!important}
   .binder-heading-module .page-arrow,body.mobile-lab-enabled .canvas .binder-heading-module .page-arrow{width:36px!important;min-width:36px!important;max-width:36px!important;height:36px!important;min-height:36px!important;max-height:36px!important;overflow:visible!important}
