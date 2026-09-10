@@ -1,0 +1,103 @@
+/* Kasey's Binder Studio v3.3.3 — responsive button fit.
+   Preserve normal desktop geometry, but let controls shrink/reflow cleanly as
+   the available width changes. Theme switching remains cosmetic only. */
+
+/* Allow buttons to shrink inside flex/grid cells instead of forcing overflow. */
+button,.btn,.page-arrow,.page-number,.library-build-cta,.artlink,.version-link{
+  min-width:0;
+  max-width:100%;
+  box-sizing:border-box;
+}
+
+/* General app action rows can wrap instead of clipping neighboring controls. */
+.controls,
+.searchrow,
+.sectionhead,
+.canvashead,
+.arthead,
+.artadd,
+.binder-actions,
+.binder-library-actions,
+.cover-designer-actions{
+  min-width:0;
+}
+
+.controls>*,
+.searchrow>*,
+.sectionhead>*,
+.canvashead>*,
+.arthead>*,
+.artadd>*,
+.binder-actions>*,
+.binder-library-actions>*,
+.cover-designer-actions>*{
+  min-width:0;
+}
+
+/* Keep labels readable while allowing narrower controls. */
+.btn,
+.controls>button,
+.page-arrow,
+.page-number,
+.library-build-cta{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+/* Mid-size windows: reduce padding/font slightly before forcing layout changes. */
+@media(max-width:1180px){
+  .controls>button,
+  .controls .btn,
+  .sectionhead .btn,
+  .canvashead .btn,
+  .arthead .btn{
+    padding-inline:clamp(7px,1vw,11px);
+    font-size:clamp(11px,1.05vw,13px);
+  }
+}
+
+/* Narrow layouts: let action groups wrap and let buttons occupy their cells. */
+@media(max-width:760px){
+  .controls>button,
+  .controls .btn,
+  .searchrow .btn,
+  .artadd .btn,
+  .binder-actions .btn,
+  .binder-library-actions .btn,
+  .cover-designer-actions .btn{
+    width:100%;
+    min-height:44px;
+    padding:8px 7px;
+    font-size:clamp(11px,3.2vw,13px);
+    line-height:1.15;
+    white-space:normal;
+    overflow-wrap:anywhere;
+    text-align:center;
+  }
+
+  .sectionhead,
+  .canvashead,
+  .arthead{
+    flex-wrap:wrap;
+  }
+
+  .sectionhead>.btn,
+  .canvashead>.btn,
+  .arthead>.btn{
+    flex:0 1 auto;
+    max-width:100%;
+    white-space:normal;
+  }
+}
+
+/* Very narrow phones: keep tap targets usable without text pushing outside. */
+@media(max-width:390px){
+  .controls>button,
+  .controls .btn,
+  .searchrow .btn,
+  .artadd .btn{
+    font-size:11px;
+    padding-inline:5px;
+  }
+}
