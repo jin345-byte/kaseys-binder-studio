@@ -1,0 +1,9 @@
+Kasey's Binder Studio v4.0.4 staging preview
+- Lavender is the default theme for sessions without a saved theme choice.
+- Decorative pulsing/glowing/theme-accent animation package removed.
+- Animated Kasey's Binder Studio lettering removed; brand remains static.
+- Page-number pop animation removed.
+- Global decorative motion disabled in the static UI layer.
+- Font selector added: System Sans, Verdana, Trebuchet, Georgia.
+- Existing saved theme and font choices remain persistent.
+- Production is not modified by this staging branch.
