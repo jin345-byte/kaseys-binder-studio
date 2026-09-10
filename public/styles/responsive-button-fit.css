@@ -1,4 +1,4 @@
-/* Kasey's Binder Studio v3.3.3 — responsive button fit.
+/* Kasey's Binder Studio v3.3.4 — responsive button fit.
    Preserve normal desktop geometry, but let controls shrink/reflow cleanly as
    the available width changes. Theme switching remains cosmetic only. */
 
@@ -43,6 +43,59 @@ button,.btn,.page-arrow,.page-number,.library-build-cta,.artlink,.version-link{
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
+}
+
+/* Card Variants is often narrow even on a desktop because it shares the
+   workspace with the binder canvas. Respond to the pane width itself rather
+   than only the browser viewport. */
+.variant-pane{
+  container-type:inline-size;
+  container-name:variant-pane;
+  min-width:0;
+}
+.variant-pane .variant-filters{
+  min-width:0!important;
+  max-width:100%!important;
+}
+.variant-pane .variant-filters>*{
+  min-width:0!important;
+  max-width:100%!important;
+}
+.variant-pane #clearArtist{
+  min-width:0!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+
+/* The screenshot-sized pane: keep Set + Artist side-by-side and place the
+   action on its own full-width row instead of allowing it to be clipped. */
+@container variant-pane (max-width:720px){
+  .variant-pane .variant-filters{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    gap:9px!important;
+  }
+  .variant-pane #clearArtist{
+    grid-column:1 / -1!important;
+    width:100%!important;
+    justify-self:stretch!important;
+    white-space:normal!important;
+    text-align:center!important;
+  }
+  .variant-pane .catalog-filter{
+    min-width:0!important;
+  }
+}
+
+/* Very narrow variant pane: stack everything so no select/button can leave
+   the panel bounds. */
+@container variant-pane (max-width:430px){
+  .variant-pane .variant-filters{
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+  .variant-pane #clearArtist{
+    grid-column:auto!important;
+  }
 }
 
 /* Mid-size windows: reduce padding/font slightly before forcing layout changes. */
