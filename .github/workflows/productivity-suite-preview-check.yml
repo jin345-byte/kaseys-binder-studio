@@ -69,8 +69,21 @@ jobs:
               }
               throw new Error('Productivity suite did not become stable after navigation');
             }
-            async function invokeNavigationSafe(fn,arg){
+            async function awaitNavigationSafe(fn,arg){
               try{return await page.evaluate(fn,arg)}catch(e){if(!/Execution context was destroyed|navigation/i.test(String(e?.message||e)))throw e;return null}
+            }
+            async function loadBinderByName(name){
+              await ensureProductivity();
+              await awaitNavigationSafe(async n=>{
+                const rows=await window.KBSProductivity.universalResults(n);
+                const binder=rows.find(x=>x.type==='binder'&&x.label===n)||rows.find(x=>x.type==='binder');
+                if(!binder)throw new Error('Binder not found: '+n);
+                const ps=await pagesForBinder(binder.id);
+                if(!ps.length)throw new Error('Binder has no pages: '+n);
+                await loadPageIntoEditor(ps[0].id,{closeLibrary:false});
+                return binder.id;
+              },name);
+              await sleep(500);await ensureProductivity();
             }
 
             if(await page.$('#kbsToolsBtn'))throw new Error('Productivity suite loaded before first interaction');
@@ -92,18 +105,24 @@ jobs:
             if(await page.locator('#grid .kbs-pocket-selected').count()!==2)throw new Error('Multi-select did not select two pockets');
             await page.evaluate(()=>window.KBSProductivity.clearSelectedPockets());if(await page.locator('#grid .kbs-pocket-selected').count())throw new Error('Multi-select did not clear');await page.evaluate(()=>window.KBSProductivity.setMultiMode(false));
 
-            await invokeNavigationSafe(m=>{window.KBSProductivity.smartGenerate({name:'QA Smart Binder',query:'QA',pages:2,layout:'2x2',candidates:m});return true},mocks);
-            await sleep(800);await ensureProductivity();
+            await awaitNavigationSafe(async m=>await window.KBSProductivity.smartGenerate({name:'QA Smart Binder',query:'QA',pages:2,layout:'2x2',candidates:m}),mocks);
+            await loadBinderByName('QA Smart Binder');
             let pack=await page.evaluate(()=>window.KBSProductivity.buildExportPackage());
             if(pack.format!=='KBS-BINDER-1'||pack.binder.name!=='QA Smart Binder'||pack.pages.length!==2)throw new Error('Smart binder/export mismatch '+JSON.stringify({format:pack.format,name:pack.binder.name,pages:pack.pages.length}));
             if(pack.pages.reduce((n,p)=>n+(p.state?.pockets||[]).filter(Boolean).length,0)<4)throw new Error('Smart binder did not place cards');
 
-            await invokeNavigationSafe(()=>{window.KBSProductivity.copyCurrentPage();return true});await sleep(600);await ensureProductivity();
+            await awaitNavigationSafe(async()=>await window.KBSProductivity.copyCurrentPage());await sleep(600);await ensureProductivity();
+            await loadBinderByName('QA Smart Binder');
             pack=await page.evaluate(()=>window.KBSProductivity.buildExportPackage());if(pack.pages.length!==3)throw new Error('Copy page did not add a page');
             const universal=await page.evaluate(()=>window.KBSProductivity.universalResults('QA Smart'));if(!universal.some(x=>x.type==='binder'))throw new Error('Universal search did not find binder');
             await page.evaluate(()=>window.KBSProductivity.openUniversal());await page.waitForSelector('#kbsUniversalModal.open');await page.click('#kbsUniversalClose');
 
-            await invokeNavigationSafe(p=>{window.KBSProductivity.importPackage(p);return true},pack);await sleep(800);await ensureProductivity();
+            await awaitNavigationSafe(async p=>await window.KBSProductivity.importPackage(p),pack);await sleep(800);await ensureProductivity();
+            const importedRows=await page.evaluate(()=>window.KBSProductivity.universalResults('Imported'));
+            const importedBinder=importedRows.find(x=>x.type==='binder'&&x.label.includes('Imported'));
+            if(!importedBinder)throw new Error('Imported binder was not created');
+            await awaitNavigationSafe(async id=>{const ps=await pagesForBinder(id);if(!ps.length)throw new Error('Imported binder has no pages');await loadPageIntoEditor(ps[0].id,{closeLibrary:false})},importedBinder.id);
+            await sleep(500);await ensureProductivity();
             const imported=await page.evaluate(()=>window.KBSProductivity.buildExportPackage());if(imported.pages.length!==3||!imported.binder.name.includes('Imported'))throw new Error('Imported binder was not loaded correctly');
             const meaningful=errors.filter(x=>!x.includes('favicon'));if(meaningful.length)throw new Error('Browser errors: '+meaningful.join(' | '));
             await browser.close();console.log('PRODUCTIVITY_SUITE_PASS',JSON.stringify({steps:[8,9,10,11,12,13,14,15],importedPages:imported.pages.length}));
