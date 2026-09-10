@@ -1,15 +1,13 @@
-/* Kasey's Binder Studio v3.3.4 — responsive button fit.
+/* Kasey's Binder Studio v3.3.5 — responsive button fit.
    Preserve normal desktop geometry, but let controls shrink/reflow cleanly as
    the available width changes. Theme switching remains cosmetic only. */
 
-/* Allow buttons to shrink inside flex/grid cells instead of forcing overflow. */
 button,.btn,.page-arrow,.page-number,.library-build-cta,.artlink,.version-link{
   min-width:0;
   max-width:100%;
   box-sizing:border-box;
 }
 
-/* General app action rows can wrap instead of clipping neighboring controls. */
 .controls,
 .searchrow,
 .sectionhead,
@@ -34,7 +32,6 @@ button,.btn,.page-arrow,.page-number,.library-build-cta,.artlink,.version-link{
   min-width:0;
 }
 
-/* Keep labels readable while allowing narrower controls. */
 .btn,
 .controls>button,
 .page-arrow,
@@ -45,9 +42,36 @@ button,.btn,.page-arrow,.page-number,.library-build-cta,.artlink,.version-link{
   white-space:nowrap;
 }
 
-/* Card Variants is often narrow even on a desktop because it shares the
-   workspace with the binder canvas. Respond to the pane width itself rather
-   than only the browser viewport. */
+/* Binder overview page cards: keep View / Edit / Copy / Delete inside every
+   card instead of letting intrinsic button text push the row wider. */
+.page-card{
+  min-width:0!important;
+}
+.page-card-actions{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:4px!important;
+  width:100%!important;
+  min-width:0!important;
+  align-items:stretch!important;
+}
+.page-card-actions button,
+.page-card-actions .btn{
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  min-height:34px!important;
+  height:auto!important;
+  padding:5px 3px!important;
+  font-size:clamp(9px,.72vw,11px)!important;
+  line-height:1.05!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  text-align:center!important;
+  box-sizing:border-box!important;
+}
+
 .variant-pane{
   container-type:inline-size;
   container-name:variant-pane;
@@ -68,8 +92,6 @@ button,.btn,.page-arrow,.page-number,.library-build-cta,.artlink,.version-link{
   text-overflow:ellipsis!important;
 }
 
-/* The screenshot-sized pane: keep Set + Artist side-by-side and place the
-   action on its own full-width row instead of allowing it to be clipped. */
 @container variant-pane (max-width:720px){
   .variant-pane .variant-filters{
     grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
@@ -87,8 +109,6 @@ button,.btn,.page-arrow,.page-number,.library-build-cta,.artlink,.version-link{
   }
 }
 
-/* Very narrow variant pane: stack everything so no select/button can leave
-   the panel bounds. */
 @container variant-pane (max-width:430px){
   .variant-pane .variant-filters{
     grid-template-columns:minmax(0,1fr)!important;
@@ -98,7 +118,6 @@ button,.btn,.page-arrow,.page-number,.library-build-cta,.artlink,.version-link{
   }
 }
 
-/* Mid-size windows: reduce padding/font slightly before forcing layout changes. */
 @media(max-width:1180px){
   .controls>button,
   .controls .btn,
@@ -110,7 +129,6 @@ button,.btn,.page-arrow,.page-number,.library-build-cta,.artlink,.version-link{
   }
 }
 
-/* Narrow layouts: let action groups wrap and let buttons occupy their cells. */
 @media(max-width:760px){
   .controls>button,
   .controls .btn,
@@ -142,9 +160,18 @@ button,.btn,.page-arrow,.page-number,.library-build-cta,.artlink,.version-link{
     max-width:100%;
     white-space:normal;
   }
+
+  .page-card-actions{
+    gap:3px!important;
+  }
+  .page-card-actions button,
+  .page-card-actions .btn{
+    min-height:32px!important;
+    padding:4px 2px!important;
+    font-size:9px!important;
+  }
 }
 
-/* Very narrow phones: keep tap targets usable without text pushing outside. */
 @media(max-width:390px){
   .controls>button,
   .controls .btn,
