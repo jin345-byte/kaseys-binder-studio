@@ -1,0 +1,10 @@
+/* Kasey's Binder Studio v4.0.4 — readable font choices. */
+:root{--kbs-font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+body[data-kbs-font="system"],body:not([data-kbs-font]){--kbs-font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+body[data-kbs-font="verdana"]{--kbs-font-family:Verdana,Geneva,sans-serif}
+body[data-kbs-font="trebuchet"]{--kbs-font-family:"Trebuchet MS",Arial,sans-serif}
+body[data-kbs-font="georgia"]{--kbs-font-family:Georgia,"Times New Roman",serif}
+body,body .app,body h1,body h2,body h3,body button,body input,body select,body textarea,body .item-copy,body .set-chip,body .badge,body .status,body small{font-family:var(--kbs-font-family)!important}
+.font-choice-control{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:5px!important;width:100%!important;min-width:0!important;padding:9px!important;border:1px solid var(--line)!important;border-radius:13px!important;background:color-mix(in srgb,var(--surface2) 84%,transparent)!important}
+.font-choice-copy{display:flex!important;align-items:baseline!important;justify-content:space-between!important;gap:8px!important;min-width:0!important}.font-choice-copy strong{font-size:11px!important}.font-choice-copy small{font-size:9px!important;color:var(--muted)!important;text-align:right!important}.font-choice-control select{width:100%!important;min-height:40px!important;padding:7px 9px!important;border:1px solid var(--line)!important;border-radius:9px!important;background:var(--surface)!important;color:var(--text)!important;font-size:12px!important}
+@media(max-width:760px){.font-choice-control select{min-height:44px!important;font-size:16px!important}.font-choice-copy{align-items:flex-start!important}.font-choice-copy small{white-space:normal!important}}
