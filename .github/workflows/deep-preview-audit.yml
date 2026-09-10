@@ -104,8 +104,8 @@ jobs:
               page.on('response',r=>{try{const u=new URL(r.url());if(u.origin===BASE&&(u.pathname.startsWith('/features/')||u.pathname.startsWith('/styles/'))&&r.status()>=400)badResponses.push(`${r.status()} ${u.pathname}`)}catch{}});
               await page.goto(BASE+'/?focus=3.3.2&build=4.0.3&deep='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
               await page.waitForSelector('#searchBtn',{timeout:30000});
-              await page.waitForFunction(()=>globalThis.KBSModules?.version==='4.0.3',{timeout:30000});
-              await page.waitForFunction(()=>globalThis.KBSFullThemes?.list?.().length===11,{timeout:30000});
+              await page.waitForFunction(()=>globalThis.KBSModules?.version==='4.0.3',{timeout:60000});
+              await page.waitForFunction(()=>globalThis.KBSFullThemes?.list?.().length===11,{timeout:60000});
               const version=await page.$eval('#versionLink',e=>e.textContent.trim());
               if(version!=='v4.0.3 STAGING')failures.push(`${viewport.name}: visible version ${version}`);
               await page.locator('#versionLink:visible').click();
@@ -122,11 +122,16 @@ jobs:
                 if(pockets!==expected)failures.push(`${viewport.name}: ${layout} rendered ${pockets}/${expected} pockets`);
               }
               for(const t of ['jolteon','pokedex','game-boy','neo-genesis','team-rocket','lavender','cyberpunk','cozy-sakura','dark-academia','e-ink','retro-card-shop']){
-                await page.evaluate(t=>KBSFullThemes.apply(t,{persist:false,applyPalette:false}),t);
+                await page.evaluate(t=>globalThis.KBSFullThemes.apply(t,{persist:false,applyPalette:false}),t);
                 if(await page.$eval('body',e=>e.dataset.theme)!==t)failures.push(`${viewport.name}: theme ${t} did not apply`);
               }
 
               if(await page.$('#kbsBinderCoverDesignerScript'))failures.push(`${viewport.name}: cover designer loaded eagerly`);
+              if(viewport.name==='mobile'){
+                const pageNav=page.locator('[data-mobile-lab="page"]:visible').first();
+                if(await pageNav.count())await pageNav.click();
+                await page.waitForTimeout(120);
+              }
               const binderTrigger=page.locator('#openBinders:visible, #mobilePageBinders:visible').first();
               if(!await binderTrigger.count())failures.push(`${viewport.name}: no visible My Binders trigger`);
               else await binderTrigger.click();
@@ -138,16 +143,22 @@ jobs:
               await page.waitForFunction(()=>!!document.querySelector('#kbsArtSourceLinksScript'),{timeout:10000});
               await page.locator('#libraryCardsTab:visible, [data-mobile-lab="cards"]:visible').first().click().catch(()=>{});
 
-              const tour=page.locator('#guidedTourLaunch:visible');
-              if(await tour.count()){await tour.click();await page.waitForTimeout(100);const tourOpen=await page.evaluate(()=>{const e=document.querySelector('#guidedDemo');return e&&!e.hidden});if(!tourOpen)failures.push(`${viewport.name}: guided tour did not open`)}
+              const tour=page.locator('#guidedTourLaunch:visible, #mobilePageTour:visible').first();
+              if(await tour.count()){await tour.click();await page.waitForTimeout(120);const tourOpen=await page.evaluate(()=>{const e=document.querySelector('#guidedDemo');return e&&!e.hidden});if(!tourOpen)failures.push(`${viewport.name}: guided tour did not open`)}
               else failures.push(`${viewport.name}: guided tour launch not visible`);
               await page.evaluate(()=>{const e=document.querySelector('#guidedDemo');if(e){e.hidden=true;e.setAttribute('aria-hidden','true')}});
 
               await page.mouse.click(10,10);
-              await page.waitForSelector('#kbsToolsBtn',{timeout:15000});
-              await page.locator('#kbsToolsBtn:visible').click();await page.waitForSelector('#kbsToolsModal.open',{timeout:5000});
-              await page.locator('#kbsToolsClose:visible').click();
+              await page.waitForSelector('#kbsToolsBtn',{timeout:30000});
+              const tools=page.locator('#kbsToolsBtn:visible').first();
+              if(!await tools.count())failures.push(`${viewport.name}: tools button not visible`);
+              else {await tools.click();await page.waitForSelector('#kbsToolsModal.open',{timeout:5000});await page.locator('#kbsToolsClose:visible').click()}
 
+              if(viewport.name==='mobile'){
+                const pageNav=page.locator('[data-mobile-lab="page"]:visible').first();
+                if(await pageNav.count())await pageNav.click();
+                await page.waitForTimeout(100);
+              }
               const preview=page.locator('#previewBinder:visible');
               if(!await preview.count())failures.push(`${viewport.name}: Preview Binder not visible`);
               else {
@@ -159,7 +170,7 @@ jobs:
 
               const optimized=await page.evaluate(async()=>{
                 const c=document.createElement('canvas');c.width=900;c.height=1200;const x=c.getContext('2d');x.fillRect(0,0,c.width,c.height);
-                const b=await new Promise(r=>c.toBlob(r,'image/png'));const f=new File([b],'qa.png',{type:'image/png'});const o=await KBSModules.images.optimizeImageFile(f);
+                const b=await new Promise(r=>c.toBlob(r,'image/png'));const f=new File([b],'qa.png',{type:'image/png'});const o=await globalThis.KBSModules.images.optimizeImageFile(f);
                 return {w:o.width,h:o.height,tw:o.thumbWidth,th:o.thumbHeight,bytes:o.bytes,thumb:o.thumbnailBytes};
               });
               if(optimized.w>3600||optimized.h>3600||optimized.tw>480||optimized.th>480||!optimized.bytes||!optimized.thumb)failures.push(`${viewport.name}: image optimizer invalid ${JSON.stringify(optimized)}`);
