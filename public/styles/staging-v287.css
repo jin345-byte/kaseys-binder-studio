@@ -1,4 +1,4 @@
-/* Binder Studio v2.8.7 staging — compact setup + vertical live-page rail */
+/* Binder Studio v2.8.8 staging — compact setup + responsive vertical live-page rail */
 
 /* Turn the oversized Build Library block into a compact progress-bar control. */
 .canvas-side-controls .library-setup-card{
@@ -80,17 +80,19 @@
 @media(max-width:700px){
   .canvas-side-controls{
     display:grid!important;
-    grid-template-columns:minmax(0,1fr) 46px!important;
+    grid-template-columns:minmax(0,1fr) minmax(38px,42px)!important;
     grid-auto-flow:row!important;
     align-items:start!important;
     justify-items:stretch!important;
-    gap:7px!important;
+    gap:6px!important;
     width:100%!important;
+    min-width:0!important;
   }
   .canvas-side-controls>.control-module{
     width:100%!important;
     max-width:none!important;
     margin:0!important;
+    min-width:0!important;
   }
   .canvas-side-controls>.binder-heading-module{
     grid-column:2!important;
@@ -99,90 +101,109 @@
     display:flex!important;
     flex-direction:column!important;
     align-items:center!important;
-    width:46px!important;
-    min-width:46px!important;
-    padding:5px!important;
-    gap:5px!important;
-    border-radius:16px!important;
-    overflow:visible!important;
+    justify-content:flex-start!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:42px!important;
+    padding:4px!important;
+    gap:4px!important;
+    border-radius:14px!important;
+    overflow:hidden!important;
+    box-sizing:border-box!important;
   }
   .binder-heading-module .canvashead{
     display:none!important;
   }
   .binder-heading-module .editor-page-nav{
     display:grid!important;
-    grid-template-columns:1fr!important;
-    grid-template-rows:30px minmax(0,1fr) 30px!important;
-    width:34px!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:28px auto 28px!important;
+    width:100%!important;
     max-width:34px!important;
-    min-height:188px!important;
+    min-height:0!important;
+    height:auto!important;
     max-height:min(54vh,360px)!important;
-    gap:4px!important;
+    gap:3px!important;
     margin:0!important;
     overflow:hidden!important;
+    align-content:start!important;
+    box-sizing:border-box!important;
   }
   .binder-heading-module .page-arrow{
     display:grid!important;
     place-items:center!important;
-    width:30px!important;
-    min-width:30px!important;
-    height:30px!important;
-    min-height:30px!important;
+    width:28px!important;
+    min-width:28px!important;
+    max-width:28px!important;
+    height:28px!important;
+    min-height:28px!important;
+    max-height:28px!important;
     padding:0!important;
     margin:auto!important;
-    border-radius:10px!important;
-    font-size:16px!important;
+    border-radius:9px!important;
+    font-size:15px!important;
     line-height:1!important;
+    overflow:hidden!important;
+    box-sizing:border-box!important;
     transition:transform .18s cubic-bezier(.2,.8,.25,1),background .18s ease,border-color .18s ease!important;
   }
   .binder-heading-module .page-numbers{
     display:flex!important;
     flex-direction:column!important;
     align-items:center!important;
-    gap:4px!important;
-    width:34px!important;
-    min-width:34px!important;
-    height:100%!important;
+    justify-content:flex-start!important;
+    gap:3px!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:34px!important;
+    height:auto!important;
     min-height:0!important;
+    max-height:min(36vh,240px)!important;
     overflow-y:auto!important;
     overflow-x:hidden!important;
-    padding:1px 2px!important;
+    padding:1px!important;
     scrollbar-width:none!important;
     scroll-snap-type:y proximity!important;
     overscroll-behavior-y:contain!important;
+    box-sizing:border-box!important;
   }
   .binder-heading-module .page-numbers::-webkit-scrollbar{display:none!important}
   .binder-heading-module .page-number{
-    flex:0 0 28px!important;
+    flex:0 0 26px!important;
     display:grid!important;
     place-items:center!important;
-    width:28px!important;
-    min-width:28px!important;
-    height:28px!important;
-    min-height:28px!important;
+    width:26px!important;
+    min-width:26px!important;
+    max-width:26px!important;
+    height:26px!important;
+    min-height:26px!important;
+    max-height:26px!important;
     padding:0!important;
-    border-radius:9px!important;
+    margin:0!important;
+    border-radius:8px!important;
     font-size:9px!important;
     line-height:1!important;
+    overflow:hidden!important;
+    box-sizing:border-box!important;
     scroll-snap-align:center!important;
     transform-origin:center!important;
     transition:transform .18s cubic-bezier(.2,.8,.25,1),background .18s ease,border-color .18s ease,box-shadow .18s ease!important;
   }
   .binder-heading-module .page-number:hover{
-    transform:translateX(-3px) scale(1.08)!important;
+    transform:scale(1.05)!important;
     border-color:var(--accent)!important;
   }
   .binder-heading-module .page-number.active,
   .binder-heading-module .page-number[aria-current="page"]{
-    transform:scale(1.12)!important;
+    transform:scale(1.06)!important;
     background:color-mix(in srgb,var(--accent) 22%,var(--surface2))!important;
     border-color:var(--accent)!important;
-    box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 14%,transparent),0 5px 16px color-mix(in srgb,var(--accent) 20%,transparent)!important;
+    box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 16%,transparent),0 4px 12px color-mix(in srgb,var(--accent) 18%,transparent)!important;
   }
   .binder-heading-module .page-number.page-switch-pop{
     animation:kbsPageRailPop .34s cubic-bezier(.18,.88,.28,1.35)!important;
   }
-  .binder-heading-module .page-arrow:hover{transform:scale(1.08)!important;border-color:var(--accent)!important}
+  .binder-heading-module .page-arrow:hover{transform:scale(1.05)!important;border-color:var(--accent)!important}
 
   .canvas-side-controls>.library-module,
   .canvas-side-controls>.selected-module,
@@ -196,40 +217,79 @@
   .canvas-side-controls>.appearance-module{grid-row:4!important}
 
   body.mobile-lab-enabled .canvas .canvas-side-controls{
-    grid-template-columns:minmax(0,1fr) 46px!important;
+    grid-template-columns:minmax(0,1fr) minmax(38px,42px)!important;
     justify-items:stretch!important;
   }
   body.mobile-lab-enabled .canvas .canvas-side-controls>.binder-heading-module{
     display:flex!important;
-    width:46px!important;
-    max-width:46px!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:42px!important;
   }
   body.mobile-lab-enabled .canvas .binder-heading-module .editor-page-nav{
     display:grid!important;
-    grid-template-columns:1fr!important;
-    grid-template-rows:30px minmax(0,1fr) 30px!important;
-    width:34px!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:28px auto 28px!important;
+    width:100%!important;
     max-width:34px!important;
-    min-height:188px!important;
+    min-height:0!important;
+    height:auto!important;
   }
   body.mobile-lab-enabled .canvas .binder-heading-module .page-numbers{
     flex-direction:column!important;
     overflow-y:auto!important;
     overflow-x:hidden!important;
-    width:34px!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:34px!important;
   }
   body.mobile-lab-enabled .canvas .binder-heading-module .page-number{
-    flex:0 0 28px!important;
-    width:28px!important;
-    min-width:28px!important;
-    height:28px!important;
+    flex:0 0 26px!important;
+    width:26px!important;
+    min-width:26px!important;
+    height:26px!important;
+  }
+}
+
+@media(max-width:430px){
+  .canvas-side-controls,
+  body.mobile-lab-enabled .canvas .canvas-side-controls{
+    grid-template-columns:minmax(0,1fr) 38px!important;
+    gap:5px!important;
+  }
+  .canvas-side-controls>.binder-heading-module,
+  body.mobile-lab-enabled .canvas .canvas-side-controls>.binder-heading-module{
+    max-width:38px!important;
+    padding:3px!important;
+  }
+  .binder-heading-module .editor-page-nav,
+  body.mobile-lab-enabled .canvas .binder-heading-module .editor-page-nav{
+    max-width:32px!important;
+    grid-template-rows:26px auto 26px!important;
+  }
+  .binder-heading-module .page-arrow{
+    width:26px!important;
+    min-width:26px!important;
+    height:26px!important;
+    min-height:26px!important;
+    font-size:14px!important;
+  }
+  .binder-heading-module .page-numbers{
+    max-width:32px!important;
+  }
+  .binder-heading-module .page-number{
+    flex-basis:24px!important;
+    width:24px!important;
+    min-width:24px!important;
+    height:24px!important;
+    min-height:24px!important;
   }
 }
 
 @keyframes kbsPageRailPop{
-  0%{transform:scale(.72) rotate(-10deg)}
-  58%{transform:scale(1.18) rotate(4deg)}
-  100%{transform:scale(1.12) rotate(0)}
+  0%{transform:scale(.78)}
+  58%{transform:scale(1.10)}
+  100%{transform:scale(1.06)}
 }
 
 @media(prefers-reduced-motion:reduce){
