@@ -9,7 +9,7 @@
   loadStyle('styles/responsive-button-fit.css?v=3.3.4','kbsResponsiveButtonFitStyle');
   loadStyle('styles/theme-animated-accents.css?v=3.4.1','kbsThemeAnimatedAccentsStyle');
   loadStyle('styles/productivity-suite.css?v=3.5.0','kbsProductivitySuiteStyle');
-  loadStyle('styles/ui-readability-fixes.css?v=3.5.1','kbsUiReadabilityFixesStyle');
+  loadStyle('styles/ui-readability-fixes.css?v=3.5.2','kbsUiReadabilityFixesStyle');
   loadScript('features/full-themes.js?v=3.4.1','kbsFullThemesScript');
   loadScript('features/theme-picker-fit.js?v=3.0.2','kbsThemePickerFitScript');
   loadScript('features/binder-cover-designer.js?v=3.1.1','kbsBinderCoverDesignerScript');
