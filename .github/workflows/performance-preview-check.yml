@@ -28,15 +28,17 @@ jobs:
           set -euo pipefail
           node --check public/features/performance-core.js
           node --check public/features/staging-v287.js
-          grep -q 'features/performance-core.js' public/index.html
-          grep -q "PERF_VERSION='4.0.2'" public/features/performance-core.js
+          grep -q 'features/performance-core.js?v=4.0.3' public/index.html
+          grep -q "PERF_VERSION='4.0.3'" public/features/performance-core.js
           grep -q "ensureGame('union-arena')" public/features/performance-core.js
           grep -q 'virtualLimit=60' public/features/performance-core.js
           grep -q 'optimizeImageFile' public/features/performance-core.js
           grep -q 'thumbnailBytes' public/features/performance-core.js
           grep -q 'stopImmediatePropagation' public/features/performance-core.js
+          grep -q 'lazyRegistry.delete(src)' public/features/performance-core.js
           grep -q 'KBSModules' public/features/performance-core.js
-          grep -q 'Binder Studio v4.0.2 preview' public/features/staging-v287.js
+          grep -q 'Binder Studio v4.0.3 preview' public/features/staging-v287.js
+          ! grep -R -q 'theme-animated-accents.js' public
           echo PERFORMANCE_STATIC_PASS
 
       - name: Install Playwright
@@ -65,15 +67,17 @@ jobs:
                 loaderRes?.ok?loaderRes.text().catch(()=>''):'',
                 indexRes?.ok?indexRes.text().catch(()=>''):''
               ]);
-              if(perf.includes("PERF_VERSION='4.0.2'") && loader.includes('Binder Studio v4.0.2 preview') && index.includes('features/performance-core.js')){live=true;break}
+              if(perf.includes("PERF_VERSION='4.0.3'") && loader.includes('Binder Studio v4.0.3 preview') && index.includes('features/performance-core.js?v=4.0.3') && index.includes('v4.0.3 STAGING')){live=true;break}
               await sleep(5000);
             }
-            if(!live)throw new Error('Matching performance 4.0.2 preview assets did not propagate');
+            if(!live)throw new Error('Matching performance 4.0.3 preview assets did not propagate');
             const browser=await chromium.launch({headless:true});
             const page=await browser.newPage({viewport:{width:390,height:844}});
-            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            const errors=[];
+            page.on('pageerror',e=>errors.push(e.message));
+            page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
             await page.goto(BASE+'/?perfcheck='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
-            await page.waitForFunction(()=>globalThis.KBSModules?.version==='4.0.2',{timeout:20000});
+            await page.waitForFunction(()=>globalThis.KBSModules?.version==='4.0.3',{timeout:20000});
             await page.waitForTimeout(1800);
             const state=await page.evaluate(()=>({
               version:KBSModules.version,
@@ -84,19 +88,24 @@ jobs:
               virtualLimit:KBSModules.virtualization.limit,
               coverLoaded:!!document.querySelector('#kbsBinderCoverDesignerScript'),
               sourceLinksLoaded:!!document.querySelector('#kbsArtSourceLinksScript'),
-              animatedLoaded:!!document.querySelector('#kbsThemeAnimatedAccentsScript'),
-              focusLoaded:!!document.querySelector('#kbsFocusPresentationScript')
+              animatedStyle:!!document.querySelector('#kbsThemeAnimatedAccentsStyle'),
+              animatedScript:!!document.querySelector('#kbsThemeAnimatedAccentsScript'),
+              focusLoaded:!!document.querySelector('#kbsFocusPresentationScript'),
+              topVersion:document.querySelector('#versionLink')?.textContent?.trim(),
+              buildMeta:document.querySelector('meta[name="kbs-build"]')?.content
             }));
-            if(state.version!=='4.0.2')throw new Error('Wrong performance version');
+            if(state.version!=='4.0.3')throw new Error('Wrong performance version');
+            if(state.topVersion!=='v4.0.3 STAGING'||state.buildMeta!=='4.0.3-staging-preview')throw new Error('Visible/runtime version mismatch '+JSON.stringify(state));
             if(!state.modules.includes('catalog')||!state.modules.includes('search')||!state.modules.includes('images')||!state.modules.includes('lazy'))throw new Error('Missing modular boundary: '+JSON.stringify(state));
             if(state.virtualLimit!==60)throw new Error('Virtualization baseline mismatch: '+state.virtualLimit);
             if(state.coverLoaded||state.sourceLinksLoaded)throw new Error('Optional on-demand features loaded before use: '+JSON.stringify(state));
-            if(!state.animatedLoaded||!state.focusLoaded)throw new Error('Required visual behavior was accidentally deferred: '+JSON.stringify(state));
+            if(!state.animatedStyle||state.animatedScript||!state.focusLoaded)throw new Error('Visual runtime loading mismatch: '+JSON.stringify(state));
             await page.click('#openBinders');
             await page.waitForFunction(()=>!!document.querySelector('#kbsBinderCoverDesignerScript'),{timeout:10000});
             await page.click('#closeBinders').catch(()=>{});
             await page.click('#libraryArtworkTab');
             await page.waitForFunction(()=>!!document.querySelector('#kbsArtSourceLinksScript'),{timeout:10000});
+            if(errors.some(x=>x.includes('theme-animated-accents.js')))throw new Error('Removed animated accent script was still requested: '+errors.join(' | '));
             if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
             console.log('PERFORMANCE_PREVIEW_PASS',JSON.stringify(state));
             await browser.close();
