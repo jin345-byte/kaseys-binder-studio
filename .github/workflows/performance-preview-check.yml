@@ -72,42 +72,50 @@ jobs:
             }
             if(!live)throw new Error('Matching performance 4.0.3 preview assets did not propagate');
             const browser=await chromium.launch({headless:true});
-            const page=await browser.newPage({viewport:{width:390,height:844}});
-            const errors=[];
-            page.on('pageerror',e=>errors.push(e.message));
-            page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
-            await page.goto(BASE+'/?perfcheck='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
-            await page.waitForFunction(()=>globalThis.KBSModules?.version==='4.0.3',{timeout:20000});
-            await page.waitForTimeout(1800);
-            const state=await page.evaluate(()=>({
-              version:KBSModules.version,
-              modules:Object.keys(KBSModules),
-              loadedGames:KBSModules.catalog.loadedGames,
-              searchReady:KBSModules.search.ready,
-              searchSize:KBSModules.search.size,
-              virtualLimit:KBSModules.virtualization.limit,
-              coverLoaded:!!document.querySelector('#kbsBinderCoverDesignerScript'),
-              sourceLinksLoaded:!!document.querySelector('#kbsArtSourceLinksScript'),
-              animatedStyle:!!document.querySelector('#kbsThemeAnimatedAccentsStyle'),
-              animatedScript:!!document.querySelector('#kbsThemeAnimatedAccentsScript'),
-              focusLoaded:!!document.querySelector('#kbsFocusPresentationScript'),
-              topVersion:document.querySelector('#versionLink')?.textContent?.trim(),
-              buildMeta:document.querySelector('meta[name="kbs-build"]')?.content
-            }));
-            if(state.version!=='4.0.3')throw new Error('Wrong performance version');
-            if(state.topVersion!=='v4.0.3 STAGING'||state.buildMeta!=='4.0.3-staging-preview')throw new Error('Visible/runtime version mismatch '+JSON.stringify(state));
-            if(!state.modules.includes('catalog')||!state.modules.includes('search')||!state.modules.includes('images')||!state.modules.includes('lazy'))throw new Error('Missing modular boundary: '+JSON.stringify(state));
-            if(state.virtualLimit!==60)throw new Error('Virtualization baseline mismatch: '+state.virtualLimit);
-            if(state.coverLoaded||state.sourceLinksLoaded)throw new Error('Optional on-demand features loaded before use: '+JSON.stringify(state));
-            if(!state.animatedStyle||state.animatedScript||!state.focusLoaded)throw new Error('Visual runtime loading mismatch: '+JSON.stringify(state));
-            await page.click('#openBinders');
-            await page.waitForFunction(()=>!!document.querySelector('#kbsBinderCoverDesignerScript'),{timeout:10000});
-            await page.click('#closeBinders').catch(()=>{});
-            await page.click('#libraryArtworkTab');
-            await page.waitForFunction(()=>!!document.querySelector('#kbsArtSourceLinksScript'),{timeout:10000});
-            if(errors.some(x=>x.includes('theme-animated-accents.js')))throw new Error('Removed animated accent script was still requested: '+errors.join(' | '));
-            if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
-            console.log('PERFORMANCE_PREVIEW_PASS',JSON.stringify(state));
+            for(const viewport of [{width:1440,height:900},{width:390,height:844}]){
+              const page=await browser.newPage({viewport});
+              const errors=[];
+              page.on('pageerror',e=>errors.push(e.message));
+              page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+              await page.goto(BASE+'/?perfcheck='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForFunction(()=>globalThis.KBSModules?.version==='4.0.3',{timeout:20000});
+              await page.waitForTimeout(1800);
+              const state=await page.evaluate(()=>({
+                version:KBSModules.version,
+                modules:Object.keys(KBSModules),
+                loadedGames:KBSModules.catalog.loadedGames,
+                searchReady:KBSModules.search.ready,
+                searchSize:KBSModules.search.size,
+                virtualLimit:KBSModules.virtualization.limit,
+                coverLoaded:!!document.querySelector('#kbsBinderCoverDesignerScript'),
+                sourceLinksLoaded:!!document.querySelector('#kbsArtSourceLinksScript'),
+                animatedStyle:!!document.querySelector('#kbsThemeAnimatedAccentsStyle'),
+                animatedScript:!!document.querySelector('#kbsThemeAnimatedAccentsScript'),
+                focusLoaded:!!document.querySelector('#kbsFocusPresentationScript'),
+                topVersion:document.querySelector('#versionLink')?.textContent?.trim(),
+                buildMeta:document.querySelector('meta[name="kbs-build"]')?.content
+              }));
+              if(state.version!=='4.0.3')throw new Error('Wrong performance version');
+              if(state.topVersion!=='v4.0.3 STAGING'||state.buildMeta!=='4.0.3-staging-preview')throw new Error('Visible/runtime version mismatch '+JSON.stringify(state));
+              if(!state.modules.includes('catalog')||!state.modules.includes('search')||!state.modules.includes('images')||!state.modules.includes('lazy'))throw new Error('Missing modular boundary: '+JSON.stringify(state));
+              if(state.virtualLimit!==60)throw new Error('Virtualization baseline mismatch: '+state.virtualLimit);
+              if(state.coverLoaded||state.sourceLinksLoaded)throw new Error('Optional on-demand features loaded before use: '+JSON.stringify(state));
+              if(!state.animatedStyle||state.animatedScript||!state.focusLoaded)throw new Error('Visual runtime loading mismatch: '+JSON.stringify(state));
+              const binderTrigger=page.locator('#openBinders:visible, #mobilePageBinders:visible').first();
+              if(!await binderTrigger.count())throw new Error('No visible My Binders trigger at '+JSON.stringify(viewport));
+              await binderTrigger.click();
+              await page.waitForFunction(()=>!!document.querySelector('#kbsBinderCoverDesignerScript'),{timeout:10000});
+              await page.locator('#closeBinders:visible').click().catch(()=>{});
+              const artTrigger=page.locator('#libraryArtworkTab:visible, [data-mobile-lab="art"]:visible').first();
+              if(!await artTrigger.count())throw new Error('No visible Artwork trigger at '+JSON.stringify(viewport));
+              await artTrigger.click();
+              await page.waitForFunction(()=>!!document.querySelector('#kbsArtSourceLinksScript'),{timeout:10000});
+              if(errors.some(x=>x.includes('theme-animated-accents.js')))throw new Error('Removed animated accent script was still requested: '+errors.join(' | '));
+              if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
+              console.log('PERFORMANCE_VIEWPORT_PASS',JSON.stringify({viewport,state}));
+              await page.close();
+            }
             await browser.close();
+            console.log('PERFORMANCE_PREVIEW_PASS');
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
