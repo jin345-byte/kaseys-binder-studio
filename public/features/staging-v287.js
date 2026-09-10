@@ -1,4 +1,4 @@
-/* Binder Studio v4.0.3 preview — page rail + compatibility + retry-safe lazy feature loading — full sanity rerun marker 2026-09-10-r5 */
+/* Binder Studio v4.0.3 preview — page rail + compatibility + retry-safe lazy feature loading — full sanity rerun marker 2026-09-10-r6 */
 (function(){
   function loadStyle(href,id){
     if(document.getElementById(id))return;
