@@ -1,108 +1,197 @@
-/* Kasey's Binder Studio v3.4.0 — animated theme accents.
-   Motion is cosmetic only: no layout, size, position, or transform changes are
-   applied to editor controls. Reduced-motion users receive static styling. */
+/* Kasey's Binder Studio v3.4.1 — visible animated theme accents.
+   Paint-only motion: no layout, size, position, or transform changes.
+   IMPORTANT: the core theme layer uses !important box-shadows, so this version
+   intentionally animates filter/drop-shadow, opacity and background-position
+   instead of box-shadow. That makes the motion actually visible. */
 
 body[data-theme]{
-  --kbs-accent-pulse:color-mix(in srgb,var(--accent) 22%,transparent);
-  --kbs-accent-pulse-strong:color-mix(in srgb,var(--accent) 36%,transparent);
-  --kbs-accent-speed:5.8s;
-  --kbs-bg-speed:18s;
+  --kbs-accent-speed:4.8s;
+  --kbs-accent-a:var(--accent);
+  --kbs-accent-b:var(--accent2);
+  --kbs-accent-soft:color-mix(in srgb,var(--accent) 38%,transparent);
+  --kbs-accent-soft2:color-mix(in srgb,var(--accent2) 30%,transparent);
 }
 
-/* Shared animated accents. These only animate paint properties. */
-body[data-theme] .page-number.active,
-body[data-theme] .page-number[aria-current="page"],
-body[data-theme] .selected-module.active,
-body[data-theme] #fullThemeSelect:focus,
-body[data-theme] .btn.primary{
-  animation:kbsAccentGlow var(--kbs-accent-speed) ease-in-out infinite!important;
+/* Core visible motion shared by every theme. */
+body[data-theme] .panel,
+body[data-theme] .control-module,
+body[data-theme] .browser-pane{
+  animation:kbsPanelGlow calc(var(--kbs-accent-speed) * 1.55) ease-in-out infinite;
 }
 
 body[data-theme] .grid{
-  animation:kbsBinderAmbient calc(var(--kbs-accent-speed) * 1.35) ease-in-out infinite!important;
+  animation:kbsBinderGlow calc(var(--kbs-accent-speed) * 1.25) ease-in-out infinite;
+  background-size:auto,auto,auto,auto!important;
+}
+
+body[data-theme] .page-number.active,
+body[data-theme] .page-number[aria-current="page"],
+body[data-theme] .selected-module.active,
+body[data-theme] .btn.primary{
+  animation:kbsControlGlow var(--kbs-accent-speed) ease-in-out infinite!important;
 }
 
 body[data-theme] .theme-scene{
   animation:kbsSceneBreath calc(var(--kbs-accent-speed) * 1.8) ease-in-out infinite!important;
 }
 
-body[data-theme] .theme-ribbon{
-  animation:kbsRibbonTint calc(var(--kbs-accent-speed) * 1.15) ease-in-out infinite!important;
+@keyframes kbsPanelGlow{
+  0%,100%{filter:drop-shadow(0 0 0 transparent) brightness(1) saturate(1)}
+  50%{filter:drop-shadow(0 0 9px var(--kbs-accent-soft)) brightness(1.025) saturate(1.05)}
 }
 
-@keyframes kbsAccentGlow{
-  0%,100%{box-shadow:0 0 0 0 transparent,0 5px 15px color-mix(in srgb,var(--text) 7%,transparent),inset 0 1px rgba(255,255,255,.12)}
-  50%{box-shadow:0 0 0 1px var(--kbs-accent-pulse),0 0 18px var(--kbs-accent-pulse-strong),inset 0 1px rgba(255,255,255,.16)}
+@keyframes kbsBinderGlow{
+  0%,100%{filter:drop-shadow(0 10px 18px rgba(0,0,0,.20)) brightness(1) saturate(1)}
+  50%{filter:drop-shadow(0 0 14px var(--kbs-accent-soft)) drop-shadow(0 10px 18px rgba(0,0,0,.20)) brightness(1.035) saturate(1.07)}
 }
-@keyframes kbsBinderAmbient{
-  0%,100%{filter:saturate(1) brightness(1)}
-  50%{filter:saturate(1.035) brightness(1.018)}
+
+@keyframes kbsControlGlow{
+  0%,100%{filter:drop-shadow(0 0 0 transparent) brightness(1)}
+  50%{filter:drop-shadow(0 0 8px var(--kbs-accent-soft)) drop-shadow(0 0 3px var(--kbs-accent-soft2)) brightness(1.09)}
 }
+
 @keyframes kbsSceneBreath{
-  0%,100%{opacity:.72;filter:saturate(.96) brightness(.98)}
-  50%{opacity:.94;filter:saturate(1.08) brightness(1.04)}
-}
-@keyframes kbsRibbonTint{
-  0%,100%{opacity:.42;border-color:color-mix(in srgb,var(--accent) 20%,transparent)}
-  50%{opacity:.78;border-color:color-mix(in srgb,var(--accent) 48%,transparent)}
+  0%,100%{opacity:.68;filter:saturate(.92) brightness(.97)}
+  50%{opacity:1;filter:saturate(1.16) brightness(1.08)}
 }
 
-/* Voltage Lab — subtle electric pulse and moving grid paint. */
-body[data-theme="jolteon"]{--kbs-accent-speed:3.4s;--kbs-accent-pulse:#f5d52f33;--kbs-accent-pulse-strong:#63d4e544;animation:kbsVoltageGrid 16s linear infinite!important}
-@keyframes kbsVoltageGrid{0%{background-position:0 0,0 0,0 0}100%{background-position:26px 26px,-26px 26px,0 0}}
+/* Theme personalities — all use visibly different paint motion. */
+body[data-theme="jolteon"]{
+  --kbs-accent-speed:2.8s;
+  --kbs-accent-a:#f5d52f;
+  --kbs-accent-b:#63d4e5;
+  --kbs-accent-soft:#f5d52f55;
+  --kbs-accent-soft2:#63d4e54d;
+  animation:kbsVoltageGrid 11s linear infinite!important;
+}
+@keyframes kbsVoltageGrid{
+  0%{background-position:0 0,0 0,0 0}
+  100%{background-position:52px 52px,-52px 52px,0 0}
+}
+body[data-theme="jolteon"] .grid{animation:kbsVoltageBinder 3.2s ease-in-out infinite!important}
+@keyframes kbsVoltageBinder{
+  0%,100%{filter:drop-shadow(0 0 3px #f5d52f20) brightness(1)}
+  50%{filter:drop-shadow(0 0 16px #f5d52f62) drop-shadow(0 0 8px #63d4e54a) brightness(1.05)}
+}
 
-/* Pokédex — scanner-like status pulse. */
-body[data-theme="pokedex"]{--kbs-accent-speed:4.2s;--kbs-accent-pulse:#ff3b3f38;--kbs-accent-pulse-strong:#8ee7ff45}
-body[data-theme="pokedex"] .panel{animation:kbsPokedexScan 7s ease-in-out infinite!important}
-@keyframes kbsPokedexScan{0%,100%{box-shadow:var(--theme-shadow)!important}50%{box-shadow:var(--theme-shadow),inset 0 1px 0 #8ee7ff22,inset 0 -1px 0 #ff3b3f22!important}}
+body[data-theme="pokedex"]{
+  --kbs-accent-speed:3.4s;
+  --kbs-accent-soft:#ff3b3f58;
+  --kbs-accent-soft2:#8ee7ff4f;
+}
+body[data-theme="pokedex"] .panel{animation:kbsPokedexScan 4.8s ease-in-out infinite!important}
+@keyframes kbsPokedexScan{
+  0%,100%{filter:drop-shadow(-3px 0 0 #ff3b3f20) brightness(1)}
+  50%{filter:drop-shadow(4px 0 10px #8ee7ff55) brightness(1.045)}
+}
 
-/* Game Boy — stepped LCD breathing rather than smooth neon motion. */
-body[data-theme="game-boy"]{--kbs-accent-speed:6s;--kbs-accent-pulse:#a7c95733;--kbs-accent-pulse-strong:#d8e59d2e}
-body[data-theme="game-boy"] .grid{animation:kbsGameBoyLcd 8s steps(4,end) infinite!important}
-@keyframes kbsGameBoyLcd{0%,100%{filter:contrast(1) brightness(1)}50%{filter:contrast(1.03) brightness(1.025)}}
+body[data-theme="game-boy"]{
+  --kbs-accent-speed:5.5s;
+  --kbs-accent-soft:#a7c95750;
+  --kbs-accent-soft2:#d8e59d3b;
+}
+body[data-theme="game-boy"] .grid{animation:kbsGameBoyLcd 5.8s steps(4,end) infinite!important}
+@keyframes kbsGameBoyLcd{
+  0%,100%{filter:contrast(1) brightness(.98) drop-shadow(0 0 0 transparent)}
+  50%{filter:contrast(1.10) brightness(1.07) drop-shadow(0 0 8px #a7c9574d)}
+}
 
-/* Neo Genesis — slow holo shimmer. */
-body[data-theme="neo-genesis"]{--kbs-accent-speed:7s;--kbs-accent-pulse:#f3c75f30;--kbs-accent-pulse-strong:#8fd6c83d}
-body[data-theme="neo-genesis"] .grid{animation:kbsNeoHolo 8.5s ease-in-out infinite!important}
-@keyframes kbsNeoHolo{0%,100%{filter:hue-rotate(0deg) saturate(1)}50%{filter:hue-rotate(5deg) saturate(1.07)}}
+body[data-theme="neo-genesis"]{
+  --kbs-accent-speed:5.8s;
+  --kbs-accent-soft:#f3c75f4b;
+  --kbs-accent-soft2:#8fd6c84a;
+}
+body[data-theme="neo-genesis"] .grid{animation:kbsNeoHolo 5.8s ease-in-out infinite!important}
+@keyframes kbsNeoHolo{
+  0%,100%{filter:hue-rotate(0deg) saturate(1) drop-shadow(0 0 3px #f3c75f22)}
+  50%{filter:hue-rotate(12deg) saturate(1.18) brightness(1.06) drop-shadow(0 0 15px #8fd6c85a)}
+}
 
-/* Team Rocket — restrained crimson warning pulse. */
-body[data-theme="team-rocket"]{--kbs-accent-speed:4.8s;--kbs-accent-pulse:#e519373a;--kbs-accent-pulse-strong:#e5193750}
-body[data-theme="team-rocket"] .selected-module.active{animation:kbsRocketAlert 4.8s ease-in-out infinite!important}
-@keyframes kbsRocketAlert{0%,100%{box-shadow:0 0 0 1px transparent}50%{box-shadow:0 0 0 1px #e5193748,0 0 20px #e5193729}}
+body[data-theme="team-rocket"]{
+  --kbs-accent-speed:3.8s;
+  --kbs-accent-soft:#e5193760;
+  --kbs-accent-soft2:#ffffff2b;
+}
+body[data-theme="team-rocket"] .panel{animation:kbsRocketAlert 4s ease-in-out infinite!important}
+@keyframes kbsRocketAlert{
+  0%,100%{filter:drop-shadow(0 0 0 transparent) brightness(.98)}
+  50%{filter:drop-shadow(0 0 12px #e519376b) brightness(1.06)}
+}
 
-/* Lavender — soft ambient breathing. */
-body[data-theme="lavender"]{--kbs-accent-speed:8s;--kbs-accent-pulse:#b792d633;--kbs-accent-pulse-strong:#e0c7ff38}
+body[data-theme="lavender"]{
+  --kbs-accent-speed:6.2s;
+  --kbs-accent-soft:#b792d65d;
+  --kbs-accent-soft2:#e0c7ff4c;
+}
+body[data-theme="lavender"] .grid{animation:kbsLavenderGlow 6.2s ease-in-out infinite!important}
+@keyframes kbsLavenderGlow{
+  0%,100%{filter:drop-shadow(0 0 3px #b792d621) brightness(1)}
+  50%{filter:drop-shadow(0 0 17px #b792d65a) brightness(1.055) saturate(1.10)}
+}
 
-/* Cyberpunk — animated neon grid paint and alternating cyan/magenta glow. */
-body[data-theme="cyberpunk"]{--kbs-accent-speed:3.8s;--kbs-accent-pulse:#2de2e633;--kbs-accent-pulse-strong:#ff4fd844;animation:kbsCyberGrid 12s linear infinite!important}
-@keyframes kbsCyberGrid{0%{background-position:0 0,0 0,0 0}100%{background-position:32px 0,0 32px,0 0}}
-body[data-theme="cyberpunk"] .page-number.active,
-body[data-theme="cyberpunk"] .page-number[aria-current="page"]{animation:kbsCyberPulse 3.8s ease-in-out infinite!important}
-@keyframes kbsCyberPulse{0%,100%{box-shadow:0 0 0 1px #2de2e622,0 0 10px #2de2e622}50%{box-shadow:0 0 0 1px #ff4fd83d,0 0 20px #ff4fd844}}
+body[data-theme="cyberpunk"]{
+  --kbs-accent-speed:2.9s;
+  --kbs-accent-soft:#2de2e666;
+  --kbs-accent-soft2:#ff4fd85e;
+  animation:kbsCyberGrid 7s linear infinite!important;
+}
+@keyframes kbsCyberGrid{
+  0%{background-position:0 0,0 0,0 0}
+  100%{background-position:64px 0,0 64px,0 0}
+}
+body[data-theme="cyberpunk"] .grid{animation:kbsCyberPulse 2.9s ease-in-out infinite!important}
+@keyframes kbsCyberPulse{
+  0%,100%{filter:drop-shadow(-3px 0 6px #2de2e640) brightness(1)}
+  50%{filter:drop-shadow(4px 0 16px #ff4fd86b) brightness(1.08) saturate(1.12)}
+}
 
-/* Cozy Sakura — warm, slow highlight drift with no moving particles. */
-body[data-theme="cozy-sakura"]{--kbs-accent-speed:9s;--kbs-accent-pulse:#d58fa033;--kbs-accent-pulse-strong:#f0b8c536}
-body[data-theme="cozy-sakura"] .grid{animation:kbsSakuraWarmth 10s ease-in-out infinite!important}
-@keyframes kbsSakuraWarmth{0%,100%{filter:saturate(1) brightness(1)}50%{filter:saturate(1.025) brightness(1.025)}}
+body[data-theme="cozy-sakura"]{
+  --kbs-accent-speed:7s;
+  --kbs-accent-soft:#d58fa05c;
+  --kbs-accent-soft2:#f0b8c54d;
+}
+body[data-theme="cozy-sakura"] .grid{animation:kbsSakuraWarmth 7s ease-in-out infinite!important}
+@keyframes kbsSakuraWarmth{
+  0%,100%{filter:drop-shadow(0 0 2px #d58fa020) brightness(1) saturate(1)}
+  50%{filter:drop-shadow(0 0 14px #d58fa052) brightness(1.055) saturate(1.08)}
+}
 
-/* Dark Academia — candle-like luminance variation, deliberately very subtle. */
-body[data-theme="dark-academia"]{--kbs-accent-speed:8.5s;--kbs-accent-pulse:#b9855630;--kbs-accent-pulse-strong:#d0a36e33}
-body[data-theme="dark-academia"] .panel{animation:kbsCandleGlow 9s ease-in-out infinite!important}
-@keyframes kbsCandleGlow{0%,100%{filter:brightness(1)}45%{filter:brightness(1.018)}52%{filter:brightness(1.008)}60%{filter:brightness(1.022)}}
+body[data-theme="dark-academia"]{
+  --kbs-accent-speed:6.8s;
+  --kbs-accent-soft:#b9855657;
+  --kbs-accent-soft2:#d0a36e45;
+}
+body[data-theme="dark-academia"] .panel{animation:kbsCandleGlow 6.8s ease-in-out infinite!important}
+@keyframes kbsCandleGlow{
+  0%,100%{filter:drop-shadow(0 0 2px #b985561e) brightness(.98)}
+  44%{filter:drop-shadow(0 0 11px #d0a36e52) brightness(1.06)}
+  52%{filter:drop-shadow(0 0 6px #b985563d) brightness(1.01)}
+  61%{filter:drop-shadow(0 0 13px #d0a36e57) brightness(1.07)}
+}
 
-/* E-Ink — almost static; only a long contrast breath so it stays calm. */
-body[data-theme="e-ink"]{--kbs-accent-speed:14s;--kbs-accent-pulse:#68645d1f;--kbs-accent-pulse-strong:#68645d20}
-body[data-theme="e-ink"] .grid{animation:kbsEInkSettle 15s ease-in-out infinite!important}
-@keyframes kbsEInkSettle{0%,100%{filter:contrast(1)}50%{filter:contrast(1.018)}}
+body[data-theme="e-ink"]{
+  --kbs-accent-speed:9s;
+  --kbs-accent-soft:#68645d42;
+  --kbs-accent-soft2:#9b978e34;
+}
+body[data-theme="e-ink"] .grid{animation:kbsEInkSettle 9s ease-in-out infinite!important}
+@keyframes kbsEInkSettle{
+  0%,100%{filter:contrast(.98) brightness(1)}
+  50%{filter:contrast(1.10) brightness(.97) drop-shadow(0 0 7px #68645d30)}
+}
 
-/* Retro Card Shop — warm showcase glow. */
-body[data-theme="retro-card-shop"]{--kbs-accent-speed:9s;--kbs-accent-pulse:#b4744330;--kbs-accent-pulse-strong:#d9a96b34}
-body[data-theme="retro-card-shop"] .selected-module.active,
-body[data-theme="retro-card-shop"] .btn.primary{animation:kbsShopGlow 9s ease-in-out infinite!important}
-@keyframes kbsShopGlow{0%,100%{box-shadow:0 4px 12px rgba(70,40,20,.08)}50%{box-shadow:0 4px 18px rgba(120,75,35,.18),0 0 0 1px #b4744328}}
+body[data-theme="retro-card-shop"]{
+  --kbs-accent-speed:6.5s;
+  --kbs-accent-soft:#b4744358;
+  --kbs-accent-soft2:#d9a96b4b;
+}
+body[data-theme="retro-card-shop"] .grid{animation:kbsShopGlow 6.5s ease-in-out infinite!important}
+@keyframes kbsShopGlow{
+  0%,100%{filter:drop-shadow(0 0 3px #7c4f2d22) brightness(1)}
+  50%{filter:drop-shadow(0 0 15px #d9a96b58) brightness(1.055) saturate(1.06)}
+}
 
-/* Never let theme-switch animations or accent motion move the interface. */
+/* Keep theme motion paint-only. */
 body[data-theme] .btn,
 body[data-theme] .page-arrow,
 body[data-theme] .page-number,
@@ -118,13 +207,14 @@ body[data-theme] .appearance-module{
   body[data-theme],
   body[data-theme] .panel,
   body[data-theme] .grid,
+  body[data-theme] .control-module,
+  body[data-theme] .browser-pane,
   body[data-theme] .theme-scene,
-  body[data-theme] .theme-ribbon,
   body[data-theme] .page-number.active,
   body[data-theme] .page-number[aria-current="page"],
   body[data-theme] .selected-module.active,
-  body[data-theme] #fullThemeSelect:focus,
   body[data-theme] .btn.primary{
     animation:none!important;
+    filter:none!important;
   }
 }
