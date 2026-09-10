@@ -29,13 +29,14 @@ jobs:
       - name: Static checks
         run: |
           node --check public/features/focus-presentation-mode.js
-          grep -q 'focus-presentation-mode.css?v=3.3.2' public/features/staging-v287.js
+          grep -q 'focus-presentation-mode.css?v=3.3.3' public/features/staging-v287.js
           grep -q 'focus-presentation-mode.js?v=3.3.3' public/features/staging-v287.js
           grep -q 'loadPagesWithTimeout' public/features/focus-presentation-mode.js
           grep -q 'KBSFocusPresentation' public/features/focus-presentation-mode.js
           grep -q 'focus-spread' public/features/focus-presentation-mode.js
           grep -q 'grid-template-columns:minmax(0,1fr) minmax(0,1fr)' public/styles/focus-presentation-mode.css
           grep -q 'object-fit:contain' public/styles/focus-presentation-mode.css
+          grep -q 'controls #previewBinder.focus-preview-launch' public/styles/focus-presentation-mode.css
       - name: Install browser tooling
         run: |
           npm install --no-save playwright@1.55.0 >/dev/null 2>&1
@@ -58,7 +59,7 @@ jobs:
                 fetch(BASE+'/?qa='+stamp,{cache:'no-store'}).catch(()=>null)
               ]);
               const [t,css,loader,index]=await Promise.all([r?.ok?r.text().catch(()=>''):'',c?.ok?c.text().catch(()=>''):'',l?.ok?l.text().catch(()=>''):'',i?.ok?i.text().catch(()=>''):'']);
-              if(t.includes('v3.3.3')&&t.includes('loadPagesWithTimeout')&&css.includes('v3.3.2')&&loader.includes('focus-presentation-mode.js?v=3.3.3')&&index.includes('staging-v287.js?v=4.0.3-r2')){live=true;break}
+              if(t.includes('v3.3.3')&&t.includes('loadPagesWithTimeout')&&css.includes('v3.3.3')&&loader.includes('focus-presentation-mode.css?v=3.3.3')&&loader.includes('focus-presentation-mode.js?v=3.3.3')&&index.includes('staging-v287.js?v=4.0.3-r2')){live=true;break}
               await sleep(6000);
             }
             if(!live)throw new Error('Focus presentation assets did not propagate');
@@ -67,7 +68,7 @@ jobs:
               const page=await browser.newPage({viewport});
               const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
               await page.goto(BASE+'/?focusqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
-              await page.waitForSelector('#previewBinder',{timeout:30000});
+              await page.waitForSelector('#previewBinder',{state:'visible',timeout:30000});
               const started=Date.now();await page.click('#previewBinder');
               await page.waitForSelector('#focusPresentation.open .focus-spread .focus-page-shell .grid',{timeout:5000});
               if(Date.now()-started>4500)throw new Error('Focus mode did not open promptly');
