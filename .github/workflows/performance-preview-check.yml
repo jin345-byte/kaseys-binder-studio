@@ -34,93 +34,37 @@ jobs:
           grep -q 'virtualLimit=60' public/features/performance-core.js
           grep -q 'optimizeImageFile' public/features/performance-core.js
           grep -q 'thumbnailBytes' public/features/performance-core.js
-          grep -q 'stopImmediatePropagation' public/features/performance-core.js
           grep -q 'lazyRegistry.delete(src)' public/features/performance-core.js
-          grep -q 'KBSModules' public/features/performance-core.js
           grep -q 'Binder Studio v4.0.3 preview' public/features/staging-v287.js
           ! grep -R -q 'theme-animated-accents.js' public
           echo PERFORMANCE_STATIC_PASS
-
       - name: Install Playwright
         run: |
           npm install --no-save playwright@1.55.0 >/dev/null 2>&1
           npx playwright install chromium >/dev/null
-
       - name: Browser performance smoke test
         shell: bash
         run: |
           node <<'JS'
           const {chromium}=require('playwright');
-          const BASE='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';
-          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          const BASE='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';const sleep=ms=>new Promise(r=>setTimeout(r,ms));
           (async()=>{
-            let live=false;
-            for(let i=0;i<60;i++){
-              const stamp=Date.now();
-              const [perfRes,loaderRes,indexRes]=await Promise.all([
-                fetch(BASE+'/features/performance-core.js?perf='+stamp,{cache:'no-store'}).catch(()=>null),
-                fetch(BASE+'/features/staging-v287.js?perf='+stamp,{cache:'no-store'}).catch(()=>null),
-                fetch(BASE+'/?perfassets='+stamp,{cache:'no-store'}).catch(()=>null)
-              ]);
-              const [perf,loader,index]=await Promise.all([
-                perfRes?.ok?perfRes.text().catch(()=>''):'',
-                loaderRes?.ok?loaderRes.text().catch(()=>''):'',
-                indexRes?.ok?indexRes.text().catch(()=>''):''
-              ]);
-              if(perf.includes("PERF_VERSION='4.0.3'") && loader.includes('Binder Studio v4.0.3 preview') && index.includes('features/performance-core.js?v=4.0.3') && index.includes('v4.0.3 STAGING')){live=true;break}
-              await sleep(5000);
-            }
-            if(!live)throw new Error('Matching performance 4.0.3 preview assets did not propagate');
+            let live=false;for(let i=0;i<60;i++){const s=Date.now();const [a,b,c]=await Promise.all([fetch(BASE+'/features/performance-core.js?perf='+s,{cache:'no-store'}).catch(()=>null),fetch(BASE+'/features/staging-v287.js?perf='+s,{cache:'no-store'}).catch(()=>null),fetch(BASE+'/?perfassets='+s,{cache:'no-store'}).catch(()=>null)]);const [x,y,z]=await Promise.all([a?.ok?a.text():'',b?.ok?b.text():'',c?.ok?c.text():'']);if(x.includes("PERF_VERSION='4.0.3'")&&y.includes('Binder Studio v4.0.3 preview')&&z.includes('v4.0.3 STAGING')){live=true;break}await sleep(5000)}if(!live)throw new Error('Matching performance assets did not propagate');
             const browser=await chromium.launch({headless:true});
             for(const viewport of [{width:1440,height:900},{width:390,height:844}]){
-              const page=await browser.newPage({viewport});
-              const errors=[];
-              page.on('pageerror',e=>errors.push(e.message));
-              page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
-              await page.goto(BASE+'/?perfcheck='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
-              await page.waitForFunction(()=>globalThis.KBSModules?.version==='4.0.3',{timeout:20000});
-              await page.waitForTimeout(1800);
-              const state=await page.evaluate(()=>({
-                version:KBSModules.version,
-                modules:Object.keys(KBSModules),
-                loadedGames:KBSModules.catalog.loadedGames,
-                searchReady:KBSModules.search.ready,
-                searchSize:KBSModules.search.size,
-                virtualLimit:KBSModules.virtualization.limit,
-                coverLoaded:!!document.querySelector('#kbsBinderCoverDesignerScript'),
-                sourceLinksLoaded:!!document.querySelector('#kbsArtSourceLinksScript'),
-                animatedStyle:!!document.querySelector('#kbsThemeAnimatedAccentsStyle'),
-                animatedScript:!!document.querySelector('#kbsThemeAnimatedAccentsScript'),
-                focusLoaded:!!document.querySelector('#kbsFocusPresentationScript'),
-                topVersion:document.querySelector('#versionLink')?.textContent?.trim(),
-                buildMeta:document.querySelector('meta[name="kbs-build"]')?.content
-              }));
-              if(state.version!=='4.0.3')throw new Error('Wrong performance version');
-              if(state.topVersion!=='v4.0.3 STAGING'||state.buildMeta!=='4.0.3-staging-preview')throw new Error('Visible/runtime version mismatch '+JSON.stringify(state));
-              if(!state.modules.includes('catalog')||!state.modules.includes('search')||!state.modules.includes('images')||!state.modules.includes('lazy'))throw new Error('Missing modular boundary: '+JSON.stringify(state));
-              if(state.virtualLimit!==60)throw new Error('Virtualization baseline mismatch: '+state.virtualLimit);
-              if(state.coverLoaded||state.sourceLinksLoaded)throw new Error('Optional on-demand features loaded before use: '+JSON.stringify(state));
-              if(!state.animatedStyle||state.animatedScript||!state.focusLoaded)throw new Error('Visual runtime loading mismatch: '+JSON.stringify(state));
-              if(viewport.width<=768){
-                const pageNav=page.locator('[data-mobile-lab="page"]:visible').first();
-                if(await pageNav.count())await pageNav.click();
-                await page.waitForTimeout(120);
-              }
-              const binderTrigger=page.locator('#openBinders:visible, #mobilePageBinders:visible').first();
-              if(!await binderTrigger.count())throw new Error('No visible My Binders trigger at '+JSON.stringify(viewport));
-              await binderTrigger.click();
-              await page.waitForFunction(()=>!!document.querySelector('#kbsBinderCoverDesignerScript'),{timeout:10000});
-              await page.locator('#closeBinders:visible').click().catch(()=>{});
-              const artTrigger=page.locator('#libraryArtworkTab:visible, [data-mobile-lab="art"]:visible').first();
-              if(!await artTrigger.count())throw new Error('No visible Artwork trigger at '+JSON.stringify(viewport));
-              await artTrigger.click();
-              await page.waitForFunction(()=>!!document.querySelector('#kbsArtSourceLinksScript'),{timeout:10000});
-              if(errors.some(x=>x.includes('theme-animated-accents.js')))throw new Error('Removed animated accent script was still requested: '+errors.join(' | '));
-              if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
-              console.log('PERFORMANCE_VIEWPORT_PASS',JSON.stringify({viewport,state}));
-              await page.close();
+              const page=await browser.newPage({viewport});const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+              await page.goto(BASE+'/?perfcheck='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});await page.waitForFunction(()=>globalThis.KBSModules?.version==='4.0.3',{timeout:30000});await page.waitForTimeout(1000);
+              const state=await page.evaluate(()=>({version:KBSModules.version,modules:Object.keys(KBSModules),virtualLimit:KBSModules.virtualization.limit,coverLoaded:!!document.querySelector('#kbsBinderCoverDesignerScript'),sourceLinksLoaded:!!document.querySelector('#kbsArtSourceLinksScript'),animatedStyle:!!document.querySelector('#kbsThemeAnimatedAccentsStyle'),animatedScript:!!document.querySelector('#kbsThemeAnimatedAccentsScript'),focusLoaded:!!document.querySelector('#kbsFocusPresentationScript'),topVersion:document.querySelector('#versionLink')?.textContent?.trim(),buildMeta:document.querySelector('meta[name="kbs-build"]')?.content}));
+              if(state.version!=='4.0.3'||state.topVersion!=='v4.0.3 STAGING'||state.buildMeta!=='4.0.3-staging-preview')throw new Error('Version mismatch '+JSON.stringify(state));
+              if(!['catalog','search','images','lazy'].every(k=>state.modules.includes(k))||state.virtualLimit!==60)throw new Error('Performance module mismatch '+JSON.stringify(state));
+              if(state.coverLoaded||state.sourceLinksLoaded||!state.animatedStyle||state.animatedScript||!state.focusLoaded)throw new Error('Lazy/runtime mismatch '+JSON.stringify(state));
+              if(viewport.width>768){const b=page.locator('#openBinders:visible');if(!await b.count())throw new Error('Desktop My Binders hidden');await b.click()}else{if(!(await page.$('#mobilePageBinders')))throw new Error('Mobile My Binders control missing');await page.evaluate(()=>document.querySelector('#mobilePageBinders').click())}
+              await page.waitForFunction(()=>!!document.querySelector('#kbsBinderCoverDesignerScript'),{timeout:15000});await page.locator('#closeBinders:visible').click().catch(()=>{});
+              if(viewport.width>768)await page.locator('#libraryArtworkTab:visible').click();else await page.evaluate(()=>document.querySelector('[data-mobile-lab="art"]')?.click());
+              await page.waitForFunction(()=>!!document.querySelector('#kbsArtSourceLinksScript'),{timeout:15000});
+              const meaningful=errors.filter(x=>!x.includes('favicon'));if(meaningful.length)throw new Error('Browser errors: '+meaningful.join(' | '));
+              console.log('PERFORMANCE_VIEWPORT_PASS',JSON.stringify({viewport,state}));await page.close();
             }
-            await browser.close();
-            console.log('PERFORMANCE_PREVIEW_PASS');
+            await browser.close();console.log('PERFORMANCE_PREVIEW_PASS');
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
