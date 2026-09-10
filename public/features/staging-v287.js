@@ -22,7 +22,7 @@
   loadStyle('styles/focus-presentation-mode.css?v=3.3.2','kbsFocusPresentationStyle');
   loadScript('features/full-themes.js?v=3.4.1','kbsFullThemesScript').catch(console.warn);
   loadScript('features/theme-picker-fit.js?v=3.0.2','kbsThemePickerFitScript').catch(console.warn);
-  loadScript('features/focus-presentation-mode.js?v=3.3.2','kbsFocusPresentationScript').catch(console.warn);
+  loadScript('features/focus-presentation-mode.js?v=3.3.3','kbsFocusPresentationScript').catch(console.warn);
   loadScript('features/artwork-legacy-repair.js?v=2.9.1','kbsArtworkLegacyRepairScript').catch(console.warn);
 
   /* Binder cover assets load only when the binder library is first opened. Failed loads remain retryable. */
