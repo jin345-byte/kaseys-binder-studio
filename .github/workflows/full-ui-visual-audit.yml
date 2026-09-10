@@ -66,6 +66,14 @@ jobs:
               await page.waitForSelector('#searchBtn',{timeout:30000});
               await page.waitForTimeout(1800);
 
+              const clickVisible=async selectors=>{
+                for(const sel of selectors){
+                  const loc=page.locator(sel).first();
+                  if(await loc.count() && await loc.isVisible().catch(()=>false)){await loc.click();return true;}
+                }
+                return false;
+              };
+
               const themes=await page.evaluate(()=>window.KBSFullThemes?.list?.().map(x=>x.id)||[]);
               const themeList=expectedThemes.filter(x=>themes.includes(x));
               if(themeList.length!==expectedThemes.length)findings.push({kind:'missing-themes',vp:vp.name,found:themes});
@@ -80,7 +88,7 @@ jobs:
                 auditedButtons+=rows.length;
                 for(const b of rows){
                   if(!b.text)continue;
-                  const fg=rgba(b.color), bg=rgba((b.bg&&rgba(b.bg)?.a>0.05)?b.bg:b.nearestBg);
+                  const fg=rgba(b.color), own=rgba(b.bg), bg=rgba((b.bg&&own?.a>0.05)?b.bg:b.nearestBg);
                   if(fg&&bg){const cr=contrast(fg,bg);const large=b.fontSize>=18 || (b.fontSize>=14 && Number.parseInt(b.fontWeight)>=700);const min=large?3:4.5;if(cr<min && b.bgImage==='none')findings.push({kind:'low-contrast',vp:vp.name,state:label,id:b.id,text:b.text.slice(0,80),ratio:+cr.toFixed(2),fg:b.color,bg:b.bg||b.nearestBg});}
                   const clippedX=b.scrollWidth>b.clientWidth+3 && !['normal','pre-wrap','pre-line'].includes(b.whiteSpace);
                   const clippedY=b.scrollHeight>b.clientHeight+3 && b.overflow!=='visible';
@@ -95,33 +103,43 @@ jobs:
                 await auditState(`main:${theme}`);
               }
 
-              // Cards + artwork tabs.
-              if(await page.$('#libraryCardsTab')){await page.click('#libraryCardsTab');await auditState('cards-tab')}
-              if(await page.$('#libraryArtworkTab')){await page.click('#libraryArtworkTab');await auditState('artwork-tab')}
+              if(await clickVisible(['#libraryCardsTab']))await auditState('cards-tab');
+              if(await clickVisible(['#libraryArtworkTab']))await auditState('artwork-tab');
 
-              // Saved binder library.
-              if(await page.$('#openBinders')){await page.click('#openBinders');await page.waitForTimeout(150);await auditState('binder-library');await page.click('#closeBinders').catch(()=>{})}
+              if(await clickVisible(['#openBinders','#mobilePageBinders'])){
+                await page.waitForTimeout(150);await auditState('binder-library');await clickVisible(['#closeBinders']);
+              }
 
-              // Build info.
-              if(await page.$('#versionLink')){await page.click('#versionLink');await page.waitForTimeout(100);await auditState('build-info');await page.click('#buildInfoClose').catch(()=>{})}
+              if(await clickVisible(['#versionLink'])){
+                await page.waitForTimeout(100);await auditState('build-info');await clickVisible(['#buildInfoClose']);
+              }
 
-              // Guided tour first step.
-              if(await page.$('#guidedTourLaunch')){await page.click('#guidedTourLaunch');await page.waitForTimeout(150);await auditState('guided-tour');await page.keyboard.press('Escape').catch(()=>{});await page.evaluate(()=>{const d=document.querySelector('#guidedDemo');if(d){d.hidden=true;d.setAttribute('aria-hidden','true')}})}
+              if(await clickVisible(['#guidedTourLaunch','#mobilePageTour'])){
+                await page.waitForTimeout(150);await auditState('guided-tour');
+                await page.evaluate(()=>{const d=document.querySelector('#guidedDemo');if(d){d.hidden=true;d.setAttribute('aria-hidden','true')}});
+              }
 
-              // Productivity tools and universal search.
-              if(await page.$('#kbsToolsBtn')){await page.click('#kbsToolsBtn');await page.waitForTimeout(120);await auditState('binder-tools');await page.click('#kbsToolsClose').catch(()=>{})}
-              if(await page.$('#kbsUniversalOpen')){await page.evaluate(()=>window.KBSProductivity?.openUniversal?.());await page.waitForTimeout(100);await auditState('universal-search');await page.click('#kbsUniversalClose').catch(()=>{})}
+              if(await clickVisible(['#kbsToolsBtn'])){
+                await page.waitForTimeout(120);await auditState('binder-tools');await clickVisible(['#kbsToolsClose']);
+              } else if(await page.$('#kbsToolsModal')){
+                await page.evaluate(()=>document.querySelector('#kbsToolsModal')?.classList.add('open'));
+                await auditState('binder-tools-forced');
+                await page.evaluate(()=>document.querySelector('#kbsToolsModal')?.classList.remove('open'));
+              }
 
-              // Mobile-specific views.
+              if(await page.$('#kbsUniversalModal')){
+                await page.evaluate(()=>window.KBSProductivity?.openUniversal?.());await page.waitForTimeout(100);await auditState('universal-search');
+                await clickVisible(['#kbsUniversalClose']);
+              }
+
               if(vp.name==='mobile'){
                 for(const sel of ['[data-mobile-lab="cards"]','[data-mobile-lab="page"]','[data-mobile-lab="art"]']){
-                  if(await page.$(sel)){await page.click(sel);await page.waitForTimeout(80);await auditState(`mobile:${sel}`)}
+                  if(await clickVisible([sel])){await page.waitForTimeout(80);await auditState(`mobile:${sel}`)}
                 }
               }
               await page.close();
             }
 
-            // Standalone privacy page.
             {
               const page=await browser.newPage({viewport:{width:390,height:844}});
               page.on('pageerror',e=>pageErrors.push(`privacy: ${e.message}`));
