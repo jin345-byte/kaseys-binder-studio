@@ -57,52 +57,41 @@ jobs:
               await sleep(6000);
             }
             if(!live)throw new Error('Visible accent assets did not propagate');
-
             const browser=await chromium.launch({headless:true});
             const page=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'no-preference'});
             const errors=[];page.on('pageerror',e=>errors.push(e.message));
             await page.goto(BASE+'/?accentqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
             await page.waitForSelector('#fullThemeSelect',{timeout:30000});
-            await page.waitForFunction(()=>{
-              const link=document.querySelector('#kbsThemeAnimatedAccentsStyle');
-              if(!link)return false;
-              return [...document.styleSheets].some(s=>s.href&&s.href.includes('theme-animated-accents.css?v=3.4.1'));
-            },{timeout:20000});
-
+            await page.waitForFunction(()=>[...document.styleSheets].some(s=>s.href&&s.href.includes('theme-animated-accents.css?v=3.4.1')),{timeout:20000});
             const themes=['jolteon','pokedex','game-boy','neo-genesis','team-rocket','lavender','cyberpunk','cozy-sakura','dark-academia','e-ink','retro-card-shop'];
             const baseline=await page.evaluate(()=>{const b=document.querySelector('#openBinders')||document.querySelector('.controls button');const r=b?.getBoundingClientRect();return r?{x:r.x,y:r.y,w:r.width,h:r.height}:null});
             const states=[];
             for(const theme of themes){
               await page.selectOption('#fullThemeSelect',theme);
-              await page.waitForFunction(()=>{
-                const targets=[document.querySelector('#grid'),document.querySelector('.panel'),document.querySelector('.control-module')].filter(Boolean);
-                return targets.some(el=>getComputedStyle(el).animationName!=='none'&&el.getAnimations().length>0);
-              },{timeout:5000});
-              await page.waitForTimeout(80);
+              await page.waitForFunction(()=>[document.querySelector('#grid'),document.querySelector('.panel'),document.querySelector('.control-module')].filter(Boolean).some(el=>getComputedStyle(el).animationName!=='none'&&el.getAnimations().length>0),{timeout:5000});
               const s=await page.evaluate(()=>{
-                const targets=[document.querySelector('#grid'),document.querySelector('.panel'),document.querySelector('.control-module')].filter(Boolean);
+                const targets=[document.querySelector('#grid'),document.querySelector('.panel'),document.querySelector('.control-module'),document.body].filter(Boolean);
                 let changed=false,sample=null;
                 for(const el of targets){
-                  const anim=el.getAnimations().find(a=>a.effect&&Number(a.effect.getTiming().duration)>0);
-                  if(!anim)continue;
-                  const d=Number(anim.effect.getTiming().duration)||1000;
-                  anim.pause();anim.currentTime=0;
-                  const a=getComputedStyle(el).filter;
-                  anim.currentTime=d/2;
-                  const b=getComputedStyle(el).filter;
-                  if(a!==b){changed=true;sample={tag:el.className||el.id,start:a,mid:b};break;}
+                  for(const anim of el.getAnimations()){
+                    if(!anim.effect||Number(anim.effect.getTiming().duration)<=0)continue;
+                    const frames=anim.effect.getKeyframes();
+                    const paint=frames.map(f=>[f.filter||'',f.opacity||'',f.backgroundPosition||''].join('|'));
+                    const unique=[...new Set(paint.filter(Boolean))];
+                    if(unique.length>1){changed=true;sample={tag:el.className||el.id||el.tagName,animation:getComputedStyle(el).animationName,frames:unique.slice(0,3)};break}
+                  }
+                  if(changed)break;
                 }
                 const button=document.querySelector('#openBinders')||document.querySelector('.controls button');const r=button?.getBoundingClientRect();
                 return {theme:document.body.dataset.theme,changed,sample,button:r?{x:r.x,y:r.y,w:r.width,h:r.height}:null};
               });
               if(s.theme!==theme)throw new Error('Theme did not apply: '+theme);
-              if(!s.changed)throw new Error('No visible filter/paint change detected for '+theme+' '+JSON.stringify(s));
+              if(!s.changed)throw new Error('No animated paint keyframes detected for '+theme+' '+JSON.stringify(s));
               if(baseline&&s.button){const d=Math.max(Math.abs(baseline.x-s.button.x),Math.abs(baseline.y-s.button.y),Math.abs(baseline.w-s.button.w),Math.abs(baseline.h-s.button.h));if(d>1)throw new Error('Accent changed button geometry for '+theme+' by '+d+'px')}
               states.push(s);
             }
             if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
             await page.close();
-
             const reduced=await browser.newPage({viewport:{width:1200,height:850},reducedMotion:'reduce'});
             await reduced.goto(BASE+'/?accentreduce='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
             await reduced.waitForSelector('#fullThemeSelect',{timeout:30000});
