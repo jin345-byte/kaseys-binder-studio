@@ -1,0 +1,134 @@
+/* Kasey's Binder Studio v3.5.1 — cross-theme control readability audit fixes.
+   Loaded last on preview so text remains readable across all themes/viewports. */
+
+/* Keep ordinary controls large enough for their labels instead of clipping the
+   last 1–3 px under theme/font changes. */
+#searchBtn,
+#guidedTourLaunch,
+.artadd .upload.btn,
+.artadd label.upload,
+#autoArtworkLoadMore,
+#guidedDemoNext,
+#editorPrev,
+#editorNext,
+.page-number,
+#versionLink,
+.artlink {
+  box-sizing:border-box!important;
+  height:auto!important;
+  line-height:1.2!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+
+#searchBtn{
+  min-width:66px!important;
+  padding-inline:12px!important;
+}
+
+#guidedTourLaunch{
+  min-width:140px!important;
+  padding-inline:12px!important;
+}
+
+/* The upload control is a label styled as a button; give its text enough
+   vertical breathing room in every font/theme. */
+.artadd .upload.btn,
+.artadd label.upload{
+  min-height:42px!important;
+  padding:10px 12px!important;
+  display:grid!important;
+  place-items:center!important;
+  white-space:normal!important;
+  text-align:center!important;
+}
+
+/* Compact navigation/actions can remain visually small, but not so small that
+   the glyph/word itself is cropped or difficult to hit. */
+#autoArtworkLoadMore,
+#guidedDemoNext{
+  min-height:36px!important;
+  min-width:44px!important;
+  padding:7px 10px!important;
+  white-space:nowrap!important;
+}
+#editorPrev,
+#editorNext,
+.page-number{
+  min-width:36px!important;
+  min-height:36px!important;
+  padding:6px!important;
+}
+#versionLink,
+.artlink{
+  min-height:32px!important;
+  padding:6px 8px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  white-space:normal!important;
+}
+
+/* Empty binder pockets are interactive controls. Their text previously inherited
+   --muted, which becomes low contrast on several light/brown themes and whenever
+   the user chooses a light custom page color. Put the instruction on a neutral
+   high-contrast chip so it remains legible independently of page/theme color. */
+.pocket:not(.filled){
+  color:#fff!important;
+}
+.pocket:not(.filled)>b,
+.pocket:not(.filled)>small,
+.pocket:not(.filled)>.pocket-empty-copy,
+.pocket:not(.filled)>.empty-copy{
+  position:relative;
+  z-index:2;
+  color:#fff!important;
+  background:rgba(8,10,14,.84)!important;
+  border:1px solid rgba(255,255,255,.22)!important;
+  border-radius:7px!important;
+  box-shadow:0 2px 8px rgba(0,0,0,.28)!important;
+  text-shadow:0 1px 2px #000!important;
+}
+.pocket:not(.filled)>b{
+  padding:3px 6px!important;
+}
+.pocket:not(.filled)>small{
+  padding:4px 6px!important;
+  line-height:1.25!important;
+  text-align:center!important;
+  max-width:92%!important;
+}
+
+/* Do not deliberately ellipsize primary controls. Wrapping is safer than hiding
+   button copy when a theme uses a wider font or the viewport narrows. */
+.controls>.btn,
+.controls>button,
+.searchrow>.btn,
+.searchrow>button,
+.sectionhead>.btn,
+.canvashead>.btn,
+.arthead>.btn{
+  text-overflow:clip!important;
+}
+
+@media(max-width:760px){
+  #searchBtn,
+  #guidedTourLaunch{
+    min-width:0!important;
+    width:100%!important;
+    min-height:44px!important;
+    white-space:normal!important;
+    overflow-wrap:normal!important;
+  }
+  #searchBtn{width:auto!important;min-width:70px!important}
+  .artadd .upload.btn,
+  .artadd label.upload{min-height:44px!important}
+  #editorPrev,#editorNext,.page-number{min-width:38px!important;min-height:38px!important}
+  .pocket:not(.filled)>small{font-size:max(9px,.72rem)!important}
+}
+
+@media(max-width:390px){
+  #guidedTourLaunch{font-size:11px!important}
+  .pocket:not(.filled)>small{font-size:9px!important;padding:3px 4px!important}
+  .pocket:not(.filled)>b{padding:2px 4px!important}
+}
