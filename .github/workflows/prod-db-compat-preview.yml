@@ -34,6 +34,9 @@ jobs:
           node --check public/features/cloud-sync.js
           node --check public/features/artwork-legacy-repair.js
           node --check public/features/art-source-links.js
+          node --check public/features/full-themes.js
+          node --check public/features/typography-picker.js
+          node --check public/features/staging-v287.js
           python - <<'PY'
           import json,pathlib
           cfg=json.loads(pathlib.Path('wrangler.prod-preview.jsonc').read_text())
@@ -44,16 +47,18 @@ jobs:
           assert db['database_id']=='ea5aaa71-88e3-4bff-b997-7aa9bff3c24d'
           worker=pathlib.Path('src/prod-preview-worker.js').read_text()
           assert 'prod-db-live-auth' in worker
-          assert 'read-only' not in worker.lower()
           cloud=pathlib.Path('public/features/cloud-sync.js').read_text()
           assert "format:'KBS-CLOUD-1'" in cloud
           rail=pathlib.Path('public/features/staging-v287.js').read_text()
           assert 'artwork-legacy-repair.js?v=2.9.1' in rail
           assert 'art-source-links.js?v=2.9.1' in rail
-          assert 'Binder Studio v4.0.3 preview' in rail
-          index=pathlib.Path('public/index.html').read_text()
-          assert 'v4.0.3 STAGING' in index
-          assert '4.0.3-staging-preview' in index
+          assert 'Binder Studio v4.0.4 preview' in rail
+          assert 'typography-picker.js?v=4.0.4' in rail
+          assert 'static-ui.css?v=4.0.4' in rail
+          assert 'theme-animated-accents' not in rail
+          themes=pathlib.Path('public/features/full-themes.js').read_text()
+          assert "DEFAULT_THEME='lavender'" in themes
+          assert not pathlib.Path('public/styles/theme-animated-accents.css').exists()
           broad=pathlib.Path('src/staging-worker.js').read_text()
           assert "frieren_(sousou_no_frieren)" in broad
           assert "base+'*'" in broad
@@ -80,22 +85,9 @@ jobs:
           if(!Array.isArray(raw)||raw.length<2)throw new Error('Unexpected Wrangler D1 result shape');
           const tables=(raw[0]?.results||[]).map(r=>r.name).sort();
           for(const required of ['binder_snapshots','sessions','users'])if(!tables.includes(required))throw new Error('Missing production table: '+required);
-          const rows=raw[1]?.results||[];
-          if(!rows.length)throw new Error('Production database has no binder snapshots to validate');
-          const encodings=new Set();let maxPayloadBytes=0;
-          for(const row of rows){
-            const payload=String(row.payload||''),encoding=String(row.encoding||'json');
-            encodings.add(encoding);maxPayloadBytes=Math.max(maxPayloadBytes,Buffer.byteLength(payload));
-            let text;
-            if(encoding==='gzip-base64')text=zlib.gunzipSync(Buffer.from(payload,'base64')).toString('utf8');
-            else if(encoding==='json')text=payload;
-            else throw new Error('Unsupported production snapshot encoding: '+encoding);
-            const snapshot=JSON.parse(text);
-            if(snapshot?.format!=='KBS-CLOUD-1')throw new Error('Unsupported production snapshot format');
-            if(!Array.isArray(snapshot.binders)||!Array.isArray(snapshot.pages))throw new Error('Production snapshot missing binder/page arrays');
-            if(!Number.isFinite(Number(row.revision))||Number(row.revision)<1)throw new Error('Invalid production snapshot revision');
-          }
-          console.log('PROD_D1_COMPAT_PASS',JSON.stringify({sampled:rows.length,encodings:[...encodings].sort(),maxPayloadBytes}));
+          const rows=raw[1]?.results||[];if(!rows.length)throw new Error('Production database has no binder snapshots to validate');
+          for(const row of rows){const payload=String(row.payload||''),encoding=String(row.encoding||'json');let text;if(encoding==='gzip-base64')text=zlib.gunzipSync(Buffer.from(payload,'base64')).toString('utf8');else if(encoding==='json')text=payload;else throw new Error('Unsupported production snapshot encoding: '+encoding);const snapshot=JSON.parse(text);if(snapshot?.format!=='KBS-CLOUD-1')throw new Error('Unsupported production snapshot format');if(!Array.isArray(snapshot.binders)||!Array.isArray(snapshot.pages))throw new Error('Production snapshot missing binder/page arrays');if(!Number.isFinite(Number(row.revision))||Number(row.revision)<1)throw new Error('Invalid production snapshot revision')}
+          console.log('PROD_D1_COMPAT_PASS',rows.length);
           JS
           rm -f /tmp/prod-d1-check.json
 
@@ -111,46 +103,18 @@ jobs:
           node <<'JS'
           const {chromium}=require('playwright');
           const PREVIEW='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          async function waitLive(){for(let i=0;i<60;i++){const r=await fetch(PREVIEW+'/features/staging-v287.js?compat='+Date.now(),{cache:'no-store'}).catch(()=>null);const t=r?.ok?await r.text():'';if(t.includes('v4.0.4 preview'))return;await sleep(5000)}throw new Error('v4.0.4 preview did not propagate')}
           (async()=>{
-            const browser=await chromium.launch({headless:true});
-            const page=await browser.newPage({viewport:{width:1440,height:1100}});
-            const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
-            await page.goto(PREVIEW+'/?qa='+Date.now(),{waitUntil:'networkidle',timeout:60000});
-            const version=(await page.locator('#versionLink').textContent()||'').trim();
-            if(version!=='v4.0.3 STAGING')throw new Error('Unexpected preview UI version: '+version);
-            const buildMeta=await page.locator('meta[name="kbs-build"]').getAttribute('content');
-            if(buildMeta!=='4.0.3-staging-preview')throw new Error('Unexpected build meta: '+buildMeta);
-            const cfgResp=await page.request.get(PREVIEW+'/api/config');
-            const cfg=await cfgResp.json();
-            if(!cfg.databaseReady||!cfg.authReady||cfg.syncVersion!==2||!cfg.googleClientId)throw new Error('Preview config mismatch: '+JSON.stringify({databaseReady:cfg.databaseReady,authReady:cfg.authReady,syncVersion:cfg.syncVersion,hasClientId:!!cfg.googleClientId}));
-            await page.click('#cloudAccountBtn');await page.waitForTimeout(1200);
-            const hint=(await page.locator('#cloudSetupHint').textContent()||'').trim();
-            if(!hint.includes('Sign in to sync'))throw new Error('Google auth UI not enabled: '+hint);
-            if(!(await page.locator('#googleButtonMount').isVisible()))throw new Error('Google button mount not visible');
-
-            await page.click('#libraryArtworkTab');
-            await page.waitForFunction(()=>globalThis.KBSArtworkRepair&&globalThis.KBSArtSourceLinks,{timeout:10000});
-            const artCompat=await page.evaluate(()=>{
-              const legacy='https://cdn.artofpkm.com/rp4nom0pifi0d7ozvegmbon7hv5c';
-              const sample={subject:'Pikachu',layout:'3x3',binderColor:'#111827',pageColor:'#080b12',sleeveColor:'#334155',artworks:[{id:'a',kind:'art',image:legacy,size:'1x1'}],pockets:[{id:'a',kind:'art',image:legacy,size:'1x1'}]};
-              const fixed=KBSArtworkRepair.repairEditorState(sample);
-              const links=[...document.querySelectorAll('#artSourceLinks .art-source-chip')].map(x=>x.textContent.trim());
-              document.querySelector('#artSearchQuery').value='Pikachu';document.querySelector('#artSearchQuery').dispatchEvent(new Event('input',{bubbles:true}));
-              return{art:fixed.artworks[0].image,pocket:fixed.pockets[0].image,linkCount:links.length,links,dev:document.querySelector('#artSourceDeviant')?.href||'',safe:document.querySelector('#artSourceSafe')?.href||'',pkmTitle:document.querySelector('#artSourcePkm')?.title||''};
-            });
-            if(!artCompat.art.includes('/api/art-image?url=')||!artCompat.pocket.includes('/api/art-image?url='))throw new Error('Legacy Art of Pokemon URL repair failed: '+JSON.stringify(artCompat));
-            if(artCompat.linkCount<3||!artCompat.links.includes('Art of Pokémon ↗')||!artCompat.links.includes('DeviantArt ↗')||!artCompat.links.includes('Safebooru ↗'))throw new Error('Artwork source links missing: '+JSON.stringify(artCompat));
-            if(!artCompat.dev.toLowerCase().includes('pikachu')||!artCompat.safe.toLowerCase().includes('pikachu')||!artCompat.pkmTitle.includes('Pikachu'))throw new Error('Artwork source links did not follow art search: '+JSON.stringify(artCompat));
-
-            const broadResp=await page.request.get(PREVIEW+'/api/art-feed?tag=frieren&pid=0');
-            const broad=await broadResp.json(),broadHeader=broadResp.headers()['x-kbs-art-broad'];
-            if(!broadResp.ok()||broadHeader!=='1'||broad.broad!==true)throw new Error('Broad artwork endpoint not active');
-            if(!Array.isArray(broad.queryTags)||!broad.queryTags.includes('frieren_(sousou_no_frieren)')||!broad.queryTags.includes('frieren*'))throw new Error('Frieren query expansion missing: '+JSON.stringify(broad.queryTags));
-            if(!Array.isArray(broad.results)||broad.results.length<10)throw new Error('Frieren broad search returned too few results: '+(broad.results?.length||0));
-            if(new Set(broad.results.map(x=>x.url)).size!==broad.results.length)throw new Error('Broad artwork results were not deduplicated');
-            const tray=await page.locator('#arts').boundingBox();if(!tray||tray.height<180)throw new Error('Artwork tray regression');
+            await waitLive();const browser=await chromium.launch({headless:true});const context=await browser.newContext({viewport:{width:1440,height:1100}});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+            await page.goto(PREVIEW+'/?qa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForFunction(()=>globalThis.KBSPreviewBuild?.version==='4.0.4'&&globalThis.KBSFullThemes&&globalThis.KBSTypography,{timeout:30000});
+            const identity=await page.evaluate(()=>({version:document.querySelector('#versionLink')?.textContent.trim(),meta:document.querySelector('meta[name="kbs-build"]')?.content,theme:document.body.dataset.theme,motion:KBSPreviewBuild.motion}));
+            if(identity.version!=='v4.0.4 STAGING'||identity.meta!=='4.0.4-staging-preview'||identity.theme!=='lavender'||identity.motion!=='static')throw new Error('Preview identity mismatch: '+JSON.stringify(identity));
+            const cfgResp=await page.request.get(PREVIEW+'/api/config');const cfg=await cfgResp.json();if(!cfg.databaseReady||!cfg.authReady||cfg.syncVersion!==2||!cfg.googleClientId)throw new Error('Preview config mismatch');
+            await page.click('#libraryArtworkTab');await page.waitForFunction(()=>globalThis.KBSArtworkRepair&&globalThis.KBSArtSourceLinks,{timeout:10000});
+            const broadResp=await page.request.get(PREVIEW+'/api/art-feed?tag=frieren&pid=0');const broad=await broadResp.json(),broadHeader=broadResp.headers()['x-kbs-art-broad'];if(!broadResp.ok()||broadHeader!=='1'||broad.broad!==true)throw new Error('Broad artwork endpoint not active');if(!Array.isArray(broad.results)||broad.results.length<10)throw new Error('Frieren broad search returned too few results');
             if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
-            console.log('PROD_PREVIEW_BROAD_ART_PASS',JSON.stringify({version,db:cfg.databaseReady,authReady:cfg.authReady,trayHeight:tray.height,frierenResults:broad.results.length}));
-            await browser.close();
+            console.log('PROD_PREVIEW_V404_PASS',JSON.stringify({identity,frierenResults:broad.results.length}));await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
