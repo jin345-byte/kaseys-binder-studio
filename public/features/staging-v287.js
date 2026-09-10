@@ -12,62 +12,44 @@
     if(existing)existing.remove();
     return new Promise((resolve,reject)=>{const s=document.createElement('script');s.id=id;s.src=src;s.onload=()=>{s.dataset.kbsLoaded='1';resolve()};s.onerror=()=>{s.remove();reject(new Error('Could not load '+src))};document.head.appendChild(s)});
   }
-
-  /* Required immediately: visual system, focus mode, responsive/readability CSS and legacy artwork repair. */
   loadStyle('styles/full-themes.css?v=3.0.5','kbsFullThemesStyle');
   loadStyle('styles/theme-picker-fit.css?v=3.0.2','kbsThemePickerFitStyle');
   loadStyle('styles/responsive-button-fit.css?v=3.3.4','kbsResponsiveButtonFitStyle');
   loadStyle('styles/ui-readability-fixes.css?v=3.5.4','kbsUiReadabilityFixesStyle');
   loadStyle('styles/theme-animated-accents.css?v=3.4.1','kbsThemeAnimatedAccentsStyle');
-  loadStyle('styles/focus-presentation-mode.css?v=3.3.2','kbsFocusPresentationStyle');
+  loadStyle('styles/focus-presentation-mode.css?v=3.3.3','kbsFocusPresentationStyle');
   loadScript('features/full-themes.js?v=3.4.1','kbsFullThemesScript').catch(console.warn);
   loadScript('features/theme-picker-fit.js?v=3.0.2','kbsThemePickerFitScript').catch(console.warn);
   loadScript('features/focus-presentation-mode.js?v=3.3.3','kbsFocusPresentationScript').catch(console.warn);
   loadScript('features/artwork-legacy-repair.js?v=2.9.1','kbsArtworkLegacyRepairScript').catch(console.warn);
-
-  /* Binder cover assets load only when the binder library is first opened. Failed loads remain retryable. */
   let coverLoaded=false,coverLoading=null;
   async function loadCoverDesigner(){
-    if(coverLoaded)return;
-    if(coverLoading)return coverLoading;
+    if(coverLoaded)return;if(coverLoading)return coverLoading;
     loadStyle('styles/binder-cover-designer.css?v=3.1.1','kbsBinderCoverDesignerStyle');
-    coverLoading=loadScript('features/binder-cover-designer.js?v=3.1.1','kbsBinderCoverDesignerScript')
-      .then(()=>{coverLoaded=true})
-      .catch(err=>{coverLoading=null;throw err});
+    coverLoading=loadScript('features/binder-cover-designer.js?v=3.1.1','kbsBinderCoverDesignerScript').then(()=>{coverLoaded=true}).catch(err=>{coverLoading=null;throw err});
     return coverLoading;
   }
   document.querySelector('#openBinders')?.addEventListener('click',()=>loadCoverDesigner().catch(console.warn),{capture:true});
   document.querySelector('#mobilePageBinders')?.addEventListener('click',()=>loadCoverDesigner().catch(console.warn),{capture:true});
-
-  /* Artwork source helper loads only when the Artwork surface is first opened. Failed loads remain retryable. */
   let sourceLinksLoaded=false,sourceLinksLoading=null;
   async function loadArtworkSources(){
-    if(sourceLinksLoaded)return;
-    if(sourceLinksLoading)return sourceLinksLoading;
-    sourceLinksLoading=loadScript('features/art-source-links.js?v=2.9.1','kbsArtSourceLinksScript')
-      .then(()=>{sourceLinksLoaded=true})
-      .catch(err=>{sourceLinksLoading=null;throw err});
+    if(sourceLinksLoaded)return;if(sourceLinksLoading)return sourceLinksLoading;
+    sourceLinksLoading=loadScript('features/art-source-links.js?v=2.9.1','kbsArtSourceLinksScript').then(()=>{sourceLinksLoaded=true}).catch(err=>{sourceLinksLoading=null;throw err});
     return sourceLinksLoading;
   }
   document.querySelector('#libraryArtworkTab')?.addEventListener('click',()=>loadArtworkSources().catch(console.warn),{capture:true});
   document.querySelector('[data-mobile-lab="art"]')?.addEventListener('click',()=>loadArtworkSources().catch(console.warn),{capture:true});
-
-  /* Advanced productivity tools stay off the startup path and retry after any transient load failure. */
   let productivityLoaded=false,productivityLoading=null;
   function loadProductivity(){
-    if(productivityLoaded)return Promise.resolve();
-    if(productivityLoading)return productivityLoading;
+    if(productivityLoaded)return Promise.resolve();if(productivityLoading)return productivityLoading;
     loadStyle('styles/productivity-suite.css?v=3.5.0','kbsProductivitySuiteStyle');
-    productivityLoading=loadScript('features/productivity-suite.js?v=3.5.0','kbsProductivitySuiteScript')
-      .then(()=>{productivityLoaded=true;removeProductivityTriggers()})
-      .catch(err=>{productivityLoading=null;throw err});
+    productivityLoading=loadScript('features/productivity-suite.js?v=3.5.0','kbsProductivitySuiteScript').then(()=>{productivityLoaded=true;removeProductivityTriggers()}).catch(err=>{productivityLoading=null;throw err});
     return productivityLoading;
   }
   const productivityEvents=['pointerdown','keydown','touchstart'];
   const productivityTrigger=()=>loadProductivity().catch(console.warn);
   function removeProductivityTriggers(){productivityEvents.forEach(name=>document.removeEventListener(name,productivityTrigger,true))}
   productivityEvents.forEach(name=>document.addEventListener(name,productivityTrigger,{capture:true,passive:name==='pointerdown'||name==='touchstart'}));
-
   const numbers=document.querySelector('#editorPageNumbers');if(!numbers)return;let lastActive='';
   function activeButton(){return numbers.querySelector('.page-number.active,.page-number[aria-current="page"]')}
   function revealAndAnimate(){const active=activeButton();if(!active)return;const key=active.dataset.pageId||active.dataset.page||active.textContent?.trim()||'';active.scrollIntoView({behavior:'smooth',block:'center',inline:'nearest'});if(key&&key!==lastActive){lastActive=key;active.classList.remove('page-switch-pop');void active.offsetWidth;active.classList.add('page-switch-pop');setTimeout(()=>active.classList.remove('page-switch-pop'),380)}}
