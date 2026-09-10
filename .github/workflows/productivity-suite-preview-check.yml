@@ -45,20 +45,25 @@ jobs:
           const sleep=ms=>new Promise(r=>setTimeout(r,ms));
           (async()=>{
             let live=false;
-            for(let i=0;i<35;i++){
-              const r=await fetch(BASE+'/features/productivity-suite.js?qa='+Date.now(),{cache:'no-store'}).catch(()=>null);
-              const t=r?.ok?await r.text().catch(()=>''):'';
-              if(t.includes("const VERSION='3.5.0'")&&t.includes('smartGenerate')&&t.includes('importPackage')){live=true;break}
+            for(let i=0;i<40;i++){
+              const [r,l]=await Promise.all([
+                fetch(BASE+'/features/productivity-suite.js?qa='+Date.now(),{cache:'no-store'}).catch(()=>null),
+                fetch(BASE+'/features/staging-v287.js?qa='+Date.now(),{cache:'no-store'}).catch(()=>null)
+              ]);
+              const [t,loader]=await Promise.all([r?.ok?r.text().catch(()=>''):'',l?.ok?l.text().catch(()=>''):'']);
+              if(t.includes("const VERSION='3.5.0'")&&t.includes('smartGenerate')&&t.includes('importPackage')&&loader.includes('Binder Studio v4.0.3 preview')){live=true;break}
               await sleep(6000);
             }
-            if(!live)throw new Error('Productivity suite assets did not propagate');
+            if(!live)throw new Error('Productivity suite/current loader assets did not propagate');
             const browser=await chromium.launch({headless:true});
             const page=await browser.newPage({viewport:{width:1440,height:1000}});
-            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
             await page.goto(BASE+'/?productivityqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            if(await page.$('#kbsToolsBtn'))throw new Error('Productivity suite loaded before first interaction');
+            await page.mouse.click(12,12);
             await page.waitForSelector('#kbsToolsBtn',{timeout:30000});
             await page.waitForFunction(()=>window.KBSProductivity?.VERSION==='3.5.0');
-            await page.waitForTimeout(1200);
+            await page.waitForTimeout(500);
 
             await page.click('#kbsToolsBtn');
             await page.waitForSelector('#kbsToolsModal.open');
