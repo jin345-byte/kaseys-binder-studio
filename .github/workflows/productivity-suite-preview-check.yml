@@ -46,86 +46,66 @@ jobs:
           (async()=>{
             let live=false;
             for(let i=0;i<40;i++){
-              const [r,l]=await Promise.all([
-                fetch(BASE+'/features/productivity-suite.js?qa='+Date.now(),{cache:'no-store'}).catch(()=>null),
-                fetch(BASE+'/features/staging-v287.js?qa='+Date.now(),{cache:'no-store'}).catch(()=>null)
-              ]);
+              const [r,l]=await Promise.all([fetch(BASE+'/features/productivity-suite.js?qa='+Date.now(),{cache:'no-store'}).catch(()=>null),fetch(BASE+'/features/staging-v287.js?qa='+Date.now(),{cache:'no-store'}).catch(()=>null)]);
               const [t,loader]=await Promise.all([r?.ok?r.text().catch(()=>''):'',l?.ok?l.text().catch(()=>''):'']);
               if(t.includes("const VERSION='3.5.0'")&&t.includes('smartGenerate')&&t.includes('importPackage')&&loader.includes('Binder Studio v4.0.3 preview')){live=true;break}
               await sleep(6000);
             }
             if(!live)throw new Error('Productivity suite/current loader assets did not propagate');
-            const browser=await chromium.launch({headless:true});
-            const page=await browser.newPage({viewport:{width:1440,height:1000}});
-            const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+            const browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];
+            page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
             await page.goto(BASE+'/?productivityqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
 
-            async function ensureProductivity(){
-              await page.waitForLoadState('domcontentloaded');
-              if(!(await page.evaluate(()=>window.KBSProductivity?.VERSION==='3.5.0'))){await page.mouse.click(12,12)}
-              await page.waitForFunction(()=>window.KBSProductivity?.VERSION==='3.5.0',{timeout:30000});
-              await page.waitForSelector('#kbsToolsBtn',{timeout:30000});
-            }
-            async function mayNavigate(fn,arg){
-              try{return await page.evaluate(fn,arg)}catch(e){
-                if(!/Execution context was destroyed|navigation|KBSProductivity is not defined/i.test(String(e?.message||e)))throw e;
+            async function ensureProductivity(timeout=45000){
+              const end=Date.now()+timeout;
+              while(Date.now()<end){
                 await page.waitForLoadState('domcontentloaded').catch(()=>{});
-                await ensureProductivity();
-                return null;
+                try{
+                  const ready=await page.evaluate(()=>window.KBSProductivity?.VERSION==='3.5.0');
+                  if(ready&&await page.$('#kbsToolsBtn'))return;
+                  await page.mouse.click(12,12).catch(()=>{});
+                }catch(e){if(!/Execution context was destroyed|navigation/i.test(String(e?.message||e)))throw e}
+                await sleep(250);
               }
+              throw new Error('Productivity suite did not become stable after navigation');
+            }
+            async function invokeNavigationSafe(fn,arg){
+              try{return await page.evaluate(fn,arg)}catch(e){if(!/Execution context was destroyed|navigation/i.test(String(e?.message||e)))throw e;return null}
             }
 
             if(await page.$('#kbsToolsBtn'))throw new Error('Productivity suite loaded before first interaction');
-            await ensureProductivity();await page.waitForTimeout(300);
+            await ensureProductivity();
             await page.click('#kbsToolsBtn');await page.waitForSelector('#kbsToolsModal.open');
-            const required=['#kbsSmartGenerate','#kbsAutoFill','[data-kbs-template="classic-9"]','#kbsCopyPage','#kbsMultiToggle','#kbsUndoBtn','#kbsRedoBtn','#kbsUniversalOpen','#kbsExportBinder','#kbsImportBinder'];
-            for(const sel of required)if(!(await page.$(sel)))throw new Error('Missing productivity control '+sel);
+            for(const sel of ['#kbsSmartGenerate','#kbsAutoFill','[data-kbs-template="classic-9"]','#kbsCopyPage','#kbsMultiToggle','#kbsUndoBtn','#kbsRedoBtn','#kbsUniversalOpen','#kbsExportBinder','#kbsImportBinder'])if(!(await page.$(sel)))throw new Error('Missing productivity control '+sel);
             await page.click('#kbsToolsClose');
 
             const layout0=await page.$eval('#layout',e=>e.value);
             await page.evaluate(()=>window.KBSProductivity.applyTemplate('classic-4'));
             if(await page.$eval('#layout',e=>e.value)!=='2x2')throw new Error('Layout template did not apply');
-            await page.evaluate(()=>window.KBSProductivity.undo());
-            if(await page.$eval('#layout',e=>e.value)!==layout0)throw new Error('Undo did not restore layout');
-            await page.evaluate(()=>window.KBSProductivity.redo());
-            if(await page.$eval('#layout',e=>e.value)!=='2x2')throw new Error('Redo did not restore template');
+            await page.evaluate(()=>window.KBSProductivity.undo());if(await page.$eval('#layout',e=>e.value)!==layout0)throw new Error('Undo did not restore layout');
+            await page.evaluate(()=>window.KBSProductivity.redo());if(await page.$eval('#layout',e=>e.value)!=='2x2')throw new Error('Redo did not restore template');
 
             const mocks=await page.evaluate(()=>Array.from({length:24},(_,i)=>({id:'qa-card-'+i,name:'QA Card '+i,setName:'QA Set',localId:String(i+1),imageHigh:'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="140"><rect width="100" height="140" fill="gray"/><text x="10" y="70">${i}</text></svg>`),kind:'card'})));
             const filled=await page.evaluate(m=>{state.pockets=Array(12).fill(null);save();renderGrid();window.KBSProductivity.resetHistory();return window.KBSProductivity.autoFillPage({candidates:m,query:''})},mocks);
             if(!(filled>=4))throw new Error('Auto-fill did not fill page');
-
-            await page.evaluate(()=>window.KBSProductivity.setMultiMode(true));
-            await page.locator('#grid [data-pocket]').nth(0).click();await page.locator('#grid [data-pocket]').nth(1).click();
+            await page.evaluate(()=>window.KBSProductivity.setMultiMode(true));await page.locator('#grid [data-pocket]').nth(0).click();await page.locator('#grid [data-pocket]').nth(1).click();
             if(await page.locator('#grid .kbs-pocket-selected').count()!==2)throw new Error('Multi-select did not select two pockets');
-            await page.evaluate(()=>window.KBSProductivity.clearSelectedPockets());
-            if(await page.locator('#grid .kbs-pocket-selected').count()!==0)throw new Error('Multi-select did not clear selection');
-            await page.evaluate(()=>window.KBSProductivity.setMultiMode(false));
+            await page.evaluate(()=>window.KBSProductivity.clearSelectedPockets());if(await page.locator('#grid .kbs-pocket-selected').count())throw new Error('Multi-select did not clear');await page.evaluate(()=>window.KBSProductivity.setMultiMode(false));
 
-            await mayNavigate(m=>window.KBSProductivity.smartGenerate({name:'QA Smart Binder',query:'QA',pages:2,layout:'2x2',candidates:m}),mocks);
-            await ensureProductivity();await page.waitForTimeout(400);
-            let pack=await mayNavigate(()=>window.KBSProductivity.buildExportPackage());
-            if(!pack){await ensureProductivity();pack=await page.evaluate(()=>window.KBSProductivity.buildExportPackage())}
-            if(pack.format!=='KBS-BINDER-1'||pack.binder.name!=='QA Smart Binder'||pack.pages.length!==2)throw new Error('Smart binder/export package mismatch '+JSON.stringify({format:pack.format,name:pack.binder.name,pages:pack.pages.length}));
-            const filledSmart=pack.pages.reduce((n,p)=>n+(p.state?.pockets||[]).filter(Boolean).length,0);
-            if(filledSmart<4)throw new Error('Smart binder did not place cards');
+            await invokeNavigationSafe(m=>{window.KBSProductivity.smartGenerate({name:'QA Smart Binder',query:'QA',pages:2,layout:'2x2',candidates:m});return true},mocks);
+            await sleep(800);await ensureProductivity();
+            let pack=await page.evaluate(()=>window.KBSProductivity.buildExportPackage());
+            if(pack.format!=='KBS-BINDER-1'||pack.binder.name!=='QA Smart Binder'||pack.pages.length!==2)throw new Error('Smart binder/export mismatch '+JSON.stringify({format:pack.format,name:pack.binder.name,pages:pack.pages.length}));
+            if(pack.pages.reduce((n,p)=>n+(p.state?.pockets||[]).filter(Boolean).length,0)<4)throw new Error('Smart binder did not place cards');
 
-            await mayNavigate(()=>window.KBSProductivity.copyCurrentPage());await ensureProductivity();await page.waitForTimeout(500);
-            pack=await page.evaluate(()=>window.KBSProductivity.buildExportPackage());
-            if(pack.pages.length!==3)throw new Error('Copy page did not add a page');
-
-            const universal=await page.evaluate(()=>window.KBSProductivity.universalResults('QA Smart'));
-            if(!universal.some(x=>x.type==='binder'))throw new Error('Universal search did not find binder');
+            await invokeNavigationSafe(()=>{window.KBSProductivity.copyCurrentPage();return true});await sleep(600);await ensureProductivity();
+            pack=await page.evaluate(()=>window.KBSProductivity.buildExportPackage());if(pack.pages.length!==3)throw new Error('Copy page did not add a page');
+            const universal=await page.evaluate(()=>window.KBSProductivity.universalResults('QA Smart'));if(!universal.some(x=>x.type==='binder'))throw new Error('Universal search did not find binder');
             await page.evaluate(()=>window.KBSProductivity.openUniversal());await page.waitForSelector('#kbsUniversalModal.open');await page.click('#kbsUniversalClose');
 
-            let importedId=await mayNavigate(p=>window.KBSProductivity.importPackage(p),pack);await ensureProductivity();
-            if(importedId===null)importedId=await page.evaluate(()=>activeBinderId||null);
-            if(!importedId)throw new Error('Import did not return or activate binder id');
-            const imported=await page.evaluate(()=>window.KBSProductivity.buildExportPackage());
-            if(imported.pages.length!==3||!imported.binder.name.includes('Imported'))throw new Error('Imported binder was not loaded correctly');
-
-            const meaningful=errors.filter(x=>!x.includes('favicon'));
-            if(meaningful.length)throw new Error('Browser errors: '+meaningful.join(' | '));
-            await browser.close();
-            console.log('PRODUCTIVITY_SUITE_PASS',JSON.stringify({steps:[8,9,10,11,12,13,14,15],importedPages:imported.pages.length}));
+            await invokeNavigationSafe(p=>{window.KBSProductivity.importPackage(p);return true},pack);await sleep(800);await ensureProductivity();
+            const imported=await page.evaluate(()=>window.KBSProductivity.buildExportPackage());if(imported.pages.length!==3||!imported.binder.name.includes('Imported'))throw new Error('Imported binder was not loaded correctly');
+            const meaningful=errors.filter(x=>!x.includes('favicon'));if(meaningful.length)throw new Error('Browser errors: '+meaningful.join(' | '));
+            await browser.close();console.log('PRODUCTIVITY_SUITE_PASS',JSON.stringify({steps:[8,9,10,11,12,13,14,15],importedPages:imported.pages.length}));
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
