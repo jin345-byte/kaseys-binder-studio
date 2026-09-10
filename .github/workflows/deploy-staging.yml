@@ -2,6 +2,9 @@ name: Deploy Staging
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - staging-ui-auth-test
 
 permissions:
   contents: read
