@@ -1,0 +1,86 @@
+name: Static UI Typography Check
+
+on:
+  push:
+    branches: [prod-db-compat-preview]
+    paths:
+      - 'public/features/full-themes.js'
+      - 'public/features/typography-picker.js'
+      - 'public/features/staging-v287.js'
+      - 'public/features/staging-polish.js'
+      - 'public/styles/static-ui.css'
+      - 'public/styles/typography-picker.css'
+      - 'public/styles/theme-font-unified.css'
+      - 'public/styles/staging-polish.css'
+      - '.github/workflows/static-ui-typography-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: binder-studio-static-ui-typography
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Static source checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check public/features/full-themes.js
+          node --check public/features/typography-picker.js
+          node --check public/features/staging-v287.js
+          node --check public/features/staging-polish.js
+          test ! -e public/styles/theme-animated-accents.css
+          ! grep -R "theme-animated-accents" public/features public/styles --exclude='STATIC_UI_NOTES.txt'
+          ! grep -q "brand-animated\|kbsTitleBounce\|kbsLogoKick\|kbsLogoSweep" public/features/staging-polish.js public/styles/staging-polish.css
+          grep -q "DEFAULT_THEME='lavender'" public/features/full-themes.js
+          grep -q "System Sans" public/features/typography-picker.js
+          grep -q "Verdana" public/features/typography-picker.js
+          grep -q "Trebuchet" public/features/typography-picker.js
+          grep -q "Georgia" public/features/typography-picker.js
+          grep -q "animation:none!important" public/styles/static-ui.css
+          grep -q "v4.0.4 STAGING" public/features/staging-v287.js
+          echo STATIC_UI_SOURCE_PASS
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null
+      - name: Browser verification
+        shell: bash
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          const BASE='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          async function waitLive(){for(let i=0;i<60;i++){const r=await fetch(BASE+'/features/staging-v287.js?static='+Date.now(),{cache:'no-store'}).catch(()=>null);const t=r?.ok?await r.text():'';if(t.includes('v4.0.4 preview')&&t.includes('typography-picker.js?v=4.0.4')&&!t.includes('theme-animated-accents'))return;await sleep(5000)}throw new Error('v4.0.4 static UI assets did not propagate')}
+          (async()=>{
+            await waitLive();
+            const browser=await chromium.launch({headless:true});
+            for(const viewport of [{name:'desktop',width:1440,height:1000},{name:'mobile',width:390,height:844}]){
+              const context=await browser.newContext({viewport:{width:viewport.width,height:viewport.height}});
+              const page=await context.newPage();const errors=[],bad=[];
+              page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});page.on('response',r=>{if(r.url().includes('theme-animated-accents'))bad.push(r.url())});
+              await page.goto(BASE+'/?staticqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForFunction(()=>globalThis.KBSFullThemes&&globalThis.KBSTypography&&globalThis.KBSPreviewBuild?.version==='4.0.4',{timeout:30000});
+              const initial=await page.evaluate(()=>({theme:document.body.dataset.theme,version:document.querySelector('#versionLink')?.textContent.trim(),meta:document.querySelector('meta[name="kbs-build"]')?.content,font:document.body.dataset.kbsFont,fonts:KBSTypography.list().map(x=>x.id),running:document.getAnimations({subtree:true}).filter(a=>a.playState==='running').length,titleChildren:document.querySelector('.brand-copy h1')?.children.length||0}));
+              if(initial.theme!=='lavender')throw new Error(viewport.name+': default theme '+initial.theme);
+              if(initial.version!=='v4.0.4 STAGING'||initial.meta!=='4.0.4-staging-preview')throw new Error(viewport.name+': build identity '+JSON.stringify(initial));
+              if(initial.running!==0)throw new Error(viewport.name+': animations still running '+initial.running);
+              if(initial.titleChildren!==0)throw new Error(viewport.name+': brand title still split into animated spans');
+              for(const id of ['system','verdana','trebuchet','georgia'])if(!initial.fonts.includes(id))throw new Error('missing font '+id);
+              for(const id of ['verdana','trebuchet','georgia','system']){await page.selectOption('#kbsFontSelect',id);const got=await page.$eval('body',e=>e.dataset.kbsFont);if(got!==id)throw new Error(viewport.name+': font did not apply '+id)}
+              if(bad.length)throw new Error(viewport.name+': obsolete accent request '+bad.join(','));
+              if(errors.length)throw new Error(viewport.name+': browser errors '+errors.join(' | '));
+              await context.close();
+            }
+            await browser.close();console.log('STATIC_UI_TYPOGRAPHY_PASS');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
