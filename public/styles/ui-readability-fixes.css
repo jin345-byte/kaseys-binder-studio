@@ -1,34 +1,36 @@
-/* Kasey's Binder Studio v3.5.2 — cross-theme control readability fixes.
+/* Kasey's Binder Studio v3.5.3 — cross-theme control readability fixes.
    Loaded last on preview so text remains readable across all themes/viewports. */
 
-/* Search + guided tour: a few layouts constrain the available column by 1–3px.
-   Shrink the inner typography slightly rather than cutting off characters. */
 #searchBtn,
 #guidedTourLaunch{
   box-sizing:border-box!important;
   height:auto!important;
   min-height:42px!important;
-  line-height:1.1!important;
+  line-height:1.05!important;
   overflow:visible!important;
   text-overflow:clip!important;
-  white-space:nowrap!important;
 }
 #searchBtn{
   min-width:60px!important;
   max-width:none!important;
-  padding:8px 9px!important;
+  padding:7px 8px!important;
   font-size:12px!important;
+  white-space:nowrap!important;
 }
 #guidedTourLaunch{
   min-width:0!important;
   max-width:100%!important;
-  padding:8px 8px!important;
-  font-size:12px!important;
-  letter-spacing:-.01em!important;
+  height:44px!important;
+  min-height:44px!important;
+  max-height:none!important;
+  padding:5px 5px!important;
+  font-size:11px!important;
+  line-height:1!important;
+  letter-spacing:-.02em!important;
+  white-space:normal!important;
 }
 
-/* Artwork upload is a label styled as a button. Target every form the markup has
-   used so the label can never be shorter than its text. */
+/* Artwork upload is a label styled as a button. */
 .artadd label.btn,
 .artadd .btn[for="artFile"],
 .artadd .upload.btn,
@@ -46,7 +48,6 @@
   text-align:center!important;
 }
 
-/* Small textual actions need enough height for their entire label. */
 #autoArtworkLoadMore,
 #guidedDemoNext{
   box-sizing:border-box!important;
@@ -63,8 +64,8 @@
   text-overflow:clip!important;
 }
 
-/* Desktop page navigation can be comfortably clickable. Narrow mobile rails keep
-   their intentionally compact geometry below. */
+/* Page navigation: keep numerals and arrows fully visible, including the rail
+   generated outside .editor-page-nav in some layouts. */
 #editorPrev,
 #editorNext,
 .editor-page-nav>.page-arrow{
@@ -78,7 +79,8 @@
   padding:0!important;
   overflow:visible!important;
 }
-.editor-page-nav .page-number{
+.editor-page-nav .page-number,
+#editorPageNumbers .page-number{
   box-sizing:border-box!important;
   width:34px!important;
   min-width:34px!important;
@@ -90,8 +92,6 @@
   overflow:visible!important;
 }
 
-/* Utility links were visually readable but their 23–25px hit areas were too
-   short. Keep them compact while avoiding cropped descenders. */
 #versionLink,
 .version-link,
 .artlink,
@@ -110,8 +110,7 @@
   text-overflow:clip!important;
 }
 
-/* Empty binder pockets must be readable regardless of the chosen theme/page
-   color. Filled pockets remain completely unchanged. */
+/* Empty pockets remain readable on every theme and on custom light page colors. */
 .pocket:not(.filled){
   color:#fff!important;
   background:rgba(8,10,14,.82)!important;
@@ -135,7 +134,6 @@
   max-width:94%!important;
 }
 
-/* Prevent generic responsive helpers from deliberately ellipsizing primary copy. */
 .controls>.btn,
 .controls>button,
 .searchrow>.btn,
@@ -146,22 +144,34 @@
   text-overflow:clip!important;
 }
 
-/* Mobile card-library setup previously forced two lines of content into a 34px
-   pill. Let the copy wrap and give the progress control enough vertical room. */
 @media(max-width:760px){
+  /* Match/exceed the specificity of responsive-button-fit.css so the mobile
+     library builder can actually show both its title and count line. */
+  body.mobile-lab-enabled .content .library #syncMasterLibrary,
+  body.mobile-lab-enabled .content .canvas-side-controls #syncMasterLibrary,
   .canvas-side-controls #syncMasterLibrary{
+    box-sizing:border-box!important;
     height:auto!important;
-    min-height:54px!important;
+    min-height:58px!important;
     max-height:none!important;
     padding:7px 42px 7px 10px!important;
+    line-height:1.15!important;
+    white-space:normal!important;
     overflow:visible!important;
+    text-overflow:clip!important;
   }
+  body.mobile-lab-enabled .content .library #syncMasterLibrary .library-build-copy,
+  body.mobile-lab-enabled .content .canvas-side-controls #syncMasterLibrary .library-build-copy,
   .canvas-side-controls #syncMasterLibrary .library-build-copy{
     display:block!important;
     min-width:0!important;
     width:100%!important;
+    white-space:normal!important;
     overflow:visible!important;
+    text-overflow:clip!important;
   }
+  body.mobile-lab-enabled .content .library #libraryBuildLabel,
+  body.mobile-lab-enabled .content .canvas-side-controls #libraryBuildLabel,
   .canvas-side-controls #libraryBuildLabel{
     display:block!important;
     white-space:normal!important;
@@ -170,6 +180,8 @@
     line-height:1.2!important;
     font-size:10px!important;
   }
+  body.mobile-lab-enabled .content .library #libraryBuildHint,
+  body.mobile-lab-enabled .content .canvas-side-controls #libraryBuildHint,
   .canvas-side-controls #libraryBuildHint{
     display:block!important;
     margin-top:2px!important;
@@ -190,6 +202,7 @@
   #guidedTourLaunch{
     width:100%!important;
     min-width:0!important;
+    height:auto!important;
     min-height:44px!important;
     font-size:11px!important;
     white-space:normal!important;
@@ -200,8 +213,6 @@
   .artadd .upload.btn,
   .artadd label.upload{min-height:44px!important}
 
-  /* Preserve the purposely narrow vertical page rail while keeping complete
-     glyphs visible. */
   .binder-heading-module .page-arrow,
   body.mobile-lab-enabled .canvas .binder-heading-module .page-arrow{
     width:30px!important;
@@ -213,13 +224,14 @@
     overflow:visible!important;
   }
   .binder-heading-module .page-number,
-  body.mobile-lab-enabled .canvas .binder-heading-module .page-number{
-    width:28px!important;
-    min-width:28px!important;
-    max-width:28px!important;
-    height:28px!important;
-    min-height:28px!important;
-    max-height:28px!important;
+  body.mobile-lab-enabled .canvas .binder-heading-module .page-number,
+  body.mobile-lab-enabled #editorPageNumbers .page-number{
+    width:30px!important;
+    min-width:30px!important;
+    max-width:30px!important;
+    height:30px!important;
+    min-height:30px!important;
+    max-height:30px!important;
     overflow:visible!important;
   }
 }
@@ -227,13 +239,14 @@
 @media(max-width:430px){
   .binder-heading-module .page-arrow,
   body.mobile-lab-enabled .canvas .binder-heading-module .page-arrow{
-    width:26px!important;min-width:26px!important;max-width:26px!important;
-    height:26px!important;min-height:26px!important;max-height:26px!important;
+    width:30px!important;min-width:30px!important;max-width:30px!important;
+    height:30px!important;min-height:30px!important;max-height:30px!important;
   }
   .binder-heading-module .page-number,
-  body.mobile-lab-enabled .canvas .binder-heading-module .page-number{
-    width:24px!important;min-width:24px!important;max-width:24px!important;
-    height:24px!important;min-height:24px!important;max-height:24px!important;
+  body.mobile-lab-enabled .canvas .binder-heading-module .page-number,
+  body.mobile-lab-enabled #editorPageNumbers .page-number{
+    width:30px!important;min-width:30px!important;max-width:30px!important;
+    height:30px!important;min-height:30px!important;max-height:30px!important;
   }
 }
 
