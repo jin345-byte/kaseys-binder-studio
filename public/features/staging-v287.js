@@ -25,7 +25,6 @@
   loadStyle('styles/focus-presentation-mode.css?v=3.3.2','kbsFocusPresentationStyle');
   loadScript('features/full-themes.js?v=3.4.1','kbsFullThemesScript');
   loadScript('features/theme-picker-fit.js?v=3.0.2','kbsThemePickerFitScript');
-  loadScript('features/theme-animated-accents.js?v=3.4.1','kbsThemeAnimatedAccentsScript');
   loadScript('features/focus-presentation-mode.js?v=3.3.2','kbsFocusPresentationScript');
   loadScript('features/artwork-legacy-repair.js?v=2.9.1','kbsArtworkLegacyRepairScript');
 
