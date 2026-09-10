@@ -8,10 +8,12 @@
   loadStyle('styles/focus-presentation-mode.css?v=3.3.2','kbsFocusPresentationStyle');
   loadStyle('styles/responsive-button-fit.css?v=3.3.4','kbsResponsiveButtonFitStyle');
   loadStyle('styles/theme-animated-accents.css?v=3.4.1','kbsThemeAnimatedAccentsStyle');
+  loadStyle('styles/productivity-suite.css?v=3.5.0','kbsProductivitySuiteStyle');
   loadScript('features/full-themes.js?v=3.4.1','kbsFullThemesScript');
   loadScript('features/theme-picker-fit.js?v=3.0.2','kbsThemePickerFitScript');
   loadScript('features/binder-cover-designer.js?v=3.1.1','kbsBinderCoverDesignerScript');
   loadScript('features/focus-presentation-mode.js?v=3.3.2','kbsFocusPresentationScript');
+  loadScript('features/productivity-suite.js?v=3.5.0','kbsProductivitySuiteScript');
   loadScript('features/artwork-legacy-repair.js?v=2.9.1','kbsArtworkLegacyRepairScript');
   loadScript('features/art-source-links.js?v=2.9.1','kbsArtSourceLinksScript');
 
