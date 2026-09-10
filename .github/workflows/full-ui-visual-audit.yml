@@ -45,13 +45,27 @@ jobs:
           const contrast=(a,b)=>{const l1=lum(a),l2=lum(b);return (Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05)};
           (async()=>{
             let live=false;
-            for(let i=0;i<35;i++){
-              const r=await fetch(BASE+'/?uiaudit='+Date.now(),{cache:'no-store'}).catch(()=>null);
-              const t=r?.ok?await r.text().catch(()=>''):'';
-              if(t.includes("Kasey's Binder Studio")){live=true;break}
+            for(let i=0;i<48;i++){
+              const stamp=Date.now();
+              const [htmlRes,loaderRes,cssRes]=await Promise.all([
+                fetch(BASE+'/?uiaudit='+stamp,{cache:'no-store'}).catch(()=>null),
+                fetch(BASE+'/features/staging-v287.js?uiaudit='+stamp,{cache:'no-store'}).catch(()=>null),
+                fetch(BASE+'/styles/ui-readability-fixes.css?uiaudit='+stamp,{cache:'no-store'}).catch(()=>null),
+              ]);
+              const [html,loader,css]=await Promise.all([
+                htmlRes?.ok?htmlRes.text().catch(()=>''):'',
+                loaderRes?.ok?loaderRes.text().catch(()=>''):'',
+                cssRes?.ok?cssRes.text().catch(()=>''):'',
+              ]);
+              const exactAssets=html.includes("Kasey's Binder Studio") &&
+                loader.includes('ui-readability-fixes.css?v=3.5.3') &&
+                css.includes("Kasey's Binder Studio v3.5.3") &&
+                css.includes('min-height:58px!important');
+              if(exactAssets){live=true;console.log('LATEST_UI_ASSETS_READY');break}
+              if(i%6===0)console.log('Waiting for exact v3.5.3 preview assets',{html:!!htmlRes?.ok,loader:loader.includes('v=3.5.3'),css:css.includes('v3.5.3')});
               await sleep(5000);
             }
-            if(!live)throw new Error('Preview did not become reachable');
+            if(!live)throw new Error('Latest v3.5.3 preview assets did not propagate');
             const browser=await chromium.launch({headless:true});
             const findings=[];
             const pageErrors=[];
@@ -64,7 +78,8 @@ jobs:
               page.on('console',m=>{if(m.type()==='error')pageErrors.push(`${vp.name} console: ${m.text()}`)});
               await page.goto(BASE+'/?fulluiaudit='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
               await page.waitForSelector('#searchBtn',{timeout:30000});
-              await page.waitForTimeout(1800);
+              await page.waitForFunction(()=>[...document.styleSheets].some(s=>String(s.href||'').includes('ui-readability-fixes.css?v=3.5.3')),{timeout:15000});
+              await page.waitForTimeout(1000);
 
               const clickVisible=async selectors=>{
                 for(const sel of selectors){
