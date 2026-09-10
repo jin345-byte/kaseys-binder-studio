@@ -1,11 +1,11 @@
-/* Kasey's Binder Studio v3.0.4 — unified Sakura typography.
-   Keep theme colors/materials distinct while using one consistent type family. */
+/* Kasey's Binder Studio v4.0.4 — theme-safe typography bridge.
+   Themes no longer force Georgia; the readability font picker owns typography. */
 body[data-theme]{
-  --theme-font:Georgia,"Times New Roman",serif!important;
-  --font-display:Georgia,"Times New Roman",serif!important;
-  --font-ui:Georgia,"Times New Roman",serif!important;
-  --font-body:Georgia,"Times New Roman",serif!important;
-  font-family:Georgia,"Times New Roman",serif!important;
+  --theme-font:var(--kbs-font-family,system-ui,-apple-system,"Segoe UI",Arial,sans-serif)!important;
+  --font-display:var(--kbs-font-family,system-ui,-apple-system,"Segoe UI",Arial,sans-serif)!important;
+  --font-ui:var(--kbs-font-family,system-ui,-apple-system,"Segoe UI",Arial,sans-serif)!important;
+  --font-body:var(--kbs-font-family,system-ui,-apple-system,"Segoe UI",Arial,sans-serif)!important;
+  font-family:var(--kbs-font-family,system-ui,-apple-system,"Segoe UI",Arial,sans-serif)!important;
 }
 body[data-theme] .app,
 body[data-theme] h1,
@@ -20,5 +20,5 @@ body[data-theme] .set-chip,
 body[data-theme] .badge,
 body[data-theme] .status,
 body[data-theme] small{
-  font-family:Georgia,"Times New Roman",serif!important;
+  font-family:var(--kbs-font-family,system-ui,-apple-system,"Segoe UI",Arial,sans-serif)!important;
 }
