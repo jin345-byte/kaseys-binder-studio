@@ -1,4 +1,4 @@
-/* Kasey's Binder Studio v3 theme lab — full theme picker + persistence. */
+/* Kasey's Binder Studio v3.4.0 theme lab — full theme picker + persistence. */
 (function(){
   const STORAGE_KEY='michiStandaloneState';
   const THEMES={
@@ -26,6 +26,7 @@
     ensureStylesheet('kbsThemeBrandingStyle','styles/theme-branding.css?v=3.0.4');
     ensureStylesheet('kbsThemeUnifiedFontStyle','styles/theme-font-unified.css?v=3.0.4');
     ensureStylesheet('kbsThemeLayoutLockStyle','styles/theme-layout-lock.css?v=3.0.5');
+    ensureStylesheet('kbsThemeAnimatedAccentsStyle','styles/theme-animated-accents.css?v=3.4.0');
   }
   function readStored(){
     try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')||{}}catch{return {}}
