@@ -1,10 +1,10 @@
-/* Kasey's Binder Studio v4.0.1 — performance architecture preview
+/* Kasey's Binder Studio v4.0.2 — performance architecture preview
    Preview-only layer for catalog partitioning, indexed search, result virtualization,
    feature lazy-loading helpers, image optimization, and modular runtime boundaries. */
 (function(){
   'use strict';
 
-  const PERF_VERSION='4.0.1';
+  const PERF_VERSION='4.0.2';
   const loadedGames=new Set();
   const loadingGames=new Map();
   const indexState={ready:false,building:false,version:0,grams:new Map(),byId:new Map(),set:new Map(),artist:new Map(),game:new Map()};
@@ -188,32 +188,65 @@
   }
 
   function dataUrlBytes(url=''){const comma=url.indexOf(',');if(comma<0)return url.length;return Math.floor((url.length-comma-1)*.75)}
+  function canvasData(canvas,quality=.9){
+    let data=canvas.toDataURL('image/webp',quality);
+    if(!data.startsWith('data:image/webp'))data=canvas.toDataURL('image/jpeg',quality);
+    return data;
+  }
   async function optimizeImageFile(file){
     if(!file||!String(file.type||'').startsWith('image/'))throw new Error('Not an image');
-    const bitmap=await createImageBitmap(file),maxEdge=3600,scale=Math.min(1,maxEdge/Math.max(bitmap.width,bitmap.height));
+    const bitmap=await createImageBitmap(file);
+    const maxEdge=3600,scale=Math.min(1,maxEdge/Math.max(bitmap.width,bitmap.height));
     const w=Math.max(1,Math.round(bitmap.width*scale)),h=Math.max(1,Math.round(bitmap.height*scale));
     const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
-    const ctx=canvas.getContext('2d',{alpha:true});ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(bitmap,0,0,w,h);bitmap.close?.();
-    let quality=.93,data=canvas.toDataURL('image/webp',quality);
-    while(dataUrlBytes(data)>1200000&&quality>.72){quality-=.05;data=canvas.toDataURL('image/webp',quality)}
-    return {data,width:w,height:h,bytes:dataUrlBytes(data),quality,sourceBytes:file.size||0,name:file.name||'Uploaded image'};
+    const ctx=canvas.getContext('2d',{alpha:true});ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(bitmap,0,0,w,h);
+    let quality=.93,data=canvasData(canvas,quality);
+    while(dataUrlBytes(data)>1200000&&quality>.72){quality-=.05;data=canvasData(canvas,quality)}
+
+    const thumbScale=Math.min(1,480/Math.max(bitmap.width,bitmap.height));
+    const tw=Math.max(1,Math.round(bitmap.width*thumbScale)),th=Math.max(1,Math.round(bitmap.height*thumbScale));
+    const thumb=document.createElement('canvas');thumb.width=tw;thumb.height=th;
+    const tctx=thumb.getContext('2d',{alpha:true});tctx.imageSmoothingEnabled=true;tctx.imageSmoothingQuality='high';tctx.drawImage(bitmap,0,0,tw,th);
+    const thumbnail=canvasData(thumb,.78);
+    bitmap.close?.();
+    return {data,thumbnail,width:w,height:h,thumbWidth:tw,thumbHeight:th,bytes:dataUrlBytes(data),thumbnailBytes:dataUrlBytes(thumbnail),quality,sourceBytes:file.size||0,name:file.name||'Uploaded image'};
   }
-  function installImagePipeline(){
-    const input=document.querySelector('#upload');if(!input)return;
-    input.onchange=async e=>{
-      const files=[...(e.target.files||[])];e.target.value='';
-      for(const file of files){
-        try{
-          const out=await optimizeImageFile(file);
-          addArt(out.data,file.name,'Uploaded image · optimized',document.querySelector('#newArtSize')?.value||'1x1');
-          const saved=(state.artworks||[]).at(-1);if(saved){saved.optimized=true;saved.sourceBytes=out.sourceBytes;saved.storedBytes=out.bytes;saved.pixelWidth=out.width;saved.pixelHeight=out.height;save?.();}
-        }catch(err){
-          console.warn('Image optimization fallback',err);
-          const r=new FileReader();r.onload=()=>addArt(r.result,file.name,'Uploaded image',document.querySelector('#newArtSize')?.value||'1x1');r.readAsDataURL(file);
+
+  async function processUploadFiles(input,files){
+    const size=document.querySelector('#newArtSize')?.value||'1x1';
+    for(const file of files){
+      try{
+        const out=await optimizeImageFile(file);
+        addArt(out.data,file.name,'Uploaded image · optimized',size);
+        const saved=(state.artworks||[]).at(-1);
+        if(saved){
+          saved.optimized=true;
+          saved.sourceBytes=out.sourceBytes;
+          saved.storedBytes=out.bytes;
+          saved.thumbnailBytes=out.thumbnailBytes;
+          saved.pixelWidth=out.width;saved.pixelHeight=out.height;
+          saved.thumbnail=out.thumbnail;
+          saved.thumbnailWidth=out.thumbWidth;saved.thumbnailHeight=out.thumbHeight;
+          save?.();
         }
+      }catch(err){
+        console.warn('Image optimization fallback',err);
+        const data=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(r.error);r.readAsDataURL(file)}).catch(()=>null);
+        if(data)addArt(data,file.name,'Uploaded image',size);
       }
-    };
+    }
+    input.value='';
   }
+
+  /* Capture before app.js' legacy target listener so an upload is persisted exactly once. */
+  document.addEventListener('change',e=>{
+    const input=e.target;
+    if(input?.id!=='upload')return;
+    const files=[...(input.files||[])];
+    if(!files.length)return;
+    e.stopImmediatePropagation();
+    processUploadFiles(input,files).catch(err=>{console.error('Optimized upload failed',err);input.value=''});
+  },true);
 
   const lazyRegistry=new Map();
   function loadScript(src,id){
@@ -224,7 +257,6 @@
   }
   function loadStyle(href,id){if(id&&document.getElementById(id))return;const l=document.createElement('link');if(id)l.id=id;l.rel='stylesheet';l.href=href;document.head.appendChild(l)}
 
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installImagePipeline,{once:true});else installImagePipeline();
   setTimeout(()=>rebuildSearchIndex(getMasterRows()),1200);
 
   globalThis.KBSModules=Object.freeze({
