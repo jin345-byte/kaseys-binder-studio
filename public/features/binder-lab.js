@@ -1,4 +1,4 @@
-/* Kasey's Binder Studio v2.2.3 — binder overview enhancements */
+/* Kasey's Binder Studio v2.2.4 — binder overview enhancements */
 const KBSBinderLab=(()=>{
   const coreLoadPage=loadPageIntoEditor;
   loadPageIntoEditor=async function(){
@@ -69,7 +69,7 @@ const KBSBinderLab=(()=>{
       const hint=document.createElement('div');
       hint.className='overview-hint';
       hint.id='binderOverviewHint';
-      hint.textContent='Tip: drag page cards to reorder. Duplicate makes a safe copy.';
+      hint.textContent='Tip: drag page cards to reorder. Copy makes a safe duplicate.';
       browser.parentNode.insertBefore(hint,browser);
     }
     browser.querySelectorAll('.page-card').forEach(card=>{
@@ -79,7 +79,7 @@ const KBSBinderLab=(()=>{
         const actions=card.querySelector('.page-card-actions');
         if(actions){
           const b=document.createElement('button');
-          b.type='button';b.className='duplicate-page';b.textContent='Duplicate';
+          b.type='button';b.className='duplicate-page';b.textContent='Copy';b.title='Duplicate page';b.setAttribute('aria-label','Duplicate page');
           b.onclick=e=>{e.stopPropagation();duplicatePage(pid).catch(console.error)};
           actions.insertBefore(b,actions.querySelector('.danger'));
         }
