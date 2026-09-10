@@ -1,0 +1,88 @@
+name: Performance Preview Check
+
+on:
+  push:
+    branches: [prod-db-compat-preview]
+    paths:
+      - 'public/**'
+      - '.github/workflows/performance-preview-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: binder-studio-performance-preview
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Static performance layer checks
+        run: |
+          set -euo pipefail
+          node --check public/features/performance-core.js
+          node --check public/features/staging-v287.js
+          grep -q 'features/performance-core.js?v=4.0.1' public/index.html
+          grep -q "ensureGame('union-arena')" public/features/performance-core.js
+          grep -q 'virtualLimit=60' public/features/performance-core.js
+          grep -q 'optimizeImageFile' public/features/performance-core.js
+          grep -q 'KBSModules' public/features/performance-core.js
+          echo PERFORMANCE_STATIC_PASS
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null
+
+      - name: Browser performance smoke test
+        shell: bash
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          const BASE='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          (async()=>{
+            let live=false;
+            for(let i=0;i<48;i++){
+              const r=await fetch(BASE+'/features/performance-core.js?perf='+Date.now(),{cache:'no-store'}).catch(()=>null);
+              const text=r?.ok?await r.text():'';
+              if(text.includes("PERF_VERSION='4.0.1'")){live=true;break}
+              await sleep(5000);
+            }
+            if(!live)throw new Error('Performance core 4.0.1 did not propagate');
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:390,height:844}});
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await page.goto(BASE+'/?perfcheck='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForFunction(()=>globalThis.KBSModules?.version==='4.0.1',{timeout:20000});
+            await page.waitForTimeout(1800);
+            const state=await page.evaluate(()=>({
+              version:KBSModules.version,
+              modules:Object.keys(KBSModules),
+              loadedGames:KBSModules.catalog.loadedGames,
+              searchReady:KBSModules.search.ready,
+              searchSize:KBSModules.search.size,
+              virtualLimit:KBSModules.virtualization.limit,
+              coverLoaded:!!document.querySelector('#kbsBinderCoverDesignerScript'),
+              sourceLinksLoaded:!!document.querySelector('#kbsArtSourceLinksScript')
+            }));
+            if(state.version!=='4.0.1')throw new Error('Wrong performance version');
+            if(!state.modules.includes('catalog')||!state.modules.includes('search')||!state.modules.includes('images')||!state.modules.includes('lazy'))throw new Error('Missing modular boundary: '+JSON.stringify(state));
+            if(state.virtualLimit!==60)throw new Error('Virtualization baseline mismatch: '+state.virtualLimit);
+            if(state.coverLoaded||state.sourceLinksLoaded)throw new Error('Optional features loaded before use: '+JSON.stringify(state));
+            await page.click('#openBinders');
+            await page.waitForFunction(()=>!!document.querySelector('#kbsBinderCoverDesignerScript'),{timeout:10000});
+            await page.click('#closeBinders').catch(()=>{});
+            await page.click('#libraryArtworkTab');
+            await page.waitForFunction(()=>!!document.querySelector('#kbsArtSourceLinksScript'),{timeout:10000});
+            if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
+            console.log('PERFORMANCE_PREVIEW_PASS',JSON.stringify(state));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
