@@ -101,6 +101,11 @@ jobs:
               if(state.virtualLimit!==60)throw new Error('Virtualization baseline mismatch: '+state.virtualLimit);
               if(state.coverLoaded||state.sourceLinksLoaded)throw new Error('Optional on-demand features loaded before use: '+JSON.stringify(state));
               if(!state.animatedStyle||state.animatedScript||!state.focusLoaded)throw new Error('Visual runtime loading mismatch: '+JSON.stringify(state));
+              if(viewport.width<=768){
+                const pageNav=page.locator('[data-mobile-lab="page"]:visible').first();
+                if(await pageNav.count())await pageNav.click();
+                await page.waitForTimeout(120);
+              }
               const binderTrigger=page.locator('#openBinders:visible, #mobilePageBinders:visible').first();
               if(!await binderTrigger.count())throw new Error('No visible My Binders trigger at '+JSON.stringify(viewport));
               await binderTrigger.click();
