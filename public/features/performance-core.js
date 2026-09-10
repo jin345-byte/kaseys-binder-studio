@@ -1,15 +1,15 @@
-/* Kasey's Binder Studio v4.0.0 — performance architecture preview
+/* Kasey's Binder Studio v4.0.1 — performance architecture preview
    Preview-only layer for catalog partitioning, indexed search, result virtualization,
    feature lazy-loading helpers, image optimization, and modular runtime boundaries. */
 (function(){
   'use strict';
 
-  const PERF_VERSION='4.0.0';
+  const PERF_VERSION='4.0.1';
   const loadedGames=new Set();
   const loadingGames=new Map();
   const indexState={ready:false,building:false,version:0,grams:new Map(),byId:new Map(),set:new Map(),artist:new Map(),game:new Map()};
   let virtualLimit=60;
-  let virtualSignature='';
+  let lastVirtualSignature='';
   let virtualObserver=null;
 
   const normalize=v=>String(v??'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
@@ -34,10 +34,10 @@
   };
   const idle=cb=>('requestIdleCallback'in window?requestIdleCallback(cb,{timeout:800}):setTimeout(()=>cb({timeRemaining:()=>8,didTimeout:true}),16));
 
-  function rebuildSearchIndex(rows=globalThis.masterCards||[]){
+  function getMasterRows(){return typeof masterCards!=='undefined'&&Array.isArray(masterCards)?masterCards:[]}
+  function rebuildSearchIndex(rows=getMasterRows()){
     if(indexState.building)return;
-    indexState.building=true;
-    indexState.ready=false;
+    indexState.building=true;indexState.ready=false;
     indexState.grams.clear();indexState.byId.clear();indexState.set.clear();indexState.artist.clear();indexState.game.clear();
     const source=Array.isArray(rows)?rows.slice():[];
     let at=0;
@@ -65,8 +65,7 @@
     const qs=grams(q);if(!qs.length)return null;
     let ids=null;
     for(const g of qs){
-      const bucket=indexState.grams.get(g);
-      if(!bucket)return [];
+      const bucket=indexState.grams.get(g);if(!bucket)return [];
       if(ids===null)ids=new Set(bucket);
       else for(const id of [...ids])if(!bucket.has(id))ids.delete(id);
       if(!ids.size)return [];
@@ -74,9 +73,9 @@
     return [...ids].map(id=>indexState.byId.get(id)).filter(Boolean);
   }
 
-  const originalLocalMasterMatches=globalThis.localMasterMatches;
-  if(typeof originalLocalMasterMatches==='function'){
-    globalThis.localMasterMatches=function(opts={}){
+  if(typeof localMasterMatches==='function'){
+    const originalLocalMasterMatches=localMasterMatches;
+    localMasterMatches=function(opts={}){
       const q=normalize(document.querySelector('#subject')?.value||'');
       const setId=document.querySelector('#setFilter')?.value||'';
       const artist=normalize(document.querySelector('#artistFilter')?.value||'');
@@ -100,14 +99,13 @@
   function readGameFromMasterDb(game){
     return new Promise((resolve,reject)=>{
       try{
-        if(!globalThis.masterDb)return resolve([]);
+        if(typeof masterDb==='undefined'||!masterDb)return resolve([]);
         const tx=masterDb.transaction('cards','readonly');
         const store=tx.objectStore('cards');
         const rows=[];
         const req=store.openCursor();
         req.onsuccess=()=>{
-          const cur=req.result;
-          if(!cur)return;
+          const cur=req.result;if(!cur)return;
           const c=cur.value;
           if(gameOf(c)===game){
             try{rows.push(typeof withSearchKeys==='function'?withSearchKeys(c):c)}catch{rows.push(c)}
@@ -121,82 +119,57 @@
     });
   }
 
-  function mergeRows(rows){
-    if(!Array.isArray(rows)||!rows.length)return 0;
-    const known=new Set((globalThis.masterCards||[]).map(c=>c?.id));
-    let added=0;
-    for(const c of rows){if(!c?.id||known.has(c.id))continue;known.add(c.id);masterCards.push(c);added++;}
-    masterCardIndex=new Map(masterCards.map((c,i)=>[c.id,i]));
-    masterReady=masterCards.length>0;
+  function refreshCatalogUi(){
     try{
-      const sets=new Map();for(const c of masterCards)if(c?.setId&&!sets.has(c.setId))sets.set(c.setId,c.setName||c.setId);
+      const sets=new Map();for(const c of getMasterRows())if(c?.setId&&!sets.has(c.setId))sets.set(c.setId,c.setName||c.setId);
       masterSetOptions=[...sets].map(([id,name])=>({id,name})).sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
       renderSetFilter?.();loadArtists?.();computeMasterHealth?.();
-      globalThis.KBSCatalogCards=masterCards;
+      globalThis.KBSCatalogCards=getMasterRows();
     }catch(e){console.warn('Catalog UI refresh deferred',e)}
-    rebuildSearchIndex(masterCards);
-    return added;
+  }
+  function mergeRows(rows){
+    if(!Array.isArray(rows)||!rows.length)return 0;
+    const known=new Set(getMasterRows().map(c=>c?.id));let added=0;
+    for(const c of rows){if(!c?.id||known.has(c.id))continue;known.add(c.id);masterCards.push(c);added++;}
+    masterCardIndex=new Map(masterCards.map((c,i)=>[c.id,i]));masterReady=masterCards.length>0;
+    refreshCatalogUi();rebuildSearchIndex(masterCards);return added;
   }
 
   async function ensureGame(game){
     if(!game||game==='pokemon-pocket')return 0;
     if(loadedGames.has(game))return 0;
     if(loadingGames.has(game))return loadingGames.get(game);
-    const p=(async()=>{
-      const rows=await readGameFromMasterDb(game);
-      const added=mergeRows(rows);
-      loadedGames.add(game);
-      return added;
-    })().finally(()=>loadingGames.delete(game));
+    const p=(async()=>{const rows=await readGameFromMasterDb(game);const added=mergeRows(rows);loadedGames.add(game);return added})().finally(()=>loadingGames.delete(game));
     loadingGames.set(game,p);return p;
   }
 
-  const originalLoadMasterFromDb=globalThis.loadMasterFromDb;
-  if(typeof originalLoadMasterFromDb==='function'){
-    globalThis.loadMasterFromDb=async function(){
-      if(!globalThis.masterDb)masterDb=await masterOpen();
+  if(typeof loadMasterFromDb==='function'){
+    loadMasterFromDb=async function(){
+      if(typeof masterDb==='undefined'||!masterDb)masterDb=await masterOpen();
       const rows=await readGameFromMasterDb('pokemon');
-      masterCards=rows;
-      masterCardIndex=new Map(masterCards.map((c,i)=>[c.id,i]));
-      masterReady=masterCards.length>0;
-      loadedGames.add('pokemon');
-      try{
-        const sets=new Map();for(const c of masterCards)if(c?.setId&&!sets.has(c.setId))sets.set(c.setId,c.setName||c.setId);
-        masterSetOptions=[...sets].map(([id,name])=>({id,name})).sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
-        renderSetFilter?.();loadArtists?.();computeMasterHealth?.();
-        if(masterReady)setMasterStatus?.(`Pokémon TCG Library · ${masterCards.length.toLocaleString()} cards`,'Other game catalogs load only when requested.');
-      }catch(e){console.warn('Lazy catalog startup UI refresh failed',e)}
-      rebuildSearchIndex(masterCards);
-      return masterCards;
+      masterCards=rows;masterCardIndex=new Map(masterCards.map((c,i)=>[c.id,i]));masterReady=masterCards.length>0;loadedGames.add('pokemon');
+      refreshCatalogUi();
+      if(masterReady)setMasterStatus?.(`Pokémon TCG Library · ${masterCards.length.toLocaleString()} cards`,'Other game catalogs load only when requested.');
+      rebuildSearchIndex(masterCards);return masterCards;
     };
   }
 
-  function installGameHooks(){
-    document.addEventListener('change',async e=>{
-      if(e.target?.id!=='tcgGameFilter')return;
-      const game=e.target.value;
-      if(game==='union-arena')await ensureGame('union-arena').catch(console.warn);
-      if(game==='all')await ensureGame('union-arena').catch(console.warn);
-      globalThis.KBSMultiTCGFilters?.refresh?.();
-      Promise.resolve(globalThis.runCardSearch?.()).catch(console.warn);
-    });
-  }
+  document.addEventListener('change',async e=>{
+    if(e.target?.id!=='tcgGameFilter')return;
+    const game=e.target.value;
+    if(game==='union-arena'||game==='all')await ensureGame('union-arena').catch(console.warn);
+    globalThis.KBSMultiTCGFilters?.refresh?.();
+    Promise.resolve(typeof runCardSearch==='function'?runCardSearch():null).catch(console.warn);
+  });
 
-  function virtualSignature(){
-    return [document.querySelector('#subject')?.value||'',document.querySelector('#setFilter')?.value||'',document.querySelector('#artistFilter')?.value||'',document.querySelector('#tcgGameFilter')?.value||''].join('|');
-  }
-  function resetVirtualIfNeeded(){const sig=virtualSignature();if(sig!==virtualSignature){virtualSignature=sig;virtualLimit=60;}}
-
-  const originalRenderCards=globalThis.renderCards;
-  if(typeof originalRenderCards==='function'){
-    globalThis.renderCards=function(){
-      const full=Array.isArray(globalThis.cards)?cards:[];
+  if(typeof renderCards==='function'){
+    const originalRenderCards=renderCards;
+    renderCards=function(){
+      const full=typeof cards!=='undefined'&&Array.isArray(cards)?cards:[];
       const sig=[document.querySelector('#subject')?.value||'',document.querySelector('#setFilter')?.value||'',document.querySelector('#artistFilter')?.value||'',document.querySelector('#tcgGameFilter')?.value||''].join('|');
-      if(sig!==virtualSignature){virtualSignature=sig;virtualLimit=60;}
+      if(sig!==lastVirtualSignature){lastVirtualSignature=sig;virtualLimit=60;}
       if(full.length<=virtualLimit)return originalRenderCards.apply(this,arguments);
-      const snapshot=full;
-      cards=snapshot.slice(0,virtualLimit);
-      let result;
+      const snapshot=full;cards=snapshot.slice(0,virtualLimit);let result;
       try{result=originalRenderCards.apply(this,arguments)}finally{cards=snapshot}
       const countEl=document.querySelector('#count');if(countEl)countEl.textContent=String(snapshot.length);
       queueMicrotask(()=>{
@@ -205,10 +178,8 @@
         const sentinel=document.createElement('div');sentinel.className='kbs-virtual-sentinel';sentinel.setAttribute('aria-hidden','true');sentinel.style.cssText='height:2px;grid-column:1/-1';host.appendChild(sentinel);
         virtualObserver?.disconnect?.();
         virtualObserver=new IntersectionObserver(entries=>{
-          if(!entries.some(x=>x.isIntersecting))return;
-          if(virtualLimit>=snapshot.length)return;
-          virtualLimit=Math.min(snapshot.length,virtualLimit+45);
-          requestAnimationFrame(()=>globalThis.renderCards?.());
+          if(!entries.some(x=>x.isIntersecting)||virtualLimit>=snapshot.length)return;
+          virtualLimit=Math.min(snapshot.length,virtualLimit+45);requestAnimationFrame(()=>renderCards());
         },{root:document.querySelector('#cardsViewport')||null,rootMargin:'450px'});
         virtualObserver.observe(sentinel);
       });
@@ -219,9 +190,7 @@
   function dataUrlBytes(url=''){const comma=url.indexOf(',');if(comma<0)return url.length;return Math.floor((url.length-comma-1)*.75)}
   async function optimizeImageFile(file){
     if(!file||!String(file.type||'').startsWith('image/'))throw new Error('Not an image');
-    const bitmap=await createImageBitmap(file);
-    const maxEdge=3600;
-    const scale=Math.min(1,maxEdge/Math.max(bitmap.width,bitmap.height));
+    const bitmap=await createImageBitmap(file),maxEdge=3600,scale=Math.min(1,maxEdge/Math.max(bitmap.width,bitmap.height));
     const w=Math.max(1,Math.round(bitmap.width*scale)),h=Math.max(1,Math.round(bitmap.height*scale));
     const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
     const ctx=canvas.getContext('2d',{alpha:true});ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(bitmap,0,0,w,h);bitmap.close?.();
@@ -229,7 +198,6 @@
     while(dataUrlBytes(data)>1200000&&quality>.72){quality-=.05;data=canvas.toDataURL('image/webp',quality)}
     return {data,width:w,height:h,bytes:dataUrlBytes(data),quality,sourceBytes:file.size||0,name:file.name||'Uploaded image'};
   }
-
   function installImagePipeline(){
     const input=document.querySelector('#upload');if(!input)return;
     input.onchange=async e=>{
@@ -256,9 +224,8 @@
   }
   function loadStyle(href,id){if(id&&document.getElementById(id))return;const l=document.createElement('link');if(id)l.id=id;l.rel='stylesheet';l.href=href;document.head.appendChild(l)}
 
-  installGameHooks();
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installImagePipeline,{once:true});else installImagePipeline();
-  setTimeout(()=>rebuildSearchIndex(globalThis.masterCards||[]),1200);
+  setTimeout(()=>rebuildSearchIndex(getMasterRows()),1200);
 
   globalThis.KBSModules=Object.freeze({
     version:PERF_VERSION,
