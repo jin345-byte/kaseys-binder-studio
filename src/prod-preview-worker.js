@@ -1,6 +1,6 @@
 import stagingWorker from './staging-worker.js';
 
-const PREVIEW_BUILD='2.9.6-name-order-prod-db-live-auth';
+const PREVIEW_BUILD='2.9.7-name-order-resilient-prod-db-live-auth';
 
 const POKEMON_CHARACTER_ALIASES={
   'ash':'satoshi_(pokemon)','ash ketchum':'satoshi_(pokemon)',
@@ -39,7 +39,6 @@ function characterQueryPlan(raw){
       return [...new Set([original,`${character} (${series})`,reversed?`${reversed} (${series})`:''].filter(Boolean))].slice(0,2);
     }
   }
-
   const pokemonHint=/\b(?:pokemon|pokémon|gym\s*leader|trainer|champion|elite\s*four|professor)\b/i.test(original);
   const stripped=tidyQuery(original.replace(/\b(?:pokemon|pokémon|gym\s*leader|trainer|champion|elite\s*four|anime|cartoon|animated|character)\b/gi,' '));
   const alias=POKEMON_CHARACTER_ALIASES[key]||POKEMON_CHARACTER_ALIASES[normalizedKey(stripped)];
@@ -61,13 +60,27 @@ async function callArtV2(request,env,ctx,query,pid){
   let payload={};try{payload=await response.json()}catch{}
   return {query,response,payload};
 }
+function hasArtResults(item){return Array.isArray(item?.payload?.results)&&item.payload.results.length>0}
+async function fetchVariantResilient(request,env,ctx,query,pid){
+  let item=await callArtV2(request,env,ctx,query,pid);
+  if(hasArtResults(item))return item;
+  /* Character sources can intermittently return an empty page while another
+     spelling/order works. Retry once so reversed Japanese/Western name order
+     does not turn a transient upstream miss into an empty Binder Studio result. */
+  item=await callArtV2(request,env,ctx,query,pid);
+  return item;
+}
 
 async function characterArtworkFeed(request,env,ctx){
   const u=new URL(request.url),raw=tidyQuery(u.searchParams.get('tag')||''),pid=Math.max(0,Number.parseInt(u.searchParams.get('pid')||'0',10)||0);
   const plan=characterQueryPlan(raw);
   if(!plan.length)return new Response(JSON.stringify({results:[],done:true,error:'Invalid artwork query'}),{status:400,headers:{'content-type':'application/json'}});
 
-  const fetched=await Promise.all(plan.map(query=>callArtV2(request,env,ctx,query,pid)));
+  /* Fetch variants sequentially. This avoids hammering the same upstream art
+     source with two simultaneous name-order queries and makes alias/reversal
+     fallback materially more reliable. */
+  const fetched=[];
+  for(const query of plan)fetched.push(await fetchVariantResilient(request,env,ctx,query,pid));
   const merged=[],seen=new Set(),sources={safebooru:0,zerochan:0};
   let zerochanConfigured=false,hadError=false;
   for(const {query,response,payload} of fetched){
