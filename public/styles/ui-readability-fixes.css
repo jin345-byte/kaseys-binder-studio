@@ -35,9 +35,6 @@ button:focus-visible,.btn:focus-visible,[role="button"]:focus-visible,input:focu
   #syncMasterLibrary .library-build-copy,body.mobile-lab-enabled #syncMasterLibrary .library-build-copy,.canvas-side-controls #syncMasterLibrary .library-build-copy{display:block!important;min-width:0!important;width:100%!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important}
   #libraryBuildLabel,body.mobile-lab-enabled #libraryBuildLabel,.canvas-side-controls #libraryBuildLabel{display:block!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;line-height:1.25!important;font-size:11px!important}
   #libraryBuildHint,body.mobile-lab-enabled #libraryBuildHint,.canvas-side-controls #libraryBuildHint{display:block!important;margin-top:4px!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;font-size:10px!important;line-height:1.25!important;opacity:.92!important}
-  /* mobile-lab moves this CTA inline and replaces its inner copy with compact
-     pseudo labels. Override generic sizing so the absolute labels remain inside
-     the button instead of contributing artificial scroll overflow. */
   body.mobile-lab-enabled #librarySetupCard.mobile-library-inline #syncMasterLibrary{
     box-sizing:border-box!important;display:flex!important;width:100%!important;height:44px!important;min-height:44px!important;max-height:44px!important;padding:0 42px!important;line-height:1!important;overflow:hidden!important;align-items:center!important;justify-content:center!important;white-space:nowrap!important
   }
@@ -52,3 +49,20 @@ button:focus-visible,.btn:focus-visible,[role="button"]:focus-visible,input:focu
 }
 @media(max-width:430px){.binder-toolbar{grid-template-columns:minmax(0,1fr)!important}.binder-toolbar .binder-status,#binderStatus{grid-column:auto!important}.page-card-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media(max-width:390px){.pocket:not(.filled)>small{font-size:9px!important;padding:2px 3px!important}.pocket:not(.filled)>b{padding:2px 3px!important}}
+
+/* v3.5.5 — My Binders overlap/readability hardening. */
+.page-card,.binder-card,.saved-binder-card{min-width:0!important;height:auto!important;min-height:0!important;overflow:visible!important}
+.page-card-header,.binder-card-header,.saved-binder-card-header,.page-card-meta,.binder-card-meta,.saved-binder-card-meta{box-sizing:border-box!important;display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:6px 10px!important;min-width:0!important;width:100%!important;flex-wrap:wrap!important;position:static!important}
+.page-card-title,.binder-card-title,.saved-binder-card-title,.page-card-name,.binder-card-name,.saved-binder-card-name{box-sizing:border-box!important;position:static!important;min-width:0!important;max-width:100%!important;flex:1 1 120px!important;margin:0!important;line-height:1.25!important;white-space:normal!important;overflow:visible!important;overflow-wrap:anywhere!important;text-overflow:clip!important}
+.page-card-count,.binder-card-count,.saved-binder-card-count,.page-count,.binder-count{box-sizing:border-box!important;position:static!important;flex:0 0 auto!important;margin:0!important;line-height:1.25!important;white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important}
+.page-card-actions{position:static!important;margin-top:10px!important;margin-bottom:2px!important;clear:both!important}
+.new-binder-card,.page-card.is-new,.binder-card.is-new,[data-action="new-binder"]{box-sizing:border-box!important;height:auto!important;min-height:118px!important;padding-bottom:10px!important;overflow:visible!important}
+.new-binder-card .page-card-header,.new-binder-card .binder-card-header,.page-card.is-new .page-card-header,.binder-card.is-new .binder-card-header{position:static!important;margin-top:8px!important;margin-bottom:6px!important}
+
+@media(max-width:760px){
+  .page-card,.binder-card,.saved-binder-card{height:auto!important;min-height:116px!important;padding-bottom:10px!important;overflow:visible!important}
+  .page-card-header,.binder-card-header,.saved-binder-card-header,.page-card-meta,.binder-card-meta,.saved-binder-card-meta{padding-bottom:6px!important}
+  .page-card-title,.binder-card-title,.saved-binder-card-title,.page-card-name,.binder-card-name,.saved-binder-card-name{font-size:13px!important;line-height:1.3!important}
+  .page-card-count,.binder-card-count,.saved-binder-card-count,.page-count,.binder-count{font-size:11px!important;line-height:1.3!important}
+  .page-card-actions{margin-top:8px!important}
+}
