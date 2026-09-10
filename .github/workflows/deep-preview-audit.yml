@@ -1,0 +1,183 @@
+name: Deep Preview Audit
+
+on:
+  push:
+    branches: [prod-db-compat-preview]
+    paths:
+      - 'public/**'
+      - 'src/**'
+      - '.github/workflows/deep-preview-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: binder-studio-deep-preview-audit
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Static source and asset audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          find public src -type f -name '*.js' -print0 2>/dev/null | while IFS= read -r -d '' f; do node --check "$f"; done
+          python3 <<'PY'
+          from pathlib import Path
+          import re, sys
+          root=Path('.')
+          public=root/'public'
+          index=(public/'index.html').read_text(encoding='utf-8')
+          failures=[]
+          if 'v4.0.3 STAGING' not in index: failures.append('top version is not v4.0.3 STAGING')
+          if '4.0.3-staging-preview' not in index: failures.append('build meta is not 4.0.3-staging-preview')
+          if 'features/performance-core.js?v=4.0.3' not in index: failures.append('performance core cache key is stale')
+          if 'features/staging-v287.js?v=4.0.3' not in index: failures.append('staging loader cache key is stale')
+          if index.count('name="theme-color"') != 1: failures.append('theme-color meta must appear exactly once')
+          for p in public.rglob('*'):
+            if not p.is_file() or p.suffix.lower() not in {'.html','.js','.css'}: continue
+            try: text=p.read_text(encoding='utf-8')
+            except: continue
+            if 'theme-animated-accents.js' in text:
+              failures.append(f'forbidden removed asset reference in {p}')
+          ids=re.findall(r'\bid=["\']([^"\']+)["\']',index)
+          dup=sorted({x for x in ids if ids.count(x)>1})
+          if dup: failures.append('duplicate HTML ids: '+', '.join(dup))
+          refs=set()
+          for m in re.finditer(r'(?:src|href)=["\']([^"\']+)["\']',index):
+            ref=m.group(1).split('?',1)[0]
+            if ref.startswith(('http://','https://','data:','#')) or not ref: continue
+            refs.add(ref.lstrip('/'))
+          loader=(public/'features/staging-v287.js').read_text(encoding='utf-8')
+          for m in re.finditer(r"(?:loadScript|loadStyle)\(['\"]([^'\"]+)",loader):
+            refs.add(m.group(1).split('?',1)[0].lstrip('/'))
+          missing=[]
+          for ref in sorted(refs):
+            if not (public/ref).exists(): missing.append(ref)
+          if missing: failures.append('missing local assets: '+', '.join(missing))
+          perf=(public/'features/performance-core.js').read_text(encoding='utf-8')
+          if "PERF_VERSION='4.0.3'" not in perf: failures.append('runtime performance version mismatch')
+          if 'lazyRegistry.delete(src)' not in perf: failures.append('failed lazy loads are not retryable')
+          print('STATIC_ASSETS_CHECKED',len(refs))
+          if failures:
+            print('\n'.join('FAIL: '+x for x in failures));sys.exit(1)
+          print('DEEP_STATIC_PASS')
+          PY
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null
+
+      - name: Exercise staging preview features
+        shell: bash
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          const BASE='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          (async()=>{
+            let live=false;
+            for(let i=0;i<60;i++){
+              const stamp=Date.now();
+              const [ir,pr,lr]=await Promise.all([
+                fetch(BASE+'/?deep='+stamp,{cache:'no-store'}).catch(()=>null),
+                fetch(BASE+'/features/performance-core.js?deep='+stamp,{cache:'no-store'}).catch(()=>null),
+                fetch(BASE+'/features/staging-v287.js?deep='+stamp,{cache:'no-store'}).catch(()=>null)
+              ]);
+              const [idx,perf,loader]=await Promise.all([ir?.ok?ir.text().catch(()=>''):'',pr?.ok?pr.text().catch(()=>''):'',lr?.ok?lr.text().catch(()=>''):'']);
+              if(idx.includes('v4.0.3 STAGING')&&idx.includes('performance-core.js?v=4.0.3')&&perf.includes("PERF_VERSION='4.0.3'")&&loader.includes('Binder Studio v4.0.3 preview')){live=true;break}
+              await sleep(5000);
+            }
+            if(!live)throw new Error('v4.0.3 staging assets did not propagate');
+            const browser=await chromium.launch({headless:true});
+            const failures=[];
+            for(const viewport of [{name:'desktop',width:1440,height:1000},{name:'mobile',width:390,height:844}]){
+              const page=await browser.newPage({viewport:{width:viewport.width,height:viewport.height}});
+              const errors=[];const badResponses=[];
+              page.on('pageerror',e=>errors.push(e.message));
+              page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+              page.on('response',r=>{try{const u=new URL(r.url());if(u.origin===BASE&&(u.pathname.startsWith('/features/')||u.pathname.startsWith('/styles/'))&&r.status()>=400)badResponses.push(`${r.status()} ${u.pathname}`)}catch{}});
+              await page.goto(BASE+'/?focus=3.3.2&build=4.0.3&deep='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForSelector('#searchBtn',{timeout:30000});
+              await page.waitForFunction(()=>globalThis.KBSModules?.version==='4.0.3',{timeout:30000});
+              await page.waitForFunction(()=>globalThis.KBSFullThemes?.list?.().length===11,{timeout:30000});
+              const version=await page.$eval('#versionLink',e=>e.textContent.trim());
+              if(version!=='v4.0.3 STAGING')failures.push(`${viewport.name}: visible version ${version}`);
+              await page.click('#versionLink');
+              await page.waitForSelector('#buildInfoModal:not([hidden])',{timeout:5000});
+              const buildText=await page.$eval('#buildInfoModal',e=>e.innerText);
+              if(!buildText.includes('v4.0.3 Staging Preview')||!buildText.includes('retryable'))failures.push(`${viewport.name}: build notes/version mismatch`);
+              await page.click('#buildInfoClose');
+
+              for(const layout of ['2x2','3x3','4x3']){
+                await page.selectOption('#layout',layout);
+                await page.waitForTimeout(60);
+                const pockets=await page.locator('#grid [data-pocket]').count();
+                const expected=layout==='2x2'?4:layout==='4x3'?12:9;
+                if(pockets!==expected)failures.push(`${viewport.name}: ${layout} rendered ${pockets}/${expected} pockets`);
+              }
+              for(const t of ['jolteon','pokedex','game-boy','neo-genesis','team-rocket','lavender','cyberpunk','cozy-sakura','dark-academia','e-ink','retro-card-shop']){
+                await page.evaluate(t=>KBSFullThemes.apply(t,{persist:false,applyPalette:false}),t);
+                if(await page.$eval('body',e=>e.dataset.theme)!==t)failures.push(`${viewport.name}: theme ${t} did not apply`);
+              }
+
+              if(await page.$('#kbsBinderCoverDesignerScript'))failures.push(`${viewport.name}: cover designer loaded eagerly`);
+              await page.click('#openBinders');
+              await page.waitForFunction(()=>!!document.querySelector('#kbsBinderCoverDesignerScript'),{timeout:10000});
+              await page.click('#closeBinders').catch(()=>{});
+              await page.click('#libraryArtworkTab');
+              await page.waitForFunction(()=>!!document.querySelector('#kbsArtSourceLinksScript'),{timeout:10000});
+              await page.click('#libraryCardsTab').catch(()=>{});
+
+              await page.click('#guidedTourLaunch');await page.waitForTimeout(100);
+              const tourOpen=await page.evaluate(()=>{const e=document.querySelector('#guidedDemo');return e&&!e.hidden});
+              if(!tourOpen)failures.push(`${viewport.name}: guided tour did not open`);
+              await page.evaluate(()=>{const e=document.querySelector('#guidedDemo');if(e){e.hidden=true;e.setAttribute('aria-hidden','true')}});
+
+              await page.mouse.click(10,10);
+              await page.waitForSelector('#kbsToolsBtn',{timeout:15000});
+              await page.click('#kbsToolsBtn');await page.waitForSelector('#kbsToolsModal.open',{timeout:5000});
+              await page.click('#kbsToolsClose');
+
+              await page.waitForSelector('#previewBinder',{timeout:10000});
+              await page.click('#previewBinder');
+              await page.waitForSelector('#focusPresentation.open .focus-spread .focus-page-shell .grid',{timeout:15000});
+              await page.keyboard.press('Escape');
+              await page.waitForFunction(()=>!document.body.classList.contains('focus-presentation-mode'),{timeout:5000});
+
+              const optimized=await page.evaluate(async()=>{
+                const c=document.createElement('canvas');c.width=900;c.height=1200;const x=c.getContext('2d');x.fillRect(0,0,c.width,c.height);
+                const b=await new Promise(r=>c.toBlob(r,'image/png'));
+                const f=new File([b],'qa.png',{type:'image/png'});
+                const o=await KBSModules.images.optimizeImageFile(f);
+                return {w:o.width,h:o.height,tw:o.thumbWidth,th:o.thumbHeight,bytes:o.bytes,thumb:o.thumbnailBytes};
+              });
+              if(optimized.w>3600||optimized.h>3600||optimized.tw>480||optimized.th>480||!optimized.bytes||!optimized.thumb)failures.push(`${viewport.name}: image optimizer invalid ${JSON.stringify(optimized)}`);
+
+              if(viewport.name==='mobile'){
+                for(const sel of ['[data-mobile-lab="cards"]','[data-mobile-lab="page"]','[data-mobile-lab="art"]']){
+                  await page.click(sel);await page.waitForTimeout(50);
+                  if(!(await page.locator(sel).isVisible()))failures.push(`mobile: nav hidden ${sel}`);
+                }
+              }
+              const banner=await page.evaluate(()=>({hidden:document.querySelector('#runtimeErrorBanner')?.hidden,text:document.querySelector('#runtimeErrorText')?.textContent||''}));
+              if(!banner.hidden)failures.push(`${viewport.name}: runtime banner ${banner.text}`);
+              if(badResponses.length)failures.push(`${viewport.name}: bad local assets ${badResponses.join(', ')}`);
+              const meaningfulErrors=errors.filter(x=>!x.includes('favicon'));
+              if(meaningfulErrors.length)failures.push(`${viewport.name}: browser errors ${meaningfulErrors.join(' | ')}`);
+              await page.close();
+            }
+            await browser.close();
+            if(failures.length)throw new Error(failures.join('\n'));
+            console.log('DEEP_PREVIEW_AUDIT_PASS');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
