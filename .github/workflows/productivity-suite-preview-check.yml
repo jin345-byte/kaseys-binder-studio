@@ -1,0 +1,115 @@
+name: Productivity Suite Preview Check
+
+on:
+  push:
+    branches: [prod-db-compat-preview]
+    paths:
+      - 'public/features/productivity-suite.js'
+      - 'public/styles/productivity-suite.css'
+      - 'public/features/staging-v287.js'
+      - '.github/workflows/productivity-suite-preview-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: binder-studio-productivity-suite
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Static checks
+        run: |
+          node --check public/features/productivity-suite.js
+          grep -q "KBSProductivity" public/features/productivity-suite.js
+          grep -q "KBS-BINDER-1" public/features/productivity-suite.js
+          grep -q "productivity-suite.css?v=3.5.0" public/features/staging-v287.js
+          grep -q "productivity-suite.js?v=3.5.0" public/features/staging-v287.js
+      - name: Install browser tooling
+        run: |
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null
+      - name: Verify deployed steps 8 through 15
+        shell: bash
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          const BASE='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          (async()=>{
+            let live=false;
+            for(let i=0;i<35;i++){
+              const r=await fetch(BASE+'/features/productivity-suite.js?qa='+Date.now(),{cache:'no-store'}).catch(()=>null);
+              const t=r?.ok?await r.text().catch(()=>''):'';
+              if(t.includes("const VERSION='3.5.0'")&&t.includes('smartGenerate')&&t.includes('importPackage')){live=true;break}
+              await sleep(6000);
+            }
+            if(!live)throw new Error('Productivity suite assets did not propagate');
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1440,height:1000}});
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await page.goto(BASE+'/?productivityqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForSelector('#kbsToolsBtn',{timeout:30000});
+            await page.waitForFunction(()=>window.KBSProductivity?.VERSION==='3.5.0');
+            await page.waitForTimeout(1200);
+
+            await page.click('#kbsToolsBtn');
+            await page.waitForSelector('#kbsToolsModal.open');
+            const required=['#kbsSmartGenerate','#kbsAutoFill','[data-kbs-template="classic-9"]','#kbsCopyPage','#kbsMultiToggle','#kbsUndoBtn','#kbsRedoBtn','#kbsUniversalOpen','#kbsExportBinder','#kbsImportBinder'];
+            for(const sel of required)if(!(await page.$(sel)))throw new Error('Missing productivity control '+sel);
+            await page.click('#kbsToolsClose');
+
+            const layout0=await page.$eval('#layout',e=>e.value);
+            await page.evaluate(()=>KBSProductivity.applyTemplate('classic-4'));
+            if(await page.$eval('#layout',e=>e.value)!=='2x2')throw new Error('Layout template did not apply');
+            await page.evaluate(()=>KBSProductivity.undo());
+            if(await page.$eval('#layout',e=>e.value)!==layout0)throw new Error('Undo did not restore layout');
+            await page.evaluate(()=>KBSProductivity.redo());
+            if(await page.$eval('#layout',e=>e.value)!=='2x2')throw new Error('Redo did not restore template');
+
+            const mocks=await page.evaluate(()=>Array.from({length:24},(_,i)=>({id:'qa-card-'+i,name:'QA Card '+i,setName:'QA Set',localId:String(i+1),imageHigh:'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="140"><rect width="100" height="140" fill="gray"/><text x="10" y="70">${i}</text></svg>`),kind:'card'})));
+            const filled=await page.evaluate(m=>{state.pockets=Array(12).fill(null);save();renderGrid();KBSProductivity.resetHistory();return KBSProductivity.autoFillPage({candidates:m,query:''})},mocks);
+            if(!(filled>=4))throw new Error('Auto-fill did not fill page');
+
+            await page.evaluate(()=>KBSProductivity.setMultiMode(true));
+            await page.locator('#grid [data-pocket]').nth(0).click();
+            await page.locator('#grid [data-pocket]').nth(1).click();
+            if(await page.locator('#grid .kbs-pocket-selected').count()!==2)throw new Error('Multi-select did not select two pockets');
+            await page.evaluate(()=>KBSProductivity.clearSelectedPockets());
+            if(await page.locator('#grid .kbs-pocket-selected').count()!==0)throw new Error('Multi-select did not clear selection');
+            await page.evaluate(()=>KBSProductivity.setMultiMode(false));
+
+            await page.evaluate(async m=>{await KBSProductivity.smartGenerate({name:'QA Smart Binder',query:'QA',pages:2,layout:'2x2',candidates:m})},mocks);
+            let pack=await page.evaluate(()=>KBSProductivity.buildExportPackage());
+            if(pack.format!=='KBS-BINDER-1'||pack.binder.name!=='QA Smart Binder'||pack.pages.length!==2)throw new Error('Smart binder/export package mismatch '+JSON.stringify({format:pack.format,name:pack.binder.name,pages:pack.pages.length}));
+            const filledSmart=pack.pages.reduce((n,p)=>n+(p.state?.pockets||[]).filter(Boolean).length,0);
+            if(filledSmart<4)throw new Error('Smart binder did not place cards');
+
+            await page.evaluate(()=>KBSProductivity.copyCurrentPage());
+            await page.waitForTimeout(500);
+            pack=await page.evaluate(()=>KBSProductivity.buildExportPackage());
+            if(pack.pages.length!==3)throw new Error('Copy page did not add a page');
+
+            const universal=await page.evaluate(()=>KBSProductivity.universalResults('QA Smart'));
+            if(!universal.some(x=>x.type==='binder'))throw new Error('Universal search did not find binder');
+            await page.evaluate(()=>KBSProductivity.openUniversal());
+            await page.waitForSelector('#kbsUniversalModal.open');
+            await page.click('#kbsUniversalClose');
+
+            const importedId=await page.evaluate(p=>KBSProductivity.importPackage(p),pack);
+            if(!importedId)throw new Error('Import did not return binder id');
+            const imported=await page.evaluate(()=>KBSProductivity.buildExportPackage());
+            if(imported.pages.length!==3||!imported.binder.name.includes('Imported'))throw new Error('Imported binder was not loaded correctly');
+
+            if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
+            await browser.close();
+            console.log('PRODUCTIVITY_SUITE_PASS',JSON.stringify({steps:[8,9,10,11,12,13,14,15],importedPages:imported.pages.length}));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
