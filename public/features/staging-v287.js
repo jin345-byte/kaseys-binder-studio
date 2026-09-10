@@ -15,7 +15,7 @@
   loadStyle('styles/full-themes.css?v=3.0.5','kbsFullThemesStyle');
   loadStyle('styles/theme-picker-fit.css?v=3.0.2','kbsThemePickerFitStyle');
   loadStyle('styles/responsive-button-fit.css?v=3.3.4','kbsResponsiveButtonFitStyle');
-  loadStyle('styles/ui-readability-fixes.css?v=3.5.4','kbsUiReadabilityFixesStyle');
+  loadStyle('styles/ui-readability-fixes.css?v=3.5.5','kbsUiReadabilityFixesStyle');
   loadStyle('styles/theme-animated-accents.css?v=3.4.1','kbsThemeAnimatedAccentsStyle');
   loadStyle('styles/focus-presentation-mode.css?v=3.3.3','kbsFocusPresentationStyle');
   loadScript('features/full-themes.js?v=3.4.1','kbsFullThemesScript').catch(console.warn);
