@@ -1,0 +1,143 @@
+name: Full UI Visual Audit
+
+on:
+  push:
+    branches: [prod-db-compat-preview]
+    paths:
+      - 'public/**'
+      - '.github/workflows/full-ui-visual-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: binder-studio-full-ui-visual-audit
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null
+      - name: Audit every app surface, theme, and viewport
+        shell: bash
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          const BASE='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          const viewports=[
+            {name:'desktop',width:1440,height:1000},
+            {name:'tablet',width:900,height:900},
+            {name:'mobile',width:390,height:844},
+          ];
+          const expectedThemes=['jolteon','pokedex','game-boy','neo-genesis','team-rocket','lavender','cyberpunk','cozy-sakura','dark-academia','e-ink','retro-card-shop'];
+          const rgba=s=>{const m=String(s||'').match(/rgba?\(([^)]+)\)/);if(!m)return null;const p=m[1].split(',').map(x=>Number.parseFloat(x));return {r:p[0],g:p[1],b:p[2],a:p.length>3?p[3]:1}};
+          const lum=c=>{const f=v=>{v/=255;return v<=.03928?v/12.92:((v+.055)/1.055)**2.4};return .2126*f(c.r)+.7152*f(c.g)+.0722*f(c.b)};
+          const contrast=(a,b)=>{const l1=lum(a),l2=lum(b);return (Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05)};
+          (async()=>{
+            let live=false;
+            for(let i=0;i<35;i++){
+              const r=await fetch(BASE+'/?uiaudit='+Date.now(),{cache:'no-store'}).catch(()=>null);
+              const t=r?.ok?await r.text().catch(()=>''):'';
+              if(t.includes("Kasey's Binder Studio")){live=true;break}
+              await sleep(5000);
+            }
+            if(!live)throw new Error('Preview did not become reachable');
+            const browser=await chromium.launch({headless:true});
+            const findings=[];
+            const pageErrors=[];
+            let auditedButtons=0;
+            let auditedStates=0;
+
+            for(const vp of viewports){
+              const page=await browser.newPage({viewport:{width:vp.width,height:vp.height}});
+              page.on('pageerror',e=>pageErrors.push(`${vp.name}: ${e.message}`));
+              page.on('console',m=>{if(m.type()==='error')pageErrors.push(`${vp.name} console: ${m.text()}`)});
+              await page.goto(BASE+'/?fulluiaudit='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForSelector('#searchBtn',{timeout:30000});
+              await page.waitForTimeout(1800);
+
+              const themes=await page.evaluate(()=>window.KBSFullThemes?.list?.().map(x=>x.id)||[]);
+              const themeList=expectedThemes.filter(x=>themes.includes(x));
+              if(themeList.length!==expectedThemes.length)findings.push({kind:'missing-themes',vp:vp.name,found:themes});
+
+              const auditState=async(label)=>{
+                auditedStates++;
+                const rows=await page.evaluate(()=>{
+                  const visible=e=>{const s=getComputedStyle(e),r=e.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity)>0.05&&r.width>2&&r.height>2};
+                  const nearestBg=e=>{let n=e;while(n){const s=getComputedStyle(n);const bg=s.backgroundColor;if(bg&&!/rgba\([^)]*,\s*0(?:\.0+)?\)/.test(bg)&&bg!=='transparent')return bg;n=n.parentElement}return getComputedStyle(document.body).backgroundColor};
+                  return [...document.querySelectorAll('button,.btn,[role="button"],label.btn,.artlink,.library-build-cta,.page-arrow,.page-number,.version-link,.auto-artwork-more,.mobile-lab-nav-btn,.library-browser-tab')].filter(visible).map((e,i)=>{const s=getComputedStyle(e),r=e.getBoundingClientRect();return {i,id:e.id||'',cls:e.className||'',text:(e.innerText||e.textContent||'').replace(/\s+/g,' ').trim(),color:s.color,bg:s.backgroundColor,bgImage:s.backgroundImage,fontSize:parseFloat(s.fontSize)||0,fontWeight:s.fontWeight,opacity:Number(s.opacity)||1,width:r.width,height:r.height,clientWidth:e.clientWidth,scrollWidth:e.scrollWidth,clientHeight:e.clientHeight,scrollHeight:e.scrollHeight,whiteSpace:s.whiteSpace,overflow:s.overflow,nearestBg:nearestBg(e)}});
+                });
+                auditedButtons+=rows.length;
+                for(const b of rows){
+                  if(!b.text)continue;
+                  const fg=rgba(b.color), bg=rgba((b.bg&&rgba(b.bg)?.a>0.05)?b.bg:b.nearestBg);
+                  if(fg&&bg){const cr=contrast(fg,bg);const large=b.fontSize>=18 || (b.fontSize>=14 && Number.parseInt(b.fontWeight)>=700);const min=large?3:4.5;if(cr<min && b.bgImage==='none')findings.push({kind:'low-contrast',vp:vp.name,state:label,id:b.id,text:b.text.slice(0,80),ratio:+cr.toFixed(2),fg:b.color,bg:b.bg||b.nearestBg});}
+                  const clippedX=b.scrollWidth>b.clientWidth+3 && !['normal','pre-wrap','pre-line'].includes(b.whiteSpace);
+                  const clippedY=b.scrollHeight>b.clientHeight+3 && b.overflow!=='visible';
+                  if(clippedX||clippedY)findings.push({kind:'clipped-text',vp:vp.name,state:label,id:b.id,text:b.text.slice(0,80),box:[Math.round(b.width),Math.round(b.height)],scroll:[b.scrollWidth,b.scrollHeight],whiteSpace:b.whiteSpace});
+                  if(b.height<32 || b.width<28)findings.push({kind:'tiny-control',vp:vp.name,state:label,id:b.id,text:b.text.slice(0,60),box:[Math.round(b.width),Math.round(b.height)]});
+                }
+              };
+
+              for(const theme of themeList){
+                await page.evaluate(id=>window.KBSFullThemes.apply(id,{persist:false,applyPalette:false}),theme);
+                await page.waitForTimeout(80);
+                await auditState(`main:${theme}`);
+              }
+
+              // Cards + artwork tabs.
+              if(await page.$('#libraryCardsTab')){await page.click('#libraryCardsTab');await auditState('cards-tab')}
+              if(await page.$('#libraryArtworkTab')){await page.click('#libraryArtworkTab');await auditState('artwork-tab')}
+
+              // Saved binder library.
+              if(await page.$('#openBinders')){await page.click('#openBinders');await page.waitForTimeout(150);await auditState('binder-library');await page.click('#closeBinders').catch(()=>{})}
+
+              // Build info.
+              if(await page.$('#versionLink')){await page.click('#versionLink');await page.waitForTimeout(100);await auditState('build-info');await page.click('#buildInfoClose').catch(()=>{})}
+
+              // Guided tour first step.
+              if(await page.$('#guidedTourLaunch')){await page.click('#guidedTourLaunch');await page.waitForTimeout(150);await auditState('guided-tour');await page.keyboard.press('Escape').catch(()=>{});await page.evaluate(()=>{const d=document.querySelector('#guidedDemo');if(d){d.hidden=true;d.setAttribute('aria-hidden','true')}})}
+
+              // Productivity tools and universal search.
+              if(await page.$('#kbsToolsBtn')){await page.click('#kbsToolsBtn');await page.waitForTimeout(120);await auditState('binder-tools');await page.click('#kbsToolsClose').catch(()=>{})}
+              if(await page.$('#kbsUniversalOpen')){await page.evaluate(()=>window.KBSProductivity?.openUniversal?.());await page.waitForTimeout(100);await auditState('universal-search');await page.click('#kbsUniversalClose').catch(()=>{})}
+
+              // Mobile-specific views.
+              if(vp.name==='mobile'){
+                for(const sel of ['[data-mobile-lab="cards"]','[data-mobile-lab="page"]','[data-mobile-lab="art"]']){
+                  if(await page.$(sel)){await page.click(sel);await page.waitForTimeout(80);await auditState(`mobile:${sel}`)}
+                }
+              }
+              await page.close();
+            }
+
+            // Standalone privacy page.
+            {
+              const page=await browser.newPage({viewport:{width:390,height:844}});
+              page.on('pageerror',e=>pageErrors.push(`privacy: ${e.message}`));
+              const r=await page.goto(BASE+'/privacy.html?fulluiaudit='+Date.now(),{waitUntil:'domcontentloaded',timeout:30000});
+              if(!r?.ok())findings.push({kind:'privacy-http',status:r?.status()});
+              const overflow=await page.evaluate(()=>({sw:document.documentElement.scrollWidth,cw:document.documentElement.clientWidth}));
+              if(overflow.sw>overflow.cw+2)findings.push({kind:'privacy-horizontal-overflow',overflow});
+              await page.close();
+            }
+
+            await browser.close();
+            const serious=findings.filter(x=>['low-contrast','clipped-text','missing-themes','privacy-http','privacy-horizontal-overflow'].includes(x.kind));
+            console.log('FULL_UI_AUDIT_SUMMARY',JSON.stringify({auditedButtons,auditedStates,findings:findings.length,serious:serious.length,pageErrors:pageErrors.length}));
+            if(findings.length)console.log('FULL_UI_AUDIT_FINDINGS',JSON.stringify(findings,null,2));
+            if(pageErrors.length)console.log('FULL_UI_PAGE_ERRORS',JSON.stringify(pageErrors,null,2));
+            if(serious.length||pageErrors.length)process.exit(1);
+            console.log('FULL_UI_AUDIT_PASS');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
