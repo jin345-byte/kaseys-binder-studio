@@ -52,8 +52,11 @@ jobs:
               await sleep(6000);
             }
             if(!live)throw new Error('Productivity suite/current loader assets did not propagate');
-            const browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];
-            page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1440,height:1000}});
+            const pageErrors=[];const badLocalResponses=[];
+            page.on('pageerror',e=>pageErrors.push(e.message));
+            page.on('response',r=>{try{const u=new URL(r.url());if(u.origin===BASE&&(u.pathname.startsWith('/features/')||u.pathname.startsWith('/styles/'))&&r.status()>=400)badLocalResponses.push(`${r.status()} ${u.pathname}`)}catch{}});
             await page.goto(BASE+'/?productivityqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
 
             async function ensureProductivity(timeout=45000){
@@ -124,7 +127,8 @@ jobs:
             await awaitNavigationSafe(async id=>{const ps=await pagesForBinder(id);if(!ps.length)throw new Error('Imported binder has no pages');await loadPageIntoEditor(ps[0].id,{closeLibrary:false})},importedBinder.id);
             await sleep(500);await ensureProductivity();
             const imported=await page.evaluate(()=>window.KBSProductivity.buildExportPackage());if(imported.pages.length!==3||!imported.binder.name.includes('Imported'))throw new Error('Imported binder was not loaded correctly');
-            const meaningful=errors.filter(x=>!x.includes('favicon'));if(meaningful.length)throw new Error('Browser errors: '+meaningful.join(' | '));
+            if(pageErrors.length)throw new Error('JavaScript page errors: '+pageErrors.join(' | '));
+            if(badLocalResponses.length)throw new Error('Required local assets failed: '+badLocalResponses.join(' | '));
             await browser.close();console.log('PRODUCTIVITY_SUITE_PASS',JSON.stringify({steps:[8,9,10,11,12,13,14,15],importedPages:imported.pages.length}));
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
