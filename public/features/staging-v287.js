@@ -1,4 +1,4 @@
-/* Binder Studio v4.0.3 preview — page rail + compatibility + retry-safe lazy feature loading — full sanity rerun marker 2026-09-10-r8 */
+/* Binder Studio v4.0.3 preview — page rail + compatibility + retry-safe lazy feature loading — full sanity rerun marker 2026-09-10-r9 */
 (function(){
   function loadStyle(href,id){
     if(document.getElementById(id))return;
@@ -18,6 +18,7 @@
   loadStyle('styles/ui-readability-fixes.css?v=3.5.5','kbsUiReadabilityFixesStyle');
   loadStyle('styles/theme-animated-accents.css?v=3.4.1','kbsThemeAnimatedAccentsStyle');
   loadStyle('styles/focus-presentation-mode.css?v=3.3.3','kbsFocusPresentationStyle');
+  loadStyle('styles/layout-overlap-fixes.css?v=4.0.3.1','kbsLayoutOverlapFixesStyle');
   loadScript('features/full-themes.js?v=3.4.1','kbsFullThemesScript').catch(console.warn);
   loadScript('features/theme-picker-fit.js?v=3.0.2','kbsThemePickerFitScript').catch(console.warn);
   loadScript('features/focus-presentation-mode.js?v=3.3.3','kbsFocusPresentationScript').catch(console.warn);
