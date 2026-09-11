@@ -2,7 +2,7 @@
 (function(){
   const BUILD='4.0.5';
   const sameAsset=(node,url)=>{try{return new URL(node.href||node.src,location.href).pathname===new URL(url,location.href).pathname}catch{return false}};
-  function loadStyle(href,id){const existing=document.getElementById(id)||[...document.querySelectorAll('link[rel="stylesheet"]')].find(x=>sameAsset(x,href));if(existing){if(id&&!existing.id)existing.id=id;return}if(globalThis.KBSModules?.lazy?.style)return globalThis.KBSModules.lazy.style(href,id);const l=document.createElement('link');l.id=id;l.rel='stylesheet';l.href=href;l.onerror=()=>l.remove();document.head.appendChild(l)}
+  function loadStyle(href,id){const existing=document.getElementById(id)||[...document.querySelectorAll('link[rel="stylesheet"]')].find(x=>sameAsset(x,href));if(existing){if(id&&!existing.id)existing.id=id;const current=existing.getAttribute('href')||'';if(current!==href&&sameAsset(existing,href))existing.setAttribute('href',href);return}if(globalThis.KBSModules?.lazy?.style)return globalThis.KBSModules.lazy.style(href,id);const l=document.createElement('link');l.id=id;l.rel='stylesheet';l.href=href;l.onerror=()=>l.remove();document.head.appendChild(l)}
   function loadScript(src,id){const existing=document.getElementById(id)||[...document.scripts].find(x=>sameAsset(x,src));if(existing?.dataset?.kbsLoaded==='1'||existing&&existing.readyState==='complete'){if(id&&!existing.id)existing.id=id;return Promise.resolve()}if(existing&&id&&!existing.id)existing.id=id;if(globalThis.KBSModules?.lazy?.script&&!existing)return globalThis.KBSModules.lazy.script(src,id);if(existing)return Promise.resolve();return new Promise((resolve,reject)=>{const s=document.createElement('script');s.id=id;s.src=src;s.onload=()=>{s.dataset.kbsLoaded='1';resolve()};s.onerror=()=>{s.remove();reject(new Error('Could not load '+src))};document.head.appendChild(s)})}
   function syncBuildIdentity(){
     const version=document.querySelector('#versionLink');if(version)version.textContent='v4.0.5 STAGING';
@@ -11,6 +11,7 @@
     const section=document.querySelector('.build-info-content section');if(section)section.innerHTML='<strong>v4.0.5 Staging Preview</strong><p>Flow, readability and cleanup pass.</p><p>Removed obsolete theme-animation/font layers, removed legacy cramped four-column page actions, flattened brand glow styling, deduplicated dynamically loaded assets, lazy-loaded Guided Tour code, strengthened card/binder overflow protection, and added a calmer rounded professional control system.</p><p>Lavender remains the default theme. System Sans, Verdana, Trebuchet and Georgia remain selectable. Performance, search, artwork, binder editing, printing, focus mode, themes, mobile controls and cloud compatibility remain under staging verification.</p>';
   }
   syncBuildIdentity();
+  loadStyle('styles/staging-polish.css?v=4.0.5','kbsStagingPolishStyle');
   loadStyle('styles/full-themes.css?v=3.0.5','kbsFullThemesStyle');
   loadStyle('styles/theme-picker-fit.css?v=3.0.2','kbsThemePickerFitStyle');
   loadStyle('styles/responsive-button-fit.css?v=4.0.5','kbsResponsiveButtonFitStyle');
@@ -22,7 +23,7 @@
   loadStyle('styles/ui-flow-polish.css?v=4.0.5','kbsUiFlowPolishStyle');
   loadScript('features/full-themes.js?v=4.0.5','kbsFullThemesScript').catch(console.warn);
   loadScript('features/theme-picker-fit.js?v=3.0.2','kbsThemePickerFitScript').catch(console.warn);
-  loadScript('features/typography-picker.js?v=4.0.4','kbsTypographyPickerScript').catch(console.warn);
+  loadScript('features/typography-picker.js?v=4.0.5','kbsTypographyPickerScript').catch(console.warn);
   loadScript('features/focus-presentation-mode.js?v=3.3.3','kbsFocusPresentationScript').catch(console.warn);
   loadScript('features/artwork-legacy-repair.js?v=2.9.1','kbsArtworkLegacyRepairScript').catch(console.warn);
 
@@ -39,6 +40,7 @@
   let tourLoaded=false,tourLoading=null;
   async function loadGuidedTour(){
     if(tourLoaded)return;if(tourLoading)return tourLoading;
+    loadStyle('features/guided-finish.css?v=2.9.0','kbsGuidedFinishStyle');
     tourLoading=(async()=>{await loadScript('features/help-lab.js?v=2.9.0','kbsHelpLabScript');await loadScript('features/guided-tour-auto-library.js?v=2.9.0','kbsGuidedAutoLibraryScript');await loadScript('features/guided-tour-finish.js?v=2.9.0','kbsGuidedFinishScript');await loadScript('features/guided-tour-step16-fix.js?v=2.9.0','kbsGuidedStep16Script');tourLoaded=true})().catch(err=>{tourLoading=null;throw err});
     return tourLoading;
   }
