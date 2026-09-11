@@ -18,7 +18,7 @@
 <link rel="stylesheet" href="styles/staging-v287.css?v=2.9.0">
 <link rel="stylesheet" href="styles/mobile-lab.css?v=2.9.0">
 <link rel="stylesheet" href="styles/appearance-cleanup.css?v=2.9.0">
-<link rel="stylesheet" href="features/cloud-sync.css?v=2.9.0">
+<link rel="stylesheet" href="features/cloud-sync.css?v=2.9.0" data-kbs-cloud="1">
 <link rel="stylesheet" href="features/guided-finish.css?v=2.9.0">
 <link id="kbsTypographyPickerStyle" rel="stylesheet" href="styles/typography-picker.css?v=4.0.5">
 <link id="kbsStaticUiStyle" rel="stylesheet" href="styles/static-ui.css?v=4.0.5">
@@ -75,7 +75,7 @@
 <div class="binder-viewer" id="binderViewer" aria-hidden="true"><div class="viewer-shell panel"><header class="viewer-head"><div><span class="eyebrow">Binder viewer</span><h2 id="viewerTitle">Binder</h2></div><button class="modal-close" id="closeViewer">×</button></header><div class="viewer-nav"><button class="btn ghost" id="viewerPrev">‹ Previous</button><div class="viewer-pages"><span id="viewerCounter">Page 1</span><div class="page-numbers viewer-page-numbers" id="viewerPageNumbers" aria-label="Viewer page numbers"></div></div><button class="btn ghost" id="viewerNext">Next ›</button><button class="btn" id="viewerEdit">Edit this page</button></div><div id="viewerPage" class="viewer-page"></div></div></div><div class="toast" id="toast"></div>
 <div class="feature-drawer" id="cardDetailsDrawer" aria-hidden="true"><div class="feature-drawer-shell"><header class="feature-drawer-head"><div><span class="eyebrow">Card inspector</span><h2 id="cardDetailsTitle">Card details</h2></div><button class="btn feature-close" id="cardDetailsClose" type="button">×</button></header><div class="card-details-body" id="cardDetailsBody"></div></div></div>
 <div class="hover-card-preview" id="hoverCardPreview" hidden></div><div class="search-suggestions" id="searchSuggestions" hidden></div>
-<div class="build-info-modal" id="buildInfoModal" hidden><div class="build-info-shell" role="dialog" aria-modal="true" aria-labelledby="buildInfoTitle"><div class="build-info-head"><div><span class="eyebrow">Build information</span><h2 id="buildInfoTitle">Kasey’s Binder Studio v4.0.5 Staging</h2></div><button class="btn build-info-close" id="buildInfoClose" type="button">×</button></div><div class="build-info-content"><section><strong>v4.0.5 Staging Preview</strong><p>Flow, readability and cleanup pass.</p><p>Removed obsolete theme-animation/font layers, removed legacy cramped four-column page actions, flattened brand glow styling, deduplicated dynamically loaded assets, strengthened card/binder overflow protection, and added a calmer rounded professional control system.</p><p>Lavender remains the default theme. System Sans, Verdana, Trebuchet and Georgia remain selectable. Performance, search, artwork, binder editing, printing, focus mode, themes, mobile controls and cloud compatibility remain under staging verification.</p></section></div></div></div>
+<div class="build-info-modal" id="buildInfoModal" hidden><div class="build-info-shell" role="dialog" aria-modal="true" aria-labelledby="buildInfoTitle"><div class="build-info-head"><div><span class="eyebrow">Build information</span><h2 id="buildInfoTitle">Kasey’s Binder Studio v4.0.5 Staging</h2></div><button class="btn build-info-close" id="buildInfoClose" type="button">×</button></div><div class="build-info-content"><section><strong>v4.0.5 Staging Preview</strong><p>Flow, readability and cleanup pass.</p><p>Removed obsolete theme-animation/font layers, removed legacy cramped four-column page actions, flattened brand glow styling, deduplicated dynamically loaded assets, lazy-loaded Guided Tour code, strengthened card/binder overflow protection, and added a calmer rounded professional control system.</p><p>Lavender remains the default theme. System Sans, Verdana, Trebuchet and Georgia remain selectable. Performance, search, artwork, binder editing, printing, focus mode, themes, mobile controls and cloud compatibility remain under staging verification.</p></section></div></div></div>
 <div id="runtimeErrorBanner" class="runtime-error-banner" hidden><div><strong>App notice</strong><small id="runtimeErrorText"></small></div><button type="button" id="runtimeErrorDismiss">×</button></div>
 <script src="features/staging-fetch-shim.js?v=2.9.0"></script>
 <script src="app.js?v=2.9.0"></script>
@@ -86,15 +86,11 @@
 <script src="features/data-safety.js?v=2.9.0"></script>
 <script src="features/prebuilt-catalog-bootstrap.js?v=2.9.0"></script>
 <div class="guided-demo" id="guidedDemo" hidden aria-hidden="true"><div class="guided-demo-shade"></div><div class="guided-demo-card" id="guidedDemoCard" role="dialog" aria-live="polite"><small id="guidedDemoStep">STEP 1 OF 15</small><h3 id="guidedDemoTitle">Welcome</h3><p id="guidedDemoText"></p><div class="guided-demo-actions"><span></span><button class="btn" id="guidedDemoNext" type="button">Next</button></div></div></div>
-<script src="features/help-lab.js?v=2.9.0"></script>
-<script src="features/guided-tour-auto-library.js?v=2.9.0"></script>
-<script src="features/guided-tour-finish.js?v=2.9.0"></script>
-<script src="features/guided-tour-step16-fix.js?v=2.9.0"></script>
 <nav class="mobile-lab-bottom-nav" id="mobileLabBottomNav" aria-label="Phone navigation"><button class="mobile-lab-nav-btn active" data-mobile-lab="cards" type="button"><span>▤</span>Cards</button><button class="mobile-lab-nav-btn" data-mobile-lab="page" type="button"><span>▦</span>Page</button><button class="mobile-lab-nav-btn" data-mobile-lab="art" type="button"><span>✦</span>Art</button></nav>
 <script src="features/art-search-lab.js?v=2.9.0"></script>
 <script src="features/mobile-lab.js?v=2.9.0"></script>
 <script src="features/artwork-height-sync.js?v=2.9.0"></script>
 <script src="features/staging-v287.js?v=4.0.5"></script>
-<script src="features/staging-polish.js?v=4.0.4"></script>
-<script src="features/cloud-sync.js?v=2.9.0"></script>
+<script src="features/staging-polish.js?v=4.0.5"></script>
+<script src="features/cloud-sync.js?v=2.9.0" data-kbs-cloud="1"></script>
 </body></html>
