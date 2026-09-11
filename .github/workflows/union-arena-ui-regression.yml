@@ -35,9 +35,8 @@ jobs:
           node --check public/features/prebuilt-catalog-bootstrap.js
           node --check public/features/staging-v287.js
           grep -q "Union Arena" public/features/catalog-lab.js
-          grep -q "value=\"union-arena\"" public/features/catalog-lab.js
-          grep -q "appearance-cleanup.css?v=2.9.6" public/features/staging-v287.js
-          ! grep -A2 "multi-tcg-filterbar" public/styles/appearance-cleanup.css | grep -q "display:none"
+          grep -q "appearance-cleanup.css?v=2.9.7" public/features/staging-v287.js
+          grep -A2 "multi-tcg-filterbar" public/styles/appearance-cleanup.css | grep -q "display:none"
           node <<'JS'
           const fs=require('fs');
           const m=JSON.parse(fs.readFileSync('public/catalog/manifest.json','utf8'));
@@ -49,7 +48,7 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0 >/dev/null 2>&1
           npx playwright install chromium >/dev/null
-      - name: Verify deployed Union Arena controls and cards
+      - name: Verify deployed Union Arena remains available through Set
         shell: bash
         run: |
           node <<'JS'
@@ -61,42 +60,44 @@ jobs:
             for(let i=0;i<60;i++){
               const r=await fetch(BASE+'/features/staging-v287.js?ua-regression='+Date.now(),{cache:'no-store'}).catch(()=>null);
               const t=r?.ok?await r.text():'';
-              if(t.includes('appearance-cleanup.css?v=2.9.6')){live=true;break}
+              if(t.includes('appearance-cleanup.css?v=2.9.7')){live=true;break}
               await sleep(5000);
             }
-            if(!live)throw new Error('Restored Union Arena styles did not propagate');
+            if(!live)throw new Error('Set-only Union Arena UI did not propagate');
             const browser=await chromium.launch({headless:true});
             for(const viewport of [{name:'desktop',width:1440,height:1000},{name:'mobile',width:390,height:844}]){
               const page=await browser.newPage({viewport});
               const errors=[];
               page.on('pageerror',e=>errors.push(e.message));
               await page.goto(BASE+'/?focus=3.3.2&ua-regression='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
-              await page.waitForSelector('#tcgGameFilter',{state:'attached',timeout:30000});
+              await page.waitForSelector('#setFilter',{state:'visible',timeout:30000});
               await page.waitForFunction(()=>{
-                const e=document.querySelector('#tcgGameFilter');if(!e)return false;
-                const s=getComputedStyle(e),r=e.getBoundingClientRect();
-                return s.display!=='none'&&s.visibility!=='hidden'&&r.width>20&&r.height>=36;
+                const e=document.querySelector('.multi-tcg-filterbar');
+                return !!e&&getComputedStyle(e).display==='none';
               },null,{timeout:30000});
               const manifest=await (await page.request.get(BASE+'/catalog/manifest.json?ua='+Date.now())).json();
               if(Number(manifest.counts?.unionArena||manifest.unionArena||0)<6000)throw new Error(viewport.name+': deployed Union Arena catalog missing');
               await page.waitForFunction(()=>Array.isArray(globalThis.KBSCatalogCards)&&globalThis.KBSCatalogCards.filter(x=>x?.game==='union-arena').length>=6000,null,{timeout:120000});
-              await page.selectOption('#tcgGameFilter','union-arena');
-              await page.fill('#subject','Abengane');
+              await page.waitForFunction(()=>[...document.querySelector('#setFilter').options].some(o=>String(o.value).startsWith('union-arena:')),null,{timeout:60000});
+              const unionSet=await page.evaluate(()=>[...document.querySelector('#setFilter').options].find(o=>String(o.value).startsWith('union-arena:'))?.value||'');
+              if(!unionSet)throw new Error(viewport.name+': no Union Arena set option found');
+              await page.selectOption('#setFilter',unionSet);
+              await page.fill('#subject','');
               await page.click('#searchBtn');
               await page.waitForFunction(()=>document.querySelectorAll('#cards .card-item.is-union-card').length>0,null,{timeout:60000});
               const state=await page.evaluate(()=>({
-                visible:(()=>{const e=document.querySelector('.multi-tcg-filterbar'),s=getComputedStyle(e),r=e.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>20&&r.height>20})(),
-                game:document.querySelector('#tcgGameFilter')?.value,
+                hidden:getComputedStyle(document.querySelector('.multi-tcg-filterbar')).display==='none',
+                setValue:document.querySelector('#setFilter')?.value||'',
+                unionSetOptions:[...document.querySelector('#setFilter').options].filter(o=>String(o.value).startsWith('union-arena:')).length,
                 unionCards:globalThis.KBSCatalogCards.filter(x=>x?.game==='union-arena').length,
                 resultCards:document.querySelectorAll('#cards .card-item.is-union-card').length,
-                badge:document.querySelector('#cards .union-source-badge')?.textContent||'',
-                filters:['#tcgSeriesFilter','#tcgColorFilter','#tcgRarityFilter','#tcgTypeFilter'].every(sel=>document.querySelector(sel)?.options.length>1)
+                badge:document.querySelector('#cards .union-source-badge')?.textContent||''
               }));
-              if(!state.visible||state.game!=='union-arena'||state.unionCards<6000||state.resultCards<1||!/Union Arena/.test(state.badge)||!state.filters)throw new Error(viewport.name+': Union Arena UI regression '+JSON.stringify(state));
+              if(!state.hidden||!state.setValue.startsWith('union-arena:')||state.unionSetOptions<1||state.unionCards<6000||state.resultCards<1||!/Union Arena/.test(state.badge))throw new Error(viewport.name+': Union Arena Set regression '+JSON.stringify(state));
               if(errors.length)throw new Error(viewport.name+': '+errors.join(' | '));
               await page.close();
             }
             await browser.close();
-            console.log('UNION_ARENA_UI_REGRESSION_PASS');
+            console.log('UNION_ARENA_SET_ONLY_REGRESSION_PASS');
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
