@@ -1,18 +1,16 @@
-/* Kasey's Binder Studio v3.0.4 — fixed glass brand across all themes. */
+/* Kasey's Binder Studio v4.0.5 — calm static brand across all themes. */
 body[data-theme] .brand-modern{display:flex!important;align-items:center!important;gap:10px!important}
 body[data-theme] .brand-modern .k-logo{
   position:relative!important;display:grid!important;place-items:center!important;flex:0 0 auto!important;
-  width:42px!important;height:42px!important;border:1px solid rgba(218,239,255,.45)!important;
-  border-radius:13px!important;overflow:hidden!important;color:#f4fbff!important;
-  background:linear-gradient(145deg,rgba(255,255,255,.10),rgba(145,205,255,.035))!important;
-  box-shadow:0 0 0 2px rgba(178,224,255,.08),0 0 20px rgba(132,205,255,.30),0 8px 24px rgba(0,0,0,.22),inset 0 1px rgba(255,255,255,.18)!important;
-  backdrop-filter:blur(9px) saturate(1.08)!important;-webkit-backdrop-filter:blur(9px) saturate(1.08)!important;
-  transform:none!important;filter:none!important;transition:box-shadow .2s ease,border-color .2s ease,background .2s ease!important;
+  width:42px!important;height:42px!important;border:1px solid color-mix(in srgb,var(--line,#46506a) 88%,white 12%)!important;
+  border-radius:13px!important;overflow:hidden!important;color:var(--text,#f4fbff)!important;
+  background:color-mix(in srgb,var(--surface2,#1a2030) 92%,white 8%)!important;
+  box-shadow:0 6px 16px rgba(0,0,0,.18)!important;
+  transform:none!important;filter:none!important;animation:none!important;
 }
-body[data-theme] .brand-modern .k-logo::after{content:"";position:absolute;inset:4px;border:1px solid rgba(255,255,255,.10);border-radius:9px;pointer-events:none}
-body[data-theme] .brand-modern .k-logo span{display:grid!important;place-items:center!important;width:100%!important;height:100%!important;font-size:21px!important;line-height:1!important;font-weight:900!important;color:#f4fbff!important;text-shadow:0 0 8px rgba(178,224,255,.55),0 1px 2px rgba(0,0,0,.4)!important}
+body[data-theme] .brand-modern .k-logo::after{content:none!important}
+body[data-theme] .brand-modern .k-logo span{display:grid!important;place-items:center!important;width:100%!important;height:100%!important;font-size:21px!important;line-height:1!important;font-weight:800!important;color:var(--text,#f4fbff)!important;text-shadow:none!important}
 body[data-theme] .brand-modern .k-logo span::before,body[data-theme] .brand-modern .k-logo span::after{content:none!important}
-body[data-theme] .brand-modern .brand-copy h1{color:#eef8ff!important;background:none!important;-webkit-background-clip:initial!important;background-clip:initial!important;-webkit-text-fill-color:#eef8ff!important;text-shadow:0 0 16px rgba(127,198,255,.20),0 1px 2px rgba(0,0,0,.42)!important;filter:none!important;text-transform:none!important;letter-spacing:normal!important}
-body[data-theme] .k-logo{border-radius:13px!important;transform:none!important;filter:none!important;background:linear-gradient(145deg,rgba(255,255,255,.10),rgba(145,205,255,.035))!important;border-color:rgba(218,239,255,.45)!important;box-shadow:0 0 0 2px rgba(178,224,255,.08),0 0 20px rgba(132,205,255,.30),0 8px 24px rgba(0,0,0,.22),inset 0 1px rgba(255,255,255,.18)!important}
-body.theme-switching .brand-modern .k-logo{animation:none!important}
+body[data-theme] .brand-modern .brand-copy h1{color:var(--text,#eef8ff)!important;background:none!important;-webkit-background-clip:initial!important;background-clip:initial!important;-webkit-text-fill-color:currentColor!important;text-shadow:none!important;filter:none!important;transform:none!important;animation:none!important;text-transform:none!important;letter-spacing:-.01em!important}
+body[data-theme] .k-logo{transform:none!important;filter:none!important;animation:none!important}
 @media(max-width:700px){body[data-theme] .brand-modern .k-logo{width:38px!important;height:38px!important;border-radius:11px!important}body[data-theme] .brand-modern .k-logo span{font-size:19px!important}}
