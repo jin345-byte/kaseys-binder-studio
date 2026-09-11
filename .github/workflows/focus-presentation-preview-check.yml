@@ -28,12 +28,15 @@ jobs:
           node-version: '22'
       - name: Static checks
         run: |
+          set -euo pipefail
           node --check public/features/focus-presentation-mode.js
-          grep -q 'focus-presentation-mode.css?v=3.3.3' public/features/staging-v287.js
-          grep -q 'focus-presentation-mode.js?v=3.3.3' public/features/staging-v287.js
+          grep -q 'focus-presentation-mode.css?v=4.0.5' public/features/staging-v287.js
+          grep -q 'focus-presentation-mode.js?v=4.0.5' public/features/staging-v287.js
           grep -q 'loadPagesWithTimeout' public/features/focus-presentation-mode.js
           grep -q 'KBSFocusPresentation' public/features/focus-presentation-mode.js
           grep -q 'focus-spread' public/features/focus-presentation-mode.js
+          ! grep -q 'focus-page-changing' public/features/focus-presentation-mode.js
+          ! grep -q '@keyframes' public/styles/focus-presentation-mode.css
           grep -q 'grid-template-columns:minmax(0,1fr) minmax(0,1fr)' public/styles/focus-presentation-mode.css
           grep -q 'object-fit:contain' public/styles/focus-presentation-mode.css
           grep -q 'controls #previewBinder.focus-preview-launch' public/styles/focus-presentation-mode.css
@@ -41,52 +44,21 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0 >/dev/null 2>&1
           npx playwright install chromium >/dev/null
-      - name: Verify deployed focus presentation mode
+      - name: Verify deployed static focus presentation mode
         shell: bash
         run: |
           node <<'JS'
           const {chromium}=require('playwright');
-          const BASE='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';
-          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          const BASE='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';const sleep=ms=>new Promise(r=>setTimeout(r,ms));
           (async()=>{
-            let live=false;
-            for(let n=0;n<45;n++){
-              const stamp=Date.now();
-              const [r,c,l,i]=await Promise.all([
-                fetch(BASE+'/features/focus-presentation-mode.js?qa='+stamp,{cache:'no-store'}).catch(()=>null),
-                fetch(BASE+'/styles/focus-presentation-mode.css?qa='+stamp,{cache:'no-store'}).catch(()=>null),
-                fetch(BASE+'/features/staging-v287.js?qa='+stamp,{cache:'no-store'}).catch(()=>null),
-                fetch(BASE+'/?qa='+stamp,{cache:'no-store'}).catch(()=>null)
-              ]);
-              const [t,css,loader,index]=await Promise.all([r?.ok?r.text().catch(()=>''):'',c?.ok?c.text().catch(()=>''):'',l?.ok?l.text().catch(()=>''):'',i?.ok?i.text().catch(()=>''):'']);
-              if(t.includes('v3.3.3')&&t.includes('loadPagesWithTimeout')&&css.includes('v3.3.3')&&loader.includes('focus-presentation-mode.css?v=3.3.3')&&loader.includes('focus-presentation-mode.js?v=3.3.3')&&index.includes('staging-v287.js?v=4.0.3-r2')){live=true;break}
-              await sleep(6000);
-            }
-            if(!live)throw new Error('Focus presentation assets did not propagate');
+            let live=false;for(let n=0;n<60;n++){const stamp=Date.now();const [r,c,l,i]=await Promise.all([fetch(BASE+'/features/focus-presentation-mode.js?qa='+stamp,{cache:'no-store'}).catch(()=>null),fetch(BASE+'/styles/focus-presentation-mode.css?qa='+stamp,{cache:'no-store'}).catch(()=>null),fetch(BASE+'/features/staging-v287.js?qa='+stamp,{cache:'no-store'}).catch(()=>null),fetch(BASE+'/?qa='+stamp,{cache:'no-store'}).catch(()=>null)]);const [t,css,loader,index]=await Promise.all([r?.ok?r.text():'',c?.ok?c.text():'',l?.ok?l.text():'',i?.ok?i.text():'']);if(t.includes('v4.0.5')&&t.includes('loadPagesWithTimeout')&&!t.includes('focus-page-changing')&&css.includes('v4.0.5')&&!css.includes('@keyframes')&&loader.includes('focus-presentation-mode.css?v=4.0.5')&&loader.includes('focus-presentation-mode.js?v=4.0.5')&&index.includes('staging-v287.js?v=4.0.5')){live=true;break}await sleep(5000)}if(!live)throw new Error('v4.0.5 focus assets did not propagate');
             const browser=await chromium.launch({headless:true});
             for(const viewport of [{width:1440,height:900},{width:950,height:700},{width:390,height:844}]){
-              const page=await browser.newPage({viewport});
-              const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
-              await page.goto(BASE+'/?focusqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
-              await page.waitForSelector('#previewBinder',{state:'visible',timeout:30000});
-              const started=Date.now();await page.click('#previewBinder');
-              await page.waitForSelector('#focusPresentation.open .focus-spread .focus-page-shell .grid',{timeout:5000});
-              if(Date.now()-started>4500)throw new Error('Focus mode did not open promptly');
-              const state=await page.evaluate(()=>{
-                const stage=document.querySelector('#focusPresentationStage'),spread=document.querySelector('#focusPresentation .focus-spread');
-                const grids=[...spread.querySelectorAll(':scope > .focus-page-shell > .grid')];
-                const rects=grids.map(grid=>{const r=grid.getBoundingClientRect();return {left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height}});
-                const imgs=grids.flatMap(grid=>[...grid.querySelectorAll('.pocket img')]);const pageCount=Number(stage?.dataset.pageCount||0);
-                return {body:document.body.classList.contains('focus-presentation-mode'),overlay:document.querySelector('#focusPresentation')?.classList.contains('open'),appVisibility:getComputedStyle(document.querySelector('.app')).visibility,exit:!!document.querySelector('#focusPresentationExit'),pageCount,visiblePages:grids.length,rects,viewport:{width:innerWidth,height:innerHeight},imageFits:imgs.every(img=>getComputedStyle(img).objectFit==='contain'||img.closest('.pocket')?.classList.contains('art'))};
-              });
-              if(!state.body||!state.overlay||state.appVisibility!=='hidden'||!state.exit)throw new Error('Focus mode state mismatch '+JSON.stringify(state));
-              if(state.pageCount>=2&&state.visiblePages!==2)throw new Error('Two-page spread missing '+JSON.stringify(state));
-              if(state.pageCount<2&&state.visiblePages!==1)throw new Error('Single-page fallback mismatch '+JSON.stringify(state));
-              for(const rect of state.rects)if(rect.left<0||rect.top<0||rect.right>state.viewport.width||rect.bottom>state.viewport.height)throw new Error('Focus grid clipped '+JSON.stringify(state));
-              if(!state.imageFits)throw new Error('Card images are not contained '+JSON.stringify(state));
-              await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.body.classList.contains('focus-presentation-mode'));
-              if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));await page.close();
+              const context=await browser.newContext({viewport});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+              await page.goto(BASE+'/?focusqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});await page.waitForSelector('#previewBinder',{state:'visible',timeout:30000});const started=Date.now();await page.click('#previewBinder');await page.waitForSelector('#focusPresentation.open .focus-spread .focus-page-shell .grid',{timeout:5000});if(Date.now()-started>4500)throw new Error('Focus mode did not open promptly');
+              const state=await page.evaluate(()=>{const stage=document.querySelector('#focusPresentationStage'),spread=document.querySelector('#focusPresentation .focus-spread'),grids=[...spread.querySelectorAll(':scope > .focus-page-shell > .grid')],rects=grids.map(grid=>{const r=grid.getBoundingClientRect();return{left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height}}),imgs=grids.flatMap(grid=>[...grid.querySelectorAll('.pocket img')]);return{body:document.body.classList.contains('focus-presentation-mode'),overlay:document.querySelector('#focusPresentation')?.classList.contains('open'),appVisibility:getComputedStyle(document.querySelector('.app')).visibility,exit:!!document.querySelector('#focusPresentationExit'),pageCount:Number(stage?.dataset.pageCount||0),visiblePages:grids.length,rects,viewport:{width:innerWidth,height:innerHeight},imageFits:imgs.every(img=>getComputedStyle(img).objectFit==='contain'||img.closest('.pocket')?.classList.contains('art'))}});
+              if(!state.body||!state.overlay||state.appVisibility!=='hidden'||!state.exit)throw new Error('Focus mode state mismatch '+JSON.stringify(state));if(state.pageCount>=2&&state.visiblePages!==2)throw new Error('Two-page spread missing '+JSON.stringify(state));if(state.pageCount<2&&state.visiblePages!==1)throw new Error('Single-page fallback mismatch '+JSON.stringify(state));for(const rect of state.rects)if(rect.left<0||rect.top<0||rect.right>state.viewport.width||rect.bottom>state.viewport.height)throw new Error('Focus grid clipped '+JSON.stringify(state));if(!state.imageFits)throw new Error('Card images are not contained');await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.body.classList.contains('focus-presentation-mode'));if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));await context.close();
             }
-            await browser.close();console.log('FOCUS_PRESENTATION_PASS');
+            await browser.close();console.log('FOCUS_PRESENTATION_V405_PASS');
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
