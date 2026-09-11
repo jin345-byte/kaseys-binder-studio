@@ -6,9 +6,10 @@ on:
     paths:
       - 'public/styles/full-themes.css'
       - 'public/styles/theme-layout-lock.css'
-      - 'public/styles/theme-font-unified.css'
       - 'public/styles/theme-branding.css'
+      - 'public/styles/typography-picker.css'
       - 'public/features/full-themes.js'
+      - 'public/features/typography-picker.js'
       - 'public/features/staging-v287.js'
       - '.github/workflows/full-themes-preview-check.yml'
   workflow_dispatch:
@@ -31,111 +32,36 @@ jobs:
       - name: Static theme checks
         run: |
           node --check public/features/full-themes.js
+          node --check public/features/typography-picker.js
           node --check public/features/staging-v287.js
-          grep -q 'body\[data-theme="pokedex"\]' public/styles/full-themes.css
-          grep -q 'body\[data-theme="game-boy"\]' public/styles/full-themes.css
-          grep -q 'body\[data-theme="neo-genesis"\]' public/styles/full-themes.css
-          grep -q 'body\[data-theme="team-rocket"\]' public/styles/full-themes.css
-          grep -q 'body\[data-theme="lavender"\]' public/styles/full-themes.css
-          grep -q 'body\[data-theme="cyberpunk"\]' public/styles/full-themes.css
-          grep -q 'body\[data-theme="cozy-sakura"\]' public/styles/full-themes.css
-          grep -q 'body\[data-theme="dark-academia"\]' public/styles/full-themes.css
-          grep -q 'body\[data-theme="e-ink"\]' public/styles/full-themes.css
-          grep -q 'body\[data-theme="retro-card-shop"\]' public/styles/full-themes.css
+          for theme in pokedex game-boy neo-genesis team-rocket lavender cyberpunk cozy-sakura dark-academia e-ink retro-card-shop; do grep -q "body\[data-theme=\"$theme\"\]" public/styles/full-themes.css; done
           grep -q 'kbsThemeLayoutLockStyle' public/features/full-themes.js
+          grep -q "DEFAULT_THEME='lavender'" public/features/full-themes.js
           grep -q 'Theme switching should be visual only' public/styles/theme-layout-lock.css
+          test ! -e public/styles/theme-font-unified.css
+          test ! -e public/styles/theme-animated-accents.css
       - name: Install browser tooling
         run: |
           npm install --no-save playwright@1.55.0 >/dev/null 2>&1
           npx playwright install chromium >/dev/null
-      - name: Verify deployed theme picker, visuals, geometry and persistence
+      - name: Verify deployed static theme picker, geometry and persistence
         shell: bash
         run: |
           node <<'JS'
           const {chromium}=require('playwright');
-          const BASE='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';
-          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          const BASE='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';const sleep=ms=>new Promise(r=>setTimeout(r,ms));
           const expected=['jolteon','pokedex','game-boy','neo-genesis','team-rocket','lavender','cyberpunk','cozy-sakura','dark-academia','e-ink','retro-card-shop'];
-          const round=n=>Math.round(n*10)/10;
           (async()=>{
-            let live=false;
-            for(let i=0;i<30;i++){
-              const [js,css]=await Promise.all([
-                fetch(BASE+'/features/full-themes.js?qa='+Date.now(),{cache:'no-store'}).catch(()=>null),
-                fetch(BASE+'/styles/theme-layout-lock.css?qa='+Date.now(),{cache:'no-store'}).catch(()=>null)
-              ]);
-              const jst=js?.ok?await js.text().catch(()=>''):'';
-              const csst=css?.ok?await css.text().catch(()=>''):'';
-              if(jst.includes('kbsThemeLayoutLockStyle')&&csst.includes('Theme switching should be visual only')){live=true;break;}
-              await sleep(6000);
-            }
-            if(!live)throw new Error('Theme layout-lock assets did not propagate to preview');
-
-            const browser=await chromium.launch({headless:true});
-            const page=await browser.newPage({viewport:{width:1440,height:1100}});
-            const errors=[];page.on('pageerror',e=>errors.push(e.message));
-            await page.goto(BASE+'/?themesqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
-            await page.waitForSelector('#fullThemeSelect',{timeout:30000});
-            const base=await page.evaluate(()=>({
-              options:[...document.querySelector('#fullThemeSelect').options].map(o=>o.value),
-              colors:['#binderColor','#pageColor','#sleeveColor'].filter(s=>document.querySelector(s)).length,
-              themeApi:typeof window.KBSFullThemes==='object'
-            }));
-            if(JSON.stringify(base.options)!==JSON.stringify(expected))throw new Error('Theme options mismatch '+JSON.stringify(base.options));
-            if(base.colors!==3)throw new Error('Appearance color controls changed unexpectedly');
-            if(!base.themeApi)throw new Error('Theme API unavailable');
-
-            const measure=()=>page.evaluate(()=>{
-              const pick=(sel)=>{
-                const el=[...document.querySelectorAll(sel)].find(x=>{const s=getComputedStyle(x),r=x.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0;});
-                if(!el)return null;
-                const r=el.getBoundingClientRect(),s=getComputedStyle(el);
-                return {left:r.left,top:r.top,width:r.width,height:r.height,radius:s.borderRadius,font:s.fontFamily,fontSize:s.fontSize,padding:s.padding};
-              };
-              return {
-                panel:pick('.panel'),
-                button:pick('.btn'),
-                browser:pick('.browser-pane'),
-                appearance:pick('.appearance-module'),
-                themeControl:pick('.full-theme-control'),
-                themeSelect:pick('#fullThemeSelect')
-              };
-            });
-            const same=(a,b,label)=>{
-              if(!a||!b)return;
-              for(const k of ['left','top','width','height']){
-                if(Math.abs(a[k]-b[k])>1)throw new Error(`${label}.${k} moved/resized: ${a[k]} -> ${b[k]}`);
-              }
-              for(const k of ['radius','font','fontSize','padding']){
-                if(a[k]!==b[k])throw new Error(`${label}.${k} changed: ${a[k]} -> ${b[k]}`);
-              }
-            };
-
-            await page.selectOption('#fullThemeSelect','jolteon');
-            await sleep(550);
-            const geometryBaseline=await measure();
-            const snapshots=[];
-            for(const id of expected){
-              await page.selectOption('#fullThemeSelect',id);
-              await page.waitForFunction(x=>document.body.dataset.theme===x,id);
-              await sleep(550);
-              const geometry=await measure();
-              for(const key of Object.keys(geometryBaseline))same(geometryBaseline[key],geometry[key],`${id}:${key}`);
-              snapshots.push(await page.evaluate(()=>{
-                const cs=getComputedStyle(document.body),grid=getComputedStyle(document.querySelector('#grid'));
-                return {id:document.body.dataset.theme,accent:cs.getPropertyValue('--accent').trim(),font:cs.fontFamily,gridBackground:grid.backgroundImage,binder:document.querySelector('#binderColor').value,page:document.querySelector('#pageColor').value,sleeve:document.querySelector('#sleeveColor').value,stored:JSON.parse(localStorage.getItem('michiStandaloneState')||'{}').theme||''};
-              }));
-            }
-            if(snapshots.some(x=>!x.accent||!x.gridBackground||x.stored!==x.id))throw new Error('Theme application/persistence failed '+JSON.stringify(snapshots));
-            if(new Set(snapshots.map(x=>x.accent)).size<8)throw new Error('Themes are not visually distinct enough');
-
-            await page.reload({waitUntil:'domcontentloaded',timeout:60000});
-            await page.waitForSelector('#fullThemeSelect',{timeout:30000});
-            await page.waitForFunction(()=>document.body.dataset.theme==='retro-card-shop');
-            const persisted=await page.$eval('#fullThemeSelect',el=>el.value);
-            if(persisted!=='retro-card-shop')throw new Error('Theme did not survive reload: '+persisted);
-            if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
-            await browser.close();
-            console.log('FULL_THEMES_LAYOUT_LOCK_PASS',JSON.stringify({count:expected.length,persisted,geometryBaseline,snapshots:snapshots.map(x=>({id:x.id,accent:x.accent}))}));
+            let live=false;for(let i=0;i<60;i++){const js=await fetch(BASE+'/features/full-themes.js?qa='+Date.now(),{cache:'no-store'}).catch(()=>null),t=js?.ok?await js.text():'';if(t.includes("DEFAULT_THEME='lavender'")&&t.includes('theme-branding.css?v=4.0.5')){live=true;break}await sleep(5000)}if(!live)throw new Error('Static theme assets did not propagate');
+            const browser=await chromium.launch({headless:true});const context=await browser.newContext({viewport:{width:1440,height:1100}});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await page.goto(BASE+'/?themesqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});await page.waitForSelector('#fullThemeSelect',{timeout:30000});
+            const initial=await page.evaluate(()=>({theme:document.body.dataset.theme,font:document.body.dataset.kbsFont,options:[...document.querySelector('#fullThemeSelect').options].map(o=>o.value),colors:['#binderColor','#pageColor','#sleeveColor'].filter(s=>document.querySelector(s)).length,themeApi:typeof KBSFullThemes==='object'}));
+            if(initial.theme!=='lavender'||initial.font!=='system')throw new Error('New-session defaults mismatch '+JSON.stringify(initial));if(JSON.stringify(initial.options)!==JSON.stringify(expected))throw new Error('Theme options mismatch');if(initial.colors!==3||!initial.themeApi)throw new Error('Appearance controls/theme API mismatch');
+            const measure=()=>page.evaluate(()=>{const pick=sel=>{const el=[...document.querySelectorAll(sel)].find(x=>{const s=getComputedStyle(x),r=x.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0});if(!el)return null;const r=el.getBoundingClientRect(),s=getComputedStyle(el);return{left:r.left,top:r.top,width:r.width,height:r.height,radius:s.borderRadius,font:s.fontFamily,fontSize:s.fontSize,padding:s.padding}};return{panel:pick('.panel'),button:pick('.btn'),browser:pick('.browser-pane'),appearance:pick('.appearance-module'),themeControl:pick('.full-theme-control'),themeSelect:pick('#fullThemeSelect')}});
+            const same=(a,b,label)=>{if(!a||!b)return;for(const k of ['left','top','width','height'])if(Math.abs(a[k]-b[k])>1)throw new Error(`${label}.${k} moved/resized ${a[k]} -> ${b[k]}`);for(const k of ['radius','font','fontSize','padding'])if(a[k]!==b[k])throw new Error(`${label}.${k} changed ${a[k]} -> ${b[k]}`)};
+            await page.evaluate(()=>KBSFullThemes.apply('lavender',{persist:false,applyPalette:false}));const baseline=await measure(),snapshots=[];
+            for(const id of expected){await page.evaluate(id=>KBSFullThemes.apply(id,{persist:true,applyPalette:false}),id);await page.waitForFunction(x=>document.body.dataset.theme===x,id);await page.waitForTimeout(30);const geometry=await measure();for(const key of Object.keys(baseline))same(baseline[key],geometry[key],`${id}:${key}`);snapshots.push(await page.evaluate(()=>{const cs=getComputedStyle(document.body),grid=getComputedStyle(document.querySelector('#grid'));return{id:document.body.dataset.theme,accent:cs.getPropertyValue('--accent').trim(),font:cs.fontFamily,gridBackground:grid.backgroundImage,stored:JSON.parse(localStorage.getItem('michiStandaloneState')||'{}').theme||''}}))}
+            if(snapshots.some(x=>!x.accent||!x.gridBackground||x.stored!==x.id))throw new Error('Theme application/persistence failed '+JSON.stringify(snapshots));if(new Set(snapshots.map(x=>x.accent)).size<8)throw new Error('Themes are not visually distinct enough');
+            await page.reload({waitUntil:'domcontentloaded',timeout:60000});await page.waitForSelector('#fullThemeSelect',{timeout:30000});await page.waitForFunction(()=>document.body.dataset.theme==='retro-card-shop');if(await page.$eval('#fullThemeSelect',el=>el.value)!=='retro-card-shop')throw new Error('Theme did not survive reload');if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));await browser.close();console.log('FULL_THEMES_STATIC_PASS',JSON.stringify({count:expected.length}));
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
