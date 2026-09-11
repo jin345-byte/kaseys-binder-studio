@@ -1,183 +1,25 @@
-/* Kasey's Binder Studio v3.3.5 — responsive button fit.
-   Preserve normal desktop geometry, but let controls shrink/reflow cleanly as
-   the available width changes. Theme switching remains cosmetic only. */
+/* Kasey's Binder Studio v4.0.5 — responsive control fit.
+   Removed legacy four-column/tiny-text button rules that caused clipping. */
+button,.btn,.page-arrow,.page-number,.library-build-cta,.artlink,.version-link{min-width:0;max-width:100%;box-sizing:border-box}
+.controls,.searchrow,.sectionhead,.canvashead,.arthead,.artadd,.binder-actions,.binder-library-actions,.cover-designer-actions{min-width:0}
+.controls>*,.searchrow>*,.sectionhead>*,.canvashead>*,.arthead>*,.artadd>*,.binder-actions>*,.binder-library-actions>*,.cover-designer-actions>*{min-width:0}
+.btn,.controls>button,.page-arrow,.page-number,.library-build-cta{white-space:normal;overflow:visible;text-overflow:clip}
 
-button,.btn,.page-arrow,.page-number,.library-build-cta,.artlink,.version-link{
-  min-width:0;
-  max-width:100%;
-  box-sizing:border-box;
-}
+.page-card{min-width:0!important}
+.page-card-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;width:100%!important;min-width:0!important;align-items:stretch!important}
+.page-card-actions button,.page-card-actions .btn{width:100%!important;min-width:0!important;max-width:100%!important;min-height:40px!important;height:auto!important;padding:7px 9px!important;font-size:12px!important;line-height:1.2!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;text-align:center!important;box-sizing:border-box!important}
 
-.controls,
-.searchrow,
-.sectionhead,
-.canvashead,
-.arthead,
-.artadd,
-.binder-actions,
-.binder-library-actions,
-.cover-designer-actions{
-  min-width:0;
-}
+.variant-pane{container-type:inline-size;container-name:variant-pane;min-width:0}
+.variant-pane .variant-filters,.variant-pane .variant-filters>*{min-width:0!important;max-width:100%!important}
+.variant-pane #clearArtist{min-width:0!important;max-width:100%!important;overflow:visible!important;text-overflow:clip!important}
+@container variant-pane (max-width:720px){.variant-pane .variant-filters{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:9px!important}.variant-pane #clearArtist{grid-column:1 / -1!important;width:100%!important;justify-self:stretch!important;white-space:normal!important;text-align:center!important}.variant-pane .catalog-filter{min-width:0!important}}
+@container variant-pane (max-width:430px){.variant-pane .variant-filters{grid-template-columns:minmax(0,1fr)!important}.variant-pane #clearArtist{grid-column:auto!important}}
 
-.controls>*,
-.searchrow>*,
-.sectionhead>*,
-.canvashead>*,
-.arthead>*,
-.artadd>*,
-.binder-actions>*,
-.binder-library-actions>*,
-.cover-designer-actions>*{
-  min-width:0;
-}
-
-.btn,
-.controls>button,
-.page-arrow,
-.page-number,
-.library-build-cta{
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-
-/* Binder overview page cards: keep View / Edit / Copy / Delete inside every
-   card instead of letting intrinsic button text push the row wider. */
-.page-card{
-  min-width:0!important;
-}
-.page-card-actions{
-  display:grid!important;
-  grid-template-columns:repeat(4,minmax(0,1fr))!important;
-  gap:4px!important;
-  width:100%!important;
-  min-width:0!important;
-  align-items:stretch!important;
-}
-.page-card-actions button,
-.page-card-actions .btn{
-  width:100%!important;
-  min-width:0!important;
-  max-width:100%!important;
-  min-height:34px!important;
-  height:auto!important;
-  padding:5px 3px!important;
-  font-size:clamp(9px,.72vw,11px)!important;
-  line-height:1.05!important;
-  white-space:nowrap!important;
-  overflow:hidden!important;
-  text-overflow:ellipsis!important;
-  text-align:center!important;
-  box-sizing:border-box!important;
-}
-
-.variant-pane{
-  container-type:inline-size;
-  container-name:variant-pane;
-  min-width:0;
-}
-.variant-pane .variant-filters{
-  min-width:0!important;
-  max-width:100%!important;
-}
-.variant-pane .variant-filters>*{
-  min-width:0!important;
-  max-width:100%!important;
-}
-.variant-pane #clearArtist{
-  min-width:0!important;
-  max-width:100%!important;
-  overflow:hidden!important;
-  text-overflow:ellipsis!important;
-}
-
-@container variant-pane (max-width:720px){
-  .variant-pane .variant-filters{
-    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
-    gap:9px!important;
-  }
-  .variant-pane #clearArtist{
-    grid-column:1 / -1!important;
-    width:100%!important;
-    justify-self:stretch!important;
-    white-space:normal!important;
-    text-align:center!important;
-  }
-  .variant-pane .catalog-filter{
-    min-width:0!important;
-  }
-}
-
-@container variant-pane (max-width:430px){
-  .variant-pane .variant-filters{
-    grid-template-columns:minmax(0,1fr)!important;
-  }
-  .variant-pane #clearArtist{
-    grid-column:auto!important;
-  }
-}
-
-@media(max-width:1180px){
-  .controls>button,
-  .controls .btn,
-  .sectionhead .btn,
-  .canvashead .btn,
-  .arthead .btn{
-    padding-inline:clamp(7px,1vw,11px);
-    font-size:clamp(11px,1.05vw,13px);
-  }
-}
-
+@media(max-width:1180px){.controls>button,.controls .btn,.sectionhead .btn,.canvashead .btn,.arthead .btn{padding-inline:clamp(8px,1vw,12px);font-size:clamp(12px,1.05vw,13px)}}
 @media(max-width:760px){
-  .controls>button,
-  .controls .btn,
-  .searchrow .btn,
-  .artadd .btn,
-  .binder-actions .btn,
-  .binder-library-actions .btn,
-  .cover-designer-actions .btn{
-    width:100%;
-    min-height:44px;
-    padding:8px 7px;
-    font-size:clamp(11px,3.2vw,13px);
-    line-height:1.15;
-    white-space:normal;
-    overflow-wrap:anywhere;
-    text-align:center;
-  }
-
-  .sectionhead,
-  .canvashead,
-  .arthead{
-    flex-wrap:wrap;
-  }
-
-  .sectionhead>.btn,
-  .canvashead>.btn,
-  .arthead>.btn{
-    flex:0 1 auto;
-    max-width:100%;
-    white-space:normal;
-  }
-
-  .page-card-actions{
-    gap:3px!important;
-  }
-  .page-card-actions button,
-  .page-card-actions .btn{
-    min-height:32px!important;
-    padding:4px 2px!important;
-    font-size:9px!important;
-  }
-}
-
-@media(max-width:390px){
-  .controls>button,
-  .controls .btn,
-  .searchrow .btn,
-  .artadd .btn{
-    font-size:11px;
-    padding-inline:5px;
-  }
+  .controls>button,.controls .btn,.searchrow .btn,.artadd .btn,.binder-actions .btn,.binder-library-actions .btn,.cover-designer-actions .btn{width:100%;min-height:44px;padding:9px 8px;font-size:12px;line-height:1.2;white-space:normal;overflow-wrap:anywhere;text-align:center}
+  .sectionhead,.canvashead,.arthead{flex-wrap:wrap}
+  .sectionhead>.btn,.canvashead>.btn,.arthead>.btn{flex:0 1 auto;max-width:100%;white-space:normal}
+  .page-card-actions{gap:8px!important}
+  .page-card-actions button,.page-card-actions .btn{min-height:44px!important;padding:8px!important;font-size:12px!important}
 }
