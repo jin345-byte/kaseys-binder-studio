@@ -8,7 +8,7 @@
     const version=document.querySelector('#versionLink');if(version)version.textContent='v4.0.5 STAGING';
     const meta=document.querySelector('meta[name="kbs-build"]');if(meta)meta.content='4.0.5-staging-preview';
     const title=document.querySelector('#buildInfoTitle');if(title)title.textContent='Kasey’s Binder Studio v4.0.5 Staging';
-    const section=document.querySelector('.build-info-content section');if(section)section.innerHTML='<strong>v4.0.5 Staging Preview</strong><p>Flow, readability and cleanup pass.</p><p>Removed obsolete theme-animation/font layers, removed legacy cramped four-column page actions, flattened brand glow styling, deduplicated dynamically loaded assets, strengthened card/binder overflow protection, and added a calmer rounded professional control system.</p><p>Lavender remains the default theme. System Sans, Verdana, Trebuchet and Georgia remain selectable. Performance, search, artwork, binder editing, printing, focus mode, themes, mobile controls and cloud compatibility remain under staging verification.</p>';
+    const section=document.querySelector('.build-info-content section');if(section)section.innerHTML='<strong>v4.0.5 Staging Preview</strong><p>Flow, readability and cleanup pass.</p><p>Removed obsolete theme-animation/font layers, removed legacy cramped four-column page actions, flattened brand glow styling, deduplicated dynamically loaded assets, lazy-loaded Guided Tour code, strengthened card/binder overflow protection, and added a calmer rounded professional control system.</p><p>Lavender remains the default theme. System Sans, Verdana, Trebuchet and Georgia remain selectable. Performance, search, artwork, binder editing, printing, focus mode, themes, mobile controls and cloud compatibility remain under staging verification.</p>';
   }
   syncBuildIdentity();
   loadStyle('styles/full-themes.css?v=3.0.5','kbsFullThemesStyle');
@@ -25,17 +25,31 @@
   loadScript('features/typography-picker.js?v=4.0.4','kbsTypographyPickerScript').catch(console.warn);
   loadScript('features/focus-presentation-mode.js?v=3.3.3','kbsFocusPresentationScript').catch(console.warn);
   loadScript('features/artwork-legacy-repair.js?v=2.9.1','kbsArtworkLegacyRepairScript').catch(console.warn);
+
   let coverLoaded=false,coverLoading=null;
   async function loadCoverDesigner(){if(coverLoaded)return;if(coverLoading)return coverLoading;loadStyle('styles/binder-cover-designer.css?v=3.1.1','kbsBinderCoverDesignerStyle');coverLoading=loadScript('features/binder-cover-designer.js?v=3.1.1','kbsBinderCoverDesignerScript').then(()=>{coverLoaded=true}).catch(err=>{coverLoading=null;throw err});return coverLoading}
   document.querySelector('#openBinders')?.addEventListener('click',()=>loadCoverDesigner().catch(console.warn),{capture:true});
   document.querySelector('#mobilePageBinders')?.addEventListener('click',()=>loadCoverDesigner().catch(console.warn),{capture:true});
+
   let sourceLinksLoaded=false,sourceLinksLoading=null;
   async function loadArtworkSources(){if(sourceLinksLoaded)return;if(sourceLinksLoading)return sourceLinksLoading;sourceLinksLoading=loadScript('features/art-source-links.js?v=2.9.1','kbsArtSourceLinksScript').then(()=>{sourceLinksLoaded=true}).catch(err=>{sourceLinksLoading=null;throw err});return sourceLinksLoading}
   document.querySelector('#libraryArtworkTab')?.addEventListener('click',()=>loadArtworkSources().catch(console.warn),{capture:true});
   document.querySelector('[data-mobile-lab="art"]')?.addEventListener('click',()=>loadArtworkSources().catch(console.warn),{capture:true});
+
+  let tourLoaded=false,tourLoading=null;
+  async function loadGuidedTour(){
+    if(tourLoaded)return;if(tourLoading)return tourLoading;
+    tourLoading=(async()=>{await loadScript('features/help-lab.js?v=2.9.0','kbsHelpLabScript');await loadScript('features/guided-tour-auto-library.js?v=2.9.0','kbsGuidedAutoLibraryScript');await loadScript('features/guided-tour-finish.js?v=2.9.0','kbsGuidedFinishScript');await loadScript('features/guided-tour-step16-fix.js?v=2.9.0','kbsGuidedStep16Script');tourLoaded=true})().catch(err=>{tourLoading=null;throw err});
+    return tourLoading;
+  }
+  function interceptTour(e){if(tourLoaded)return;e.preventDefault();e.stopImmediatePropagation();const target=e.currentTarget;loadGuidedTour().then(()=>setTimeout(()=>target.click(),0)).catch(console.warn)}
+  document.querySelector('#guidedTourLaunch')?.addEventListener('click',interceptTour,{capture:true});
+  document.querySelector('#mobilePageTour')?.addEventListener('click',interceptTour,{capture:true});
+
   let productivityLoaded=false,productivityLoading=null;
   function loadProductivity(){if(productivityLoaded)return Promise.resolve();if(productivityLoading)return productivityLoading;loadStyle('styles/productivity-suite.css?v=3.5.0','kbsProductivitySuiteStyle');productivityLoading=loadScript('features/productivity-suite.js?v=3.5.0','kbsProductivitySuiteScript').then(()=>{productivityLoaded=true;removeProductivityTriggers()}).catch(err=>{productivityLoading=null;throw err});return productivityLoading}
   const productivityEvents=['pointerdown','keydown','touchstart'];const productivityTrigger=()=>loadProductivity().catch(console.warn);function removeProductivityTriggers(){productivityEvents.forEach(name=>document.removeEventListener(name,productivityTrigger,true))}productivityEvents.forEach(name=>document.addEventListener(name,productivityTrigger,{capture:true,passive:name==='pointerdown'||name==='touchstart'}));
+
   const numbers=document.querySelector('#editorPageNumbers');if(numbers){const revealActive=()=>{const active=numbers.querySelector('.page-number.active,.page-number[aria-current="page"]');if(active)active.scrollIntoView({behavior:'auto',block:'center',inline:'nearest'})};new MutationObserver(()=>requestAnimationFrame(revealActive)).observe(numbers,{childList:true,subtree:true,attributes:true,attributeFilter:['class','aria-current']});numbers.addEventListener('click',()=>setTimeout(revealActive,20));document.querySelector('#editorPrev')?.addEventListener('click',()=>setTimeout(revealActive,40));document.querySelector('#editorNext')?.addEventListener('click',()=>setTimeout(revealActive,40));setTimeout(revealActive,150)}
-  globalThis.KBSPreviewBuild={version:BUILD,motion:'calm',defaultTheme:'lavender'};
+  globalThis.KBSPreviewBuild={version:BUILD,motion:'calm',defaultTheme:'lavender',lazy:{guidedTour:true,coverDesigner:true,artworkSources:true,productivity:true}};
 })();
