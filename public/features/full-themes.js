@@ -1,4 +1,4 @@
-/* Kasey's Binder Studio v4.0.4 theme lab — static full theme picker + persistence. */
+/* Kasey's Binder Studio v4.0.5 theme lab — static full theme picker + persistence. */
 (function(){
   const STORAGE_KEY='michiStandaloneState';
   const DEFAULT_THEME='lavender';
@@ -15,46 +15,14 @@
     'e-ink':{label:'E-Ink',description:'Quiet grayscale reading-device aesthetic',tier:'free',meta:'#f2f0e9',palette:['#56534c','#d9d6ce','#8b877e']},
     'retro-card-shop':{label:'Retro Card Shop',description:'Warm wood, paper labels and hobby-store nostalgia',tier:'premium',meta:'#f0d6a7',palette:['#7b5138','#d4bb8f','#a77855']}
   };
-
   function ensureStylesheet(id,href){if(document.querySelector('#'+id))return;const link=document.createElement('link');link.id=id;link.rel='stylesheet';link.href=href;document.head.appendChild(link)}
-  function ensureThemeStyles(){
-    ensureStylesheet('kbsThemePickerFitStyle','styles/theme-picker-fit.css?v=3.0.2');
-    ensureStylesheet('kbsThemeBrandingStyle','styles/theme-branding.css?v=4.0.4');
-    ensureStylesheet('kbsThemeUnifiedFontStyle','styles/theme-font-unified.css?v=4.0.4');
-    ensureStylesheet('kbsThemeLayoutLockStyle','styles/theme-layout-lock.css?v=3.0.5');
-  }
+  function ensureThemeStyles(){ensureStylesheet('kbsThemePickerFitStyle','styles/theme-picker-fit.css?v=3.0.2');ensureStylesheet('kbsThemeBrandingStyle','styles/theme-branding.css?v=4.0.5');ensureStylesheet('kbsThemeLayoutLockStyle','styles/theme-layout-lock.css?v=3.0.5')}
   function readStored(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')||{}}catch{return {}}}
   function writeStoredTheme(id){const current=readStored();current.theme=id;localStorage.setItem(STORAGE_KEY,JSON.stringify(current))}
   function setPaletteSwatches(theme){const bar=document.querySelector('#fullThemePalette');if(!bar)return;const colors=theme?.palette||[];bar.innerHTML=colors.map(c=>`<span style="--theme-swatch:${c}"></span>`).join('')}
   function updatePicker(id){const select=document.querySelector('#fullThemeSelect');if(select&&select.value!==id)select.value=id;const theme=THEMES[id];const desc=document.querySelector('#fullThemeDescription');if(desc)desc.textContent=theme?.description||'';const tier=document.querySelector('#fullThemeTier');if(tier){tier.textContent=theme?.tier==='premium'?'Theme Pack':'Included';tier.hidden=false}setPaletteSwatches(theme)}
   function setColorControl(id,value){const el=document.querySelector(id);if(el){el.value=value;el.dispatchEvent(new Event('input',{bubbles:true}))}}
-  function applyFullTheme(raw,{persist=true,applyPalette=false}={}){
-    const id=THEMES[raw]?raw:DEFAULT_THEME;
-    const theme=THEMES[id];
-    try{state.theme=id}catch{}
-    document.body.classList.remove('theme-switching');
-    document.body.dataset.theme=id;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content',theme.meta);
-    document.documentElement.style.colorScheme=['cozy-sakura','e-ink','retro-card-shop'].includes(id)?'light':'dark';
-    if(applyPalette&&theme.palette){const [binder,page,sleeve]=theme.palette;try{state.binderColor=binder;state.pageColor=page;state.sleeveColor=sleeve}catch{}setColorControl('#binderColor',binder);setColorControl('#pageColor',page);setColorControl('#sleeveColor',sleeve);try{renderGrid()}catch{}}
-    updatePicker(id);
-    if(persist){try{writeStoredTheme(id)}catch{}try{save()}catch{}}
-    window.dispatchEvent(new CustomEvent('kbs-theme-change',{detail:{theme:id,definition:{...theme}}}));
-    return id;
-  }
-  function installPicker(){
-    ensureThemeStyles();
-    const appearance=document.querySelector('.appearance-module');if(!appearance||document.querySelector('#fullThemeSelect'))return;
-    const control=document.createElement('label');control.className='full-theme-control';control.title='Theme changes colors, materials and textures while keeping the same app layout and control sizing.';
-    control.innerHTML=`<span class="full-theme-copy"><strong>Theme</strong><small id="fullThemeDescription">Complete app + binder style</small></span><select id="fullThemeSelect" aria-label="Full binder theme" title="Choose a full app and binder theme"></select><span class="full-theme-palette" id="fullThemePalette" aria-hidden="true"></span>`;
-    appearance.prepend(control);
-    const select=control.querySelector('#fullThemeSelect');
-    for(const [id,t] of Object.entries(THEMES)){const option=document.createElement('option');option.value=id;option.textContent=t.label;option.dataset.tier=t.tier;select.appendChild(option)}
-    select.dataset.fitReady='1';select.addEventListener('change',()=>applyFullTheme(select.value,{persist:true,applyPalette:true}));
-    const stored=readStored();const initial=THEMES[stored.theme]?stored.theme:DEFAULT_THEME;applyFullTheme(initial,{persist:false,applyPalette:false});
-  }
-  globalThis.applyTheme=applyFullTheme;
-  globalThis.KBSFullThemes={list:()=>Object.entries(THEMES).map(([id,t])=>({id,...t})),apply:(id,options={})=>applyFullTheme(id,options),get current(){return document.body.dataset.theme||DEFAULT_THEME},defaultTheme:DEFAULT_THEME};
-  ensureThemeStyles();
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installPicker,{once:true});else installPicker();
+  function applyFullTheme(raw,{persist=true,applyPalette=false}={}){const id=THEMES[raw]?raw:DEFAULT_THEME;const theme=THEMES[id];try{state.theme=id}catch{}document.body.dataset.theme=id;document.querySelector('meta[name="theme-color"]')?.setAttribute('content',theme.meta);document.documentElement.style.colorScheme=['cozy-sakura','e-ink','retro-card-shop'].includes(id)?'light':'dark';if(applyPalette&&theme.palette){const [binder,page,sleeve]=theme.palette;try{state.binderColor=binder;state.pageColor=page;state.sleeveColor=sleeve}catch{}setColorControl('#binderColor',binder);setColorControl('#pageColor',page);setColorControl('#sleeveColor',sleeve);try{renderGrid()}catch{}}updatePicker(id);if(persist){try{writeStoredTheme(id)}catch{}try{save()}catch{}}window.dispatchEvent(new CustomEvent('kbs-theme-change',{detail:{theme:id,definition:{...theme}}}));return id}
+  function installPicker(){ensureThemeStyles();const appearance=document.querySelector('.appearance-module');if(!appearance||document.querySelector('#fullThemeSelect'))return;const control=document.createElement('label');control.className='full-theme-control';control.title='Theme changes colors and materials while keeping the same app layout and control sizing.';control.innerHTML=`<span class="full-theme-copy"><strong>Theme</strong><small id="fullThemeDescription">Complete app + binder style</small></span><select id="fullThemeSelect" aria-label="Full binder theme" title="Choose a full app and binder theme"></select><span class="full-theme-palette" id="fullThemePalette" aria-hidden="true"></span>`;appearance.prepend(control);const select=control.querySelector('#fullThemeSelect');for(const [id,t] of Object.entries(THEMES)){const option=document.createElement('option');option.value=id;option.textContent=t.label;option.dataset.tier=t.tier;select.appendChild(option)}select.dataset.fitReady='1';select.addEventListener('change',()=>applyFullTheme(select.value,{persist:true,applyPalette:true}));const stored=readStored();const initial=THEMES[stored.theme]?stored.theme:DEFAULT_THEME;applyFullTheme(initial,{persist:false,applyPalette:false})}
+  globalThis.applyTheme=applyFullTheme;globalThis.KBSFullThemes={list:()=>Object.entries(THEMES).map(([id,t])=>({id,...t})),apply:(id,options={})=>applyFullTheme(id,options),get current(){return document.body.dataset.theme||DEFAULT_THEME},defaultTheme:DEFAULT_THEME};ensureThemeStyles();if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installPicker,{once:true});else installPicker();
 })();
