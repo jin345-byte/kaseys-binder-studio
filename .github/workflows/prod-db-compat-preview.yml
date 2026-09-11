@@ -52,13 +52,16 @@ jobs:
           rail=pathlib.Path('public/features/staging-v287.js').read_text()
           assert 'artwork-legacy-repair.js?v=2.9.1' in rail
           assert 'art-source-links.js?v=2.9.1' in rail
-          assert 'Binder Studio v4.0.4 preview' in rail
+          assert 'Binder Studio v4.0.5 preview' in rail
           assert 'typography-picker.js?v=4.0.4' in rail
-          assert 'static-ui.css?v=4.0.4' in rail
+          assert 'static-ui.css?v=4.0.5' in rail
+          assert 'ui-flow-polish.css?v=4.0.5' in rail
           assert 'theme-animated-accents' not in rail
+          assert 'theme-font-unified' not in rail
           themes=pathlib.Path('public/features/full-themes.js').read_text()
           assert "DEFAULT_THEME='lavender'" in themes
           assert not pathlib.Path('public/styles/theme-animated-accents.css').exists()
+          assert not pathlib.Path('public/styles/theme-font-unified.css').exists()
           broad=pathlib.Path('src/staging-worker.js').read_text()
           assert "frieren_(sousou_no_frieren)" in broad
           assert "base+'*'" in broad
@@ -104,17 +107,17 @@ jobs:
           const {chromium}=require('playwright');
           const PREVIEW='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';
           const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-          async function waitLive(){for(let i=0;i<60;i++){const r=await fetch(PREVIEW+'/features/staging-v287.js?compat='+Date.now(),{cache:'no-store'}).catch(()=>null);const t=r?.ok?await r.text():'';if(t.includes('v4.0.4 preview'))return;await sleep(5000)}throw new Error('v4.0.4 preview did not propagate')}
+          async function waitLive(){for(let i=0;i<60;i++){const r=await fetch(PREVIEW+'/features/staging-v287.js?compat='+Date.now(),{cache:'no-store'}).catch(()=>null);const t=r?.ok?await r.text():'';if(t.includes('v4.0.5 preview'))return;await sleep(5000)}throw new Error('v4.0.5 preview did not propagate')}
           (async()=>{
             await waitLive();const browser=await chromium.launch({headless:true});const context=await browser.newContext({viewport:{width:1440,height:1100}});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
             await page.goto(PREVIEW+'/?qa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
-            await page.waitForFunction(()=>globalThis.KBSPreviewBuild?.version==='4.0.4'&&globalThis.KBSFullThemes&&globalThis.KBSTypography,{timeout:30000});
-            const identity=await page.evaluate(()=>({version:document.querySelector('#versionLink')?.textContent.trim(),meta:document.querySelector('meta[name="kbs-build"]')?.content,theme:document.body.dataset.theme,motion:KBSPreviewBuild.motion}));
-            if(identity.version!=='v4.0.4 STAGING'||identity.meta!=='4.0.4-staging-preview'||identity.theme!=='lavender'||identity.motion!=='static')throw new Error('Preview identity mismatch: '+JSON.stringify(identity));
+            await page.waitForFunction(()=>globalThis.KBSPreviewBuild?.version==='4.0.5'&&globalThis.KBSFullThemes&&globalThis.KBSTypography,{timeout:30000});
+            const identity=await page.evaluate(()=>({version:document.querySelector('#versionLink')?.textContent.trim(),meta:document.querySelector('meta[name="kbs-build"]')?.content,theme:document.body.dataset.theme,motion:KBSPreviewBuild.motion,flow:!!document.querySelector('#kbsUiFlowPolishStyle')}));
+            if(identity.version!=='v4.0.5 STAGING'||identity.meta!=='4.0.5-staging-preview'||identity.theme!=='lavender'||identity.motion!=='calm'||!identity.flow)throw new Error('Preview identity mismatch: '+JSON.stringify(identity));
             const cfgResp=await page.request.get(PREVIEW+'/api/config');const cfg=await cfgResp.json();if(!cfg.databaseReady||!cfg.authReady||cfg.syncVersion!==2||!cfg.googleClientId)throw new Error('Preview config mismatch');
             await page.click('#libraryArtworkTab');await page.waitForFunction(()=>globalThis.KBSArtworkRepair&&globalThis.KBSArtSourceLinks,{timeout:10000});
             const broadResp=await page.request.get(PREVIEW+'/api/art-feed?tag=frieren&pid=0');const broad=await broadResp.json(),broadHeader=broadResp.headers()['x-kbs-art-broad'];if(!broadResp.ok()||broadHeader!=='1'||broad.broad!==true)throw new Error('Broad artwork endpoint not active');if(!Array.isArray(broad.results)||broad.results.length<10)throw new Error('Frieren broad search returned too few results');
             if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
-            console.log('PROD_PREVIEW_V404_PASS',JSON.stringify({identity,frierenResults:broad.results.length}));await browser.close();
+            console.log('PROD_PREVIEW_V405_PASS',JSON.stringify({identity,frierenResults:broad.results.length}));await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
