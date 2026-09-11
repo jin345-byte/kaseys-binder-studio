@@ -1,0 +1,84 @@
+/* Kasey's Binder Studio v4.0.5 — calm professional flow polish.
+   Rounded controls, consistent spacing, no pulsing/glow motion, and safer responsive flow. */
+:root{--kbs-radius-control:13px;--kbs-radius-panel:16px;--kbs-radius-pill:999px;--kbs-control-h:42px}
+
+button,.btn,.version-link,.artlink,.page-arrow,.page-number,.library-build-cta,.theme-button,
+input,select,textarea{
+  box-sizing:border-box!important;
+  border-radius:var(--kbs-radius-control)!important;
+}
+button,.btn,.version-link,.artlink,.page-arrow,.page-number,.library-build-cta,.theme-button{
+  min-height:var(--kbs-control-h)!important;
+  line-height:1.2!important;
+  font-weight:650!important;
+  letter-spacing:0!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  transition:background-color .12s ease,border-color .12s ease,box-shadow .12s ease,color .12s ease!important;
+  transform:none!important;
+  filter:none!important;
+}
+button:hover,.btn:hover,.version-link:hover,.artlink:hover,.theme-button:hover{
+  transform:none!important;
+  filter:none!important;
+}
+button:active,.btn:active,.version-link:active,.artlink:active,.theme-button:active{transform:none!important}
+
+.panel,.control-module,.browser-pane,.binder-shell,.viewer-shell,.feature-drawer-shell,.build-info-shell{
+  border-radius:var(--kbs-radius-panel)!important;
+}
+input,select,textarea{min-height:42px!important;padding:9px 11px!important;font-size:13px!important;line-height:1.25!important}
+
+.controls,.searchrow,.variant-filters,.sectionhead,.canvashead,.arthead,.artadd,.binder-toolbar,.viewer-nav,.mobile-page-actions{
+  min-width:0!important;
+}
+.controls>*,.searchrow>*,.variant-filters>*,.sectionhead>*,.canvashead>*,.arthead>*,.artadd>*,.binder-toolbar>*,.viewer-nav>*,.mobile-page-actions>*{
+  min-width:0!important;
+}
+
+/* Saved binder/page cards: metadata gets its own row and controls never overlap it. */
+.page-card,.binder-card,.saved-binder-card{height:auto!important;min-width:0!important;overflow:visible!important}
+.page-card-header,.page-card-meta,.binder-card-header,.binder-card-meta,.saved-binder-card-header,.saved-binder-card-meta{
+  position:static!important;display:flex!important;align-items:flex-start!important;justify-content:space-between!important;
+  gap:6px 10px!important;flex-wrap:wrap!important;width:100%!important;min-width:0!important;
+}
+.page-card-title,.page-card-name,.binder-card-title,.binder-card-name,.saved-binder-card-title,.saved-binder-card-name{
+  position:static!important;flex:1 1 130px!important;min-width:0!important;max-width:100%!important;
+  white-space:normal!important;overflow:visible!important;overflow-wrap:anywhere!important;text-overflow:clip!important;line-height:1.3!important;
+}
+.page-card-count,.binder-card-count,.saved-binder-card-count,.page-count,.binder-count{
+  position:static!important;flex:0 0 auto!important;white-space:nowrap!important;line-height:1.3!important;
+}
+.page-card-actions{position:static!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;width:100%!important;margin-top:10px!important}
+.page-card-actions button,.page-card-actions .btn{width:100%!important;min-width:0!important;min-height:42px!important;padding:8px 10px!important;font-size:12px!important}
+
+/* Search/card result metadata must remain inside each result card. */
+#cards .item,.cards .item,.card-result,.card-tile{height:auto!important;min-height:0!important;overflow:visible!important}
+#cards .item-copy,.cards .item-copy,.card-result-copy,.card-tile-copy{min-width:0!important;overflow:visible!important}
+#cards .item-copy small,.cards .item-copy small,.card-detail-row,.card-meta-row{min-height:18px!important;line-height:1.25!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important}
+
+/* Close controls remain compact but comfortable. */
+.modal-close,.feature-close,.build-info-close,#runtimeErrorDismiss{width:42px!important;min-width:42px!important;height:42px!important;min-height:42px!important;border-radius:12px!important;padding:0!important;display:grid!important;place-items:center!important}
+
+/* Flat professional branding: no glow or animated treatment. */
+.brand-modern .k-logo,.brand-modern .brand-copy h1{animation:none!important;filter:none!important;text-shadow:none!important;transform:none!important}
+.brand-modern .k-logo{box-shadow:0 6px 16px rgba(0,0,0,.18)!important}
+
+/* Decorative legacy state classes are intentionally inert. */
+.theme-switching,.page-switch-pop,.results-arrived,.just-placed{animation:none!important;transform:none!important;filter:none!important}
+
+@media(max-width:760px){
+  :root{--kbs-control-h:44px}
+  input,select,textarea{min-height:44px!important;font-size:16px!important}
+  .controls>button,.controls .btn,.searchrow .btn,.artadd .btn,.binder-toolbar .btn,.viewer-nav .btn,.mobile-page-actions .btn{min-height:44px!important}
+  .binder-toolbar{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+  .binder-toolbar .binder-status,#binderStatus{grid-column:1 / -1!important}
+  .page-card-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .page-card-actions button,.page-card-actions .btn{min-height:44px!important;font-size:12px!important}
+  .sectionhead,.canvashead,.arthead,.viewer-nav{flex-wrap:wrap!important}
+}
+@media(max-width:430px){
+  .binder-toolbar{grid-template-columns:minmax(0,1fr)!important}
+  .binder-toolbar .binder-status,#binderStatus{grid-column:auto!important}
+}
