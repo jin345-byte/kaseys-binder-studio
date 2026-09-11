@@ -1,8 +1,7 @@
-/* Kasey's Binder Studio v4.0.4 — static UI motion cleanup.
-   Removes decorative motion and glow/pulse effects for a calmer, more readable editor. */
-*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
-.brand-copy h1,.brand-copy h1 *{transform:none!important;filter:none!important;text-shadow:none!important}
-.k-logo,.k-logo::before,.k-logo::after,.k-logo span{animation:none!important;transform:none!important;filter:none!important}
-.theme-scene,.theme-scene *{animation:none!important;transform:none!important;filter:none!important}
+/* Kasey's Binder Studio v4.0.5 — calm static motion policy.
+   Decorative pulses/glows/letter movement stay disabled; short control-state transitions remain. */
+.brand-copy h1,.brand-copy h1 *,.k-logo,.k-logo::before,.k-logo::after,.k-logo span{animation:none!important;transform:none!important;filter:none!important;text-shadow:none!important}
 .page-number.page-switch-pop,.pocket.just-placed,.cards-viewport.results-arrived,.focus-page-changing{animation:none!important;transform:none!important;filter:none!important}
 body[data-theme]::before,body[data-theme]::after{animation:none!important;transform:none!important;filter:none!important}
+.theme-switching{animation:none!important;transform:none!important;filter:none!important}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
