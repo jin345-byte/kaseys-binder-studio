@@ -24,7 +24,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Static source and asset audit
+      - name: Static source, dead-code and asset audit
         shell: bash
         run: |
           set -euo pipefail
@@ -35,26 +35,41 @@ jobs:
           public=Path('public'); index=(public/'index.html').read_text(encoding='utf-8'); failures=[]
           ids=re.findall(r'\bid=["\']([^"\']+)["\']',index); dup=sorted({x for x in ids if ids.count(x)>1})
           if dup: failures.append('duplicate ids: '+','.join(dup))
-          refs=set()
+          refs=[]
           for m in re.finditer(r'(?:src|href)=["\']([^"\']+)["\']',index):
             r=m.group(1).split('?',1)[0]
-            if r and not r.startswith(('http://','https://','data:','#')): refs.add(r.lstrip('/'))
+            if r and not r.startswith(('http://','https://','data:','#')): refs.append(r.lstrip('/'))
           loader=(public/'features/staging-v287.js').read_text(encoding='utf-8')
-          for m in re.finditer(r"(?:loadScript|loadStyle)\(['\"]([^'\"]+)",loader): refs.add(m.group(1).split('?',1)[0].lstrip('/'))
-          missing=[r for r in refs if not (public/r).exists()]
-          if missing: failures.append('missing assets: '+','.join(sorted(missing)))
-          required=[('Binder Studio v4.0.4 preview' in loader,'v4.0.4 loader'),('typography-picker.js?v=4.0.4' in loader,'font picker'),('static-ui.css?v=4.0.4' in loader,'static UI'),('theme-animated-accents' not in loader,'obsolete animated accent reference')]
+          for m in re.finditer(r"(?:loadScript|loadStyle)\(['\"]([^'\"]+)",loader): refs.append(m.group(1).split('?',1)[0].lstrip('/'))
+          missing=sorted({r for r in refs if not (public/r).exists()})
+          if missing: failures.append('missing assets: '+','.join(missing))
+          required=[
+            ('Binder Studio v4.0.5 preview' in loader,'v4.0.5 loader'),
+            ('ui-flow-polish.css?v=4.0.5' in loader,'flow stylesheet'),
+            ('static-ui.css?v=4.0.5' in loader,'static UI'),
+            ('typography-picker.css?v=4.0.5' in loader,'typography style'),
+            ('theme-animated-accents' not in loader,'obsolete animated accent reference'),
+            ('theme-font-unified' not in loader,'obsolete theme font reference'),
+            ('v4.0.5 STAGING' in index,'visible version'),
+            ('4.0.5-staging-preview' in index,'build meta'),
+            ('class="theme-scene"' not in index,'obsolete decorative scene markup')
+          ]
           failures += [name for ok,name in required if not ok]
-          if (public/'styles/theme-animated-accents.css').exists(): failures.append('obsolete animated accent stylesheet still exists')
+          for dead in ['styles/theme-animated-accents.css','styles/theme-font-unified.css']:
+            if (public/dead).exists(): failures.append('obsolete asset still exists: '+dead)
           themes=(public/'features/full-themes.js').read_text(encoding='utf-8')
           if "DEFAULT_THEME='lavender'" not in themes: failures.append('Lavender default missing')
-          if 'theme-animated-accents' in themes: failures.append('theme module still loads animated accents')
           polish=(public/'features/staging-polish.js').read_text(encoding='utf-8')+(public/'styles/staging-polish.css').read_text(encoding='utf-8')
           for token in ['brand-animated','kbsTitleBounce','kbsLogoKick','kbsLogoSweep']:
             if token in polish: failures.append('removed motion token remains: '+token)
+          responsive=(public/'styles/responsive-button-fit.css').read_text(encoding='utf-8')
+          if 'repeat(4,minmax(0,1fr))' in responsive: failures.append('legacy four-column page actions remain')
+          if re.search(r'font-size:\s*(?:8|9)px',responsive): failures.append('legacy tiny responsive button text remains')
+          branding=(public/'styles/theme-branding.css').read_text(encoding='utf-8')
+          if '0 0 20px' in branding or 'text-shadow:0 0' in branding: failures.append('legacy branding glow remains')
           perf=(public/'features/performance-core.js').read_text(encoding='utf-8')
           if "PERF_VERSION='4.0.3'" not in perf or 'lazyRegistry.delete(src)' not in perf: failures.append('performance/lazy runtime mismatch')
-          print('STATIC_ASSETS_CHECKED',len(refs))
+          print('STATIC_ASSET_REFERENCES',len(set(refs)))
           if failures:
             print('\n'.join('FAIL: '+x for x in failures)); sys.exit(1)
           print('DEEP_STATIC_PASS')
@@ -63,36 +78,43 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0 >/dev/null 2>&1
           npx playwright install chromium >/dev/null
-      - name: Exercise staging preview features
+      - name: Exercise staging preview features and layout
         shell: bash
         run: |
           node <<'JS'
           const {chromium}=require('playwright');
           const BASE='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';
           const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-          async function waitLive(){for(let i=0;i<60;i++){const r=await fetch(BASE+'/features/staging-v287.js?deep='+Date.now(),{cache:'no-store'}).catch(()=>null);const t=r?.ok?await r.text():'';if(t.includes('v4.0.4 preview')&&t.includes('typography-picker.js?v=4.0.4'))return;await sleep(5000)}throw new Error('v4.0.4 assets did not propagate')}
+          async function waitLive(){for(let i=0;i<60;i++){const r=await fetch(BASE+'/features/staging-v287.js?deep='+Date.now(),{cache:'no-store'}).catch(()=>null);const t=r?.ok?await r.text():'';if(t.includes('v4.0.5 preview')&&t.includes('ui-flow-polish.css?v=4.0.5'))return;await sleep(5000)}throw new Error('v4.0.5 assets did not propagate')}
+          const themes=['jolteon','pokedex','game-boy','neo-genesis','team-rocket','lavender','cyberpunk','cozy-sakura','dark-academia','e-ink','retro-card-shop'];
+          const fonts=['system','verdana','trebuchet','georgia'];
           (async()=>{
             await waitLive();const browser=await chromium.launch({headless:true});const failures=[];
-            for(const viewport of [{name:'desktop',width:1440,height:1000},{name:'mobile',width:390,height:844}]){
+            for(const viewport of [{name:'desktop',width:1440,height:1000},{name:'tablet',width:900,height:900},{name:'mobile',width:390,height:844}]){
               const context=await browser.newContext({viewport:{width:viewport.width,height:viewport.height}});const page=await context.newPage();const errors=[],bad=[];
               page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});page.on('response',r=>{try{const u=new URL(r.url());if(u.origin===BASE&&(u.pathname.startsWith('/features/')||u.pathname.startsWith('/styles/'))&&r.status()>=400)bad.push(`${r.status()} ${u.pathname}`)}catch{}});
-              await page.goto(BASE+'/?focus=3.3.2&build=4.0.4&deep='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
-              await page.waitForFunction(()=>globalThis.KBSModules?.version==='4.0.3'&&globalThis.KBSFullThemes?.list?.().length===11&&globalThis.KBSTypography&&globalThis.KBSPreviewBuild?.version==='4.0.4',{timeout:60000});
-              const identity=await page.evaluate(()=>({version:document.querySelector('#versionLink')?.textContent.trim(),meta:document.querySelector('meta[name="kbs-build"]')?.content,theme:document.body.dataset.theme,motion:KBSPreviewBuild.motion,animations:document.getAnimations({subtree:true}).filter(a=>a.playState==='running').length,titleChildren:document.querySelector('.brand-copy h1')?.children.length||0}));
-              if(identity.version!=='v4.0.4 STAGING'||identity.meta!=='4.0.4-staging-preview'||identity.theme!=='lavender'||identity.motion!=='static'||identity.animations!==0||identity.titleChildren!==0)failures.push(`${viewport.name}: identity/static mismatch ${JSON.stringify(identity)}`);
+              await page.goto(BASE+'/?focus=3.3.2&build=4.0.5&deep='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForFunction(()=>globalThis.KBSModules?.version==='4.0.3'&&globalThis.KBSFullThemes?.list?.().length===11&&globalThis.KBSTypography&&globalThis.KBSPreviewBuild?.version==='4.0.5',{timeout:60000});
+              const identity=await page.evaluate(()=>({version:document.querySelector('#versionLink')?.textContent.trim(),meta:document.querySelector('meta[name="kbs-build"]')?.content,theme:document.body.dataset.theme,motion:KBSPreviewBuild.motion,titleChildren:document.querySelector('.brand-copy h1')?.children.length||0,scene:!!document.querySelector('.theme-scene'),flow:!!document.querySelector('#kbsUiFlowPolishStyle')}));
+              if(identity.version!=='v4.0.5 STAGING'||identity.meta!=='4.0.5-staging-preview'||identity.theme!=='lavender'||identity.motion!=='calm'||identity.titleChildren!==0||identity.scene||!identity.flow)failures.push(`${viewport.name}: identity mismatch ${JSON.stringify(identity)}`);
               for(const layout of ['2x2','3x3','4x3']){await page.evaluate(l=>{const e=document.querySelector('#layout');e.value=l;e.dispatchEvent(new Event('change',{bubbles:true}))},layout);await page.waitForTimeout(40);const got=await page.locator('#grid [data-pocket]').count(),want=layout==='2x2'?4:layout==='4x3'?12:9;if(got!==want)failures.push(`${viewport.name}: layout ${layout} ${got}/${want}`)}
-              for(const t of ['jolteon','pokedex','game-boy','neo-genesis','team-rocket','lavender','cyberpunk','cozy-sakura','dark-academia','e-ink','retro-card-shop']){await page.evaluate(t=>globalThis.KBSFullThemes.apply(t,{persist:false,applyPalette:false}),t);if(await page.$eval('body',e=>e.dataset.theme)!==t)failures.push(`${viewport.name}: theme ${t}`);const active=await page.evaluate(()=>document.getAnimations({subtree:true}).filter(a=>a.playState==='running').length);if(active)failures.push(`${viewport.name}: theme ${t} started ${active} animations`)}
-              for(const font of ['system','verdana','trebuchet','georgia']){await page.selectOption('#kbsFontSelect',font);if(await page.$eval('body',e=>e.dataset.kbsFont)!==font)failures.push(`${viewport.name}: font ${font}`)}
+              for(const t of themes){await page.evaluate(t=>globalThis.KBSFullThemes.apply(t,{persist:false,applyPalette:false}),t);if(await page.$eval('body',e=>e.dataset.theme)!==t)failures.push(`${viewport.name}: theme ${t}`)}
+              for(const font of fonts){await page.selectOption('#kbsFontSelect',font);if(await page.$eval('body',e=>e.dataset.kbsFont)!==font)failures.push(`${viewport.name}: font ${font}`)}
+              const controls=await page.evaluate(()=>[...document.querySelectorAll('button,.btn,select,input')].filter(el=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0}).map(el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return{id:el.id||el.className||el.tagName,w:r.width,h:r.height,scrollW:el.scrollWidth,scrollH:el.scrollHeight,fs:parseFloat(s.fontSize)||0,radius:parseFloat(s.borderRadius)||0}}));
+              for(const c of controls){if(c.fs&&c.fs<10)failures.push(`${viewport.name}: tiny control text ${c.id} ${c.fs}px`);if(c.w>40&&c.radius<7)failures.push(`${viewport.name}: square control ${c.id} radius ${c.radius}`);if(c.scrollW>c.w+3||c.scrollH>c.h+5)failures.push(`${viewport.name}: control overflow ${c.id} ${c.scrollW}x${c.scrollH}/${c.w}x${c.h}`)}
+              const localAssets=await page.evaluate(()=>{const nodes=[...document.querySelectorAll('script[src],link[rel="stylesheet"][href]')];const paths=nodes.map(n=>{try{return new URL(n.src||n.href,location.href).pathname}catch{return''}}).filter(x=>x.startsWith('/features/')||x.startsWith('/styles/'));return paths.filter((p,i,a)=>a.indexOf(p)!==i)});if(localAssets.length)failures.push(`${viewport.name}: duplicate runtime assets ${[...new Set(localAssets)].join(',')}`);
               if(await page.$('#kbsBinderCoverDesignerScript'))failures.push(`${viewport.name}: cover loaded eagerly`);
               if(viewport.name==='desktop'){const b=page.locator('#openBinders:visible').first();if(!await b.count())failures.push('desktop: My Binders hidden');else await b.click()}else await page.evaluate(()=>document.querySelector('#mobilePageBinders')?.click());
-              await page.waitForFunction(()=>!!document.querySelector('#kbsBinderCoverDesignerScript'),{timeout:15000});await page.locator('#closeBinders:visible').click().catch(()=>{});
+              await page.waitForFunction(()=>!!document.querySelector('#kbsBinderCoverDesignerScript'),{timeout:15000});
+              const binderOverlap=await page.evaluate(()=>{const bad=[];for(const card of document.querySelectorAll('.page-card,.binder-card,.saved-binder-card')){const title=card.querySelector('.page-card-title,.binder-card-title,.saved-binder-card-title,.page-card-name,.binder-card-name'),actions=card.querySelector('.page-card-actions');if(title&&actions){const a=title.getBoundingClientRect(),b=actions.getBoundingClientRect();if(a.bottom>b.top+1)bad.push((title.textContent||'card').trim())}}return bad});if(binderOverlap.length)failures.push(`${viewport.name}: binder overlap ${binderOverlap.join(',')}`);await page.locator('#closeBinders:visible').click().catch(()=>{});
               if(viewport.name==='mobile')await page.evaluate(()=>document.querySelector('[data-mobile-lab="art"]')?.click());else await page.locator('#libraryArtworkTab:visible').click();
               await page.waitForFunction(()=>!!document.querySelector('#kbsArtSourceLinksScript'),{timeout:15000});await page.mouse.click(10,10);await page.waitForFunction(()=>globalThis.KBSProductivity?.VERSION==='3.5.0',{timeout:30000});
+              if(!(await page.$('#kbsToolsBtn')))failures.push(`${viewport.name}: productivity tools missing`);
               if(viewport.name==='mobile')await page.evaluate(()=>document.querySelector('[data-mobile-lab="page"]')?.click());
               const preview=page.locator('#previewBinder:visible');if(await preview.count()){await preview.click();await page.waitForSelector('#focusPresentation.open .focus-spread .focus-page-shell .grid',{timeout:15000});await page.keyboard.press('Escape')}
               const opt=await page.evaluate(async()=>{const c=document.createElement('canvas');c.width=900;c.height=1200;c.getContext('2d').fillRect(0,0,900,1200);const b=await new Promise(r=>c.toBlob(r,'image/png'));const o=await globalThis.KBSModules.images.optimizeImageFile(new File([b],'qa.png',{type:'image/png'}));return {w:o.width,h:o.height,tw:o.thumbWidth,th:o.thumbHeight,bytes:o.bytes,thumb:o.thumbnailBytes}});if(opt.w>3600||opt.h>3600||opt.tw>480||opt.th>480||!opt.bytes||!opt.thumb)failures.push(`${viewport.name}: optimizer ${JSON.stringify(opt)}`);
               const banner=await page.evaluate(()=>({hidden:document.querySelector('#runtimeErrorBanner')?.hidden,text:document.querySelector('#runtimeErrorText')?.textContent||''}));if(!banner.hidden)failures.push(`${viewport.name}: runtime banner ${banner.text}`);if(bad.length)failures.push(`${viewport.name}: bad assets ${bad.join(',')}`);if(errors.filter(x=>!x.includes('favicon')).length)failures.push(`${viewport.name}: browser ${errors.join(' | ')}`);await context.close();
             }
-            await browser.close();if(failures.length)throw new Error(failures.join('\n'));console.log('DEEP_PREVIEW_AUDIT_PASS');
+            await browser.close();if(failures.length)throw new Error(failures.slice(0,80).join('\n'));console.log('DEEP_PREVIEW_AUDIT_PASS');
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
