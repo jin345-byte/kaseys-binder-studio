@@ -1,4 +1,4 @@
-/* Kasey's Binder Studio v4.0.5 — calm professional flow polish.
+/* Kasey's Binder Studio v4.0.5.1 — calm professional flow polish.
    Rounded controls, consistent spacing, no pulsing/glow motion, and safer responsive flow. */
 :root{--kbs-radius-control:13px;--kbs-radius-panel:16px;--kbs-radius-pill:999px;--kbs-control-h:42px}
 
@@ -35,6 +35,68 @@ input,select,textarea{min-height:42px!important;padding:9px 11px!important;font-
 }
 .controls>*,.searchrow>*,.variant-filters>*,.sectionhead>*,.canvashead>*,.arthead>*,.artadd>*,.binder-toolbar>*,.viewer-nav>*,.mobile-page-actions>*{
   min-width:0!important;
+}
+
+/* Print control: keep the Cards selector as a clean text toggle instead of a cramped checkbox/button hybrid. */
+.print-control{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  align-items:stretch!important;
+  gap:8px!important;
+  min-width:0!important;
+}
+.print-control>#print{
+  width:100%!important;
+  min-width:0!important;
+  margin:0!important;
+}
+.print-control>.include-cards{
+  position:relative!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:auto!important;
+  min-width:76px!important;
+  max-width:none!important;
+  min-height:42px!important;
+  margin:0!important;
+  padding:8px 14px!important;
+  border:1px solid var(--line)!important;
+  border-radius:13px!important;
+  background:var(--surface2)!important;
+  color:var(--text)!important;
+  cursor:pointer!important;
+  overflow:hidden!important;
+}
+.print-control>.include-cards input[type="checkbox"]{
+  position:absolute!important;
+  width:1px!important;
+  height:1px!important;
+  min-height:0!important;
+  margin:0!important;
+  padding:0!important;
+  opacity:0!important;
+  pointer-events:none!important;
+}
+.print-control>.include-cards span{
+  display:block!important;
+  position:static!important;
+  width:auto!important;
+  min-width:0!important;
+  margin:0!important;
+  padding:0!important;
+  font-size:12px!important;
+  font-weight:750!important;
+  line-height:1.2!important;
+  white-space:nowrap!important;
+}
+.print-control>.include-cards:has(input:checked){
+  border-color:var(--accent)!important;
+  background:color-mix(in srgb,var(--accent) 18%,var(--surface2))!important;
+}
+.print-control>.include-cards:focus-within{
+  outline:2px solid color-mix(in srgb,var(--accent) 35%,transparent)!important;
+  outline-offset:2px!important;
 }
 
 /* Saved binder/page cards: metadata gets its own row and controls never overlap it. */
@@ -76,9 +138,132 @@ input,select,textarea{min-height:42px!important;padding:9px 11px!important;font-
   .binder-toolbar .binder-status,#binderStatus{grid-column:1 / -1!important}
   .page-card-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}
   .page-card-actions button,.page-card-actions .btn{min-height:44px!important;font-size:12px!important}
-  .sectionhead,.canvashead,.arthead,.viewer-nav{flex-wrap:wrap!important}
+  .sectionhead,.arthead,.viewer-nav{flex-wrap:wrap!important}
+
+  .print-control{grid-template-columns:minmax(0,1fr) 82px!important;gap:8px!important;width:100%!important}
+  .print-control>#print,.print-control>.include-cards{min-height:44px!important}
+  .print-control>.include-cards{min-width:82px!important;padding:8px 10px!important}
+
+  /* Restored from the proven page-rail build: keep binder page navigation vertical on phones/narrow panels. */
+  .canvas-side-controls{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 54px!important;
+    grid-auto-flow:row!important;
+    align-items:start!important;
+    justify-items:stretch!important;
+    gap:8px!important;
+    width:100%!important;
+    min-width:0!important;
+  }
+  .canvas-side-controls>.control-module{
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    margin:0!important;
+  }
+  .canvas-side-controls>.binder-heading-module{
+    grid-column:2!important;
+    grid-row:1 / span 4!important;
+    align-self:start!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    width:54px!important;
+    min-width:54px!important;
+    max-width:54px!important;
+    padding:6px!important;
+    gap:6px!important;
+    border-radius:16px!important;
+    overflow:hidden!important;
+  }
+  .binder-heading-module .canvashead{display:none!important}
+  .binder-heading-module .editor-page-nav{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    grid-template-rows:38px minmax(0,1fr) 38px!important;
+    width:42px!important;
+    max-width:42px!important;
+    min-height:212px!important;
+    max-height:min(58vh,390px)!important;
+    gap:5px!important;
+    margin:0!important;
+    overflow:hidden!important;
+  }
+  .binder-heading-module .page-arrow{
+    display:grid!important;
+    place-items:center!important;
+    width:38px!important;
+    min-width:38px!important;
+    max-width:38px!important;
+    height:38px!important;
+    min-height:38px!important;
+    padding:0!important;
+    margin:auto!important;
+    border-radius:12px!important;
+    font-size:18px!important;
+    line-height:1!important;
+    transform:none!important;
+  }
+  .binder-heading-module .page-numbers{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    gap:5px!important;
+    width:42px!important;
+    min-width:42px!important;
+    height:100%!important;
+    min-height:0!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    padding:1px 2px!important;
+    scrollbar-width:none!important;
+    overscroll-behavior-y:contain!important;
+  }
+  .binder-heading-module .page-numbers::-webkit-scrollbar{display:none!important}
+  .binder-heading-module .page-number{
+    flex:0 0 36px!important;
+    display:grid!important;
+    place-items:center!important;
+    width:36px!important;
+    min-width:36px!important;
+    max-width:36px!important;
+    height:36px!important;
+    min-height:36px!important;
+    padding:0!important;
+    border-radius:12px!important;
+    font-size:12px!important;
+    line-height:1!important;
+    transform:none!important;
+    box-shadow:none!important;
+  }
+  .binder-heading-module .page-number.active,
+  .binder-heading-module .page-number[aria-current="page"]{
+    background:color-mix(in srgb,var(--accent) 18%,var(--surface2))!important;
+    border-color:var(--accent)!important;
+    transform:none!important;
+    box-shadow:none!important;
+  }
+  .canvas-side-controls>.library-module,
+  .canvas-side-controls>.selected-module,
+  .canvas-side-controls>.appearance-module,
+  .canvas-side-controls>.mobile-page-actions{
+    grid-column:1!important;
+    min-width:0!important;
+  }
+  .canvas-side-controls>.library-module{grid-row:1!important}
+  .canvas-side-controls>.mobile-page-actions{grid-row:2!important}
+  .canvas-side-controls>.selected-module{grid-row:3!important}
+  .canvas-side-controls>.appearance-module{grid-row:4!important}
+
+  body.mobile-lab-enabled .canvas .canvas-side-controls{grid-template-columns:minmax(0,1fr) 54px!important}
+  body.mobile-lab-enabled .canvas .canvas-side-controls>.binder-heading-module{display:flex!important;width:54px!important;max-width:54px!important}
+  body.mobile-lab-enabled .canvas .binder-heading-module .editor-page-nav{display:grid!important;grid-template-columns:1fr!important;grid-template-rows:38px minmax(0,1fr) 38px!important;width:42px!important;max-width:42px!important;min-height:212px!important}
+  body.mobile-lab-enabled .canvas .binder-heading-module .page-numbers{flex-direction:column!important;overflow-y:auto!important;overflow-x:hidden!important;width:42px!important}
+  body.mobile-lab-enabled .canvas .binder-heading-module .page-number{flex:0 0 36px!important;width:36px!important;min-width:36px!important;height:36px!important}
 }
 @media(max-width:430px){
   .binder-toolbar{grid-template-columns:minmax(0,1fr)!important}
   .binder-toolbar .binder-status,#binderStatus{grid-column:auto!important}
+  .print-control{grid-template-columns:minmax(0,1fr) 78px!important}
+  .print-control>.include-cards{min-width:78px!important}
 }
