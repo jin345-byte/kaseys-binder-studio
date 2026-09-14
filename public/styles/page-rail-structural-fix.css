@@ -1,0 +1,190 @@
+/* Kasey's Binder Studio — binder page rail structural fix.
+   Uses the component's actual width instead of the browser viewport so narrow
+   side panels stay vertical even inside a wide desktop window. */
+
+.canvas-workspace{
+  container-type:inline-size;
+  container-name:kbs-canvas-workspace;
+}
+
+/* Narrow canvas workspace: reserve a true right-side rail for page navigation. */
+@container kbs-canvas-workspace (max-width: 760px){
+  .canvas-side-controls{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 58px!important;
+    grid-auto-flow:row!important;
+    align-items:start!important;
+    justify-items:stretch!important;
+    gap:8px!important;
+    width:100%!important;
+    min-width:0!important;
+    text-align:left!important;
+  }
+  .canvas-side-controls>.control-module{
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    margin:0!important;
+  }
+  .canvas-side-controls>.binder-heading-module{
+    grid-column:2!important;
+    grid-row:1 / span 4!important;
+    align-self:start!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    width:58px!important;
+    min-width:58px!important;
+    max-width:58px!important;
+    padding:7px 5px!important;
+    gap:6px!important;
+    border-radius:16px!important;
+    overflow:hidden!important;
+  }
+  .binder-heading-module .canvashead{
+    display:none!important;
+  }
+  .binder-heading-module .editor-page-nav{
+    display:grid!important;
+    grid-template-columns:46px!important;
+    grid-template-rows:40px minmax(0,1fr) 40px!important;
+    width:46px!important;
+    min-width:46px!important;
+    max-width:46px!important;
+    min-height:220px!important;
+    max-height:min(58vh,420px)!important;
+    gap:6px!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:hidden!important;
+  }
+  .binder-heading-module .page-arrow{
+    display:grid!important;
+    place-items:center!important;
+    width:40px!important;
+    min-width:40px!important;
+    max-width:40px!important;
+    height:40px!important;
+    min-height:40px!important;
+    max-height:40px!important;
+    padding:0!important;
+    margin:auto!important;
+    border-radius:12px!important;
+    font-size:18px!important;
+    line-height:1!important;
+    transform:none!important;
+  }
+  .binder-heading-module .page-numbers{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    gap:6px!important;
+    width:46px!important;
+    min-width:46px!important;
+    max-width:46px!important;
+    height:auto!important;
+    min-height:126px!important;
+    max-height:300px!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    padding:1px 3px!important;
+    scrollbar-width:none!important;
+    overscroll-behavior-y:contain!important;
+  }
+  .binder-heading-module .page-numbers::-webkit-scrollbar{display:none!important}
+  .binder-heading-module .page-number{
+    flex:0 0 38px!important;
+    display:grid!important;
+    place-items:center!important;
+    width:38px!important;
+    min-width:38px!important;
+    max-width:38px!important;
+    height:38px!important;
+    min-height:38px!important;
+    max-height:38px!important;
+    padding:0!important;
+    border-radius:12px!important;
+    font-size:12px!important;
+    line-height:1!important;
+    transform:none!important;
+    box-shadow:none!important;
+  }
+  .binder-heading-module .page-number.active,
+  .binder-heading-module .page-number[aria-current="page"]{
+    background:color-mix(in srgb,var(--accent) 18%,var(--surface2))!important;
+    border-color:var(--accent)!important;
+    transform:none!important;
+    box-shadow:none!important;
+  }
+  .canvas-side-controls>.library-module,
+  .canvas-side-controls>.selected-module,
+  .canvas-side-controls>.appearance-module,
+  .canvas-side-controls>.mobile-page-actions{
+    grid-column:1!important;
+    min-width:0!important;
+  }
+  .canvas-side-controls>.library-module{grid-row:1!important}
+  .canvas-side-controls>.mobile-page-actions{grid-row:2!important}
+  .canvas-side-controls>.selected-module{grid-row:3!important}
+  .canvas-side-controls>.appearance-module{grid-row:4!important}
+}
+
+/* Mobile Preview is explicitly a narrow-layout mode, even inside a wide browser. */
+body.mobile-lab-enabled .canvas-workspace{
+  container-type:inline-size!important;
+}
+body.mobile-lab-enabled .canvas .canvas-side-controls{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 58px!important;
+  gap:8px!important;
+  width:100%!important;
+  min-width:0!important;
+  text-align:left!important;
+}
+body.mobile-lab-enabled .canvas .canvas-side-controls>.binder-heading-module{
+  grid-column:2!important;
+  grid-row:1 / span 4!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  width:58px!important;
+  min-width:58px!important;
+  max-width:58px!important;
+  padding:7px 5px!important;
+  overflow:hidden!important;
+}
+body.mobile-lab-enabled .canvas .binder-heading-module .canvashead{display:none!important}
+body.mobile-lab-enabled .canvas .binder-heading-module .editor-page-nav{
+  display:grid!important;
+  grid-template-columns:46px!important;
+  grid-template-rows:40px minmax(0,1fr) 40px!important;
+  width:46px!important;
+  min-width:46px!important;
+  max-width:46px!important;
+  min-height:220px!important;
+  gap:6px!important;
+  overflow:hidden!important;
+}
+body.mobile-lab-enabled .canvas .binder-heading-module .page-numbers{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  gap:6px!important;
+  width:46px!important;
+  min-width:46px!important;
+  max-width:46px!important;
+  min-height:126px!important;
+  max-height:300px!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+}
+body.mobile-lab-enabled .canvas .binder-heading-module .page-number{
+  flex:0 0 38px!important;
+  width:38px!important;
+  min-width:38px!important;
+  max-width:38px!important;
+  height:38px!important;
+  min-height:38px!important;
+  max-height:38px!important;
+}
