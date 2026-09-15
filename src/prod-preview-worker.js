@@ -1,6 +1,8 @@
 import stagingWorker from './staging-worker.js';
 
-const PREVIEW_BUILD='2.9.7-name-order-resilient-prod-db-live-auth';
+const PREVIEW_BUILD='2.9.8-read-only-prod-db-boundary';
+const PREVIEW_ENVIRONMENT='prod-db-compat-preview';
+const SAFE_STAGING_GET_APIS=new Set(['/api/art-image','/api/art-feed','/api/art-feed-v2','/api/card-search']);
 
 const POKEMON_CHARACTER_ALIASES={
   'ash':'satoshi_(pokemon)','ash ketchum':'satoshi_(pokemon)',
@@ -17,6 +19,38 @@ const POKEMON_CHARACTER_ALIASES={
   'steven stone':'daigo_(pokemon)','lance':'wataru_(pokemon)',
   'professor oak':'ookido_yukinari'
 };
+
+const previewJson=(data,status=200,extra={})=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store, no-cache, must-revalidate, max-age=0','x-kbs-preview-read-only':'1',...extra}});
+function cookies(request){const out={};for(const part of(request.headers.get('cookie')||'').split(';')){const i=part.indexOf('=');if(i>-1)out[part.slice(0,i).trim()]=decodeURIComponent(part.slice(i+1).trim())}return out}
+async function sha(value){const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)));return[...digest].map(x=>x.toString(16).padStart(2,'0')).join('')}
+async function readOnlySessionUser(request,env){
+  if(!env.DB)return null;
+  const token=cookies(request).kbs_session;if(!token)return null;
+  const tokenHash=await sha(token);
+  const row=await env.DB.prepare('SELECT u.id,u.email,u.display_name,u.picture_url,s.expires_at FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=?1').bind(tokenHash).first();
+  if(!row||Number(row.expires_at)<=Date.now())return null;
+  return{id:row.id,email:row.email,name:row.display_name,picture:row.picture_url};
+}
+async function readOnlyPreviewApi(request,env){
+  const url=new URL(request.url),path=url.pathname;
+  if(path==='/api/config')return previewJson({googleClientId:'',databaseReady:Boolean(env.DB),authReady:false,productionAuthConfigured:Boolean(env.DB&&env.GOOGLE_CLIENT_ID),syncVersion:2,previewReadOnly:true,previewEnvironment:PREVIEW_ENVIRONMENT});
+  if(path==='/api/me')return previewJson({authenticated:false,user:null,previewReadOnly:true,previewEnvironment:PREVIEW_ENVIRONMENT});
+  if(path==='/api/sync'){
+    if(!env.DB)return previewJson({error:'Cloud database is not connected.',previewReadOnly:true},503);
+    const user=await readOnlySessionUser(request,env);if(!user)return previewJson({error:'Sign in required.',previewReadOnly:true},401);
+    if(url.searchParams.get('meta')==='1'){
+      const row=await env.DB.prepare('SELECT updated_at,revision FROM binder_snapshots WHERE user_id=?1').bind(user.id).first();
+      return previewJson({snapshot:row?{updatedAt:row.updated_at,revision:row.revision}:null,previewReadOnly:true});
+    }
+    const row=await env.DB.prepare('SELECT payload,encoding,updated_at,revision FROM binder_snapshots WHERE user_id=?1').bind(user.id).first();
+    return previewJson({snapshot:row?{payload:row.payload,encoding:row.encoding,updatedAt:row.updated_at,revision:row.revision}:null,previewReadOnly:true});
+  }
+  return previewJson({error:'Preview API endpoint not available.',previewReadOnly:true},404);
+}
+function blockedPreviewMutation(request){
+  const url=new URL(request.url);
+  return url.pathname.startsWith('/api/')&&!['GET','HEAD','OPTIONS'].includes(request.method.toUpperCase());
+}
 
 function tidyQuery(raw){return String(raw||'').trim().replace(/\s+/g,' ').slice(0,120)}
 function normalizedKey(raw){return tidyQuery(raw).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[’']/g,'')}
@@ -102,12 +136,23 @@ async function characterArtworkFeed(request,env,ctx){
 export default{
   async fetch(request,env,ctx){
     const url=new URL(request.url);
-    const response=request.method==='GET'&&url.pathname==='/api/art-feed-v3'
-      ?await characterArtworkFeed(request,env,ctx)
-      :await stagingWorker.fetch(request,env,ctx);
+    let response;
+
+    if(url.pathname.startsWith('/api/')){
+      if(request.method==='OPTIONS')response=new Response(null,{status:204,headers:{allow:'GET, HEAD, OPTIONS'}});
+      else if(blockedPreviewMutation(request))response=previewJson({error:'This staging preview is read-only. Production data was not changed.',previewReadOnly:true,previewEnvironment:PREVIEW_ENVIRONMENT},403);
+      else if(request.method!=='GET')response=previewJson({error:'Preview API method not available.',previewReadOnly:true},405);
+      else if(url.pathname==='/api/art-feed-v3')response=await characterArtworkFeed(request,env,ctx);
+      else if(SAFE_STAGING_GET_APIS.has(url.pathname))response=await stagingWorker.fetch(request,env,ctx);
+      else response=await readOnlyPreviewApi(request,env);
+    }else response=await stagingWorker.fetch(request,env,ctx);
+
     const headers=new Headers(response.headers);
     headers.set('x-kbs-production-preview',PREVIEW_BUILD);
-    headers.set('cache-control','no-store');
+    headers.set('x-kbs-preview-read-only','1');
+    headers.set('x-robots-tag','noindex, nofollow, noarchive');
+    headers.set('x-content-type-options','nosniff');
+    headers.set('cache-control','no-store, no-cache, must-revalidate, max-age=0');
     headers.delete('content-length');
     return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
   }
