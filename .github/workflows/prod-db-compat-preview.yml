@@ -46,28 +46,45 @@ jobs:
           assert cfg['main']=='src/prod-preview-worker.js'
           assert db['database_name']=='kaseys-binder-studio-db'
           assert db['database_id']=='ea5aaa71-88e3-4bff-b997-7aa9bff3c24d'
+
           worker=pathlib.Path('src/prod-preview-worker.js').read_text()
           for token in ['2.9.8-read-only-prod-db-boundary','previewReadOnly:true','blockedPreviewMutation','x-kbs-preview-read-only','x-robots-tag']:
               assert token in worker, token
-          assert 'DELETE FROM sessions' not in worker
-          assert 'INSERT INTO sessions' not in worker
-          assert 'INSERT INTO binder_snapshots' not in worker
-          assert 'UPDATE binder_snapshots' not in worker
+          for forbidden in ['DELETE FROM sessions','INSERT INTO sessions','INSERT INTO binder_snapshots','UPDATE binder_snapshots']:
+              assert forbidden not in worker, forbidden
+
           cloud=pathlib.Path('public/features/cloud-sync.js').read_text()
           assert "format:'KBS-CLOUD-1'" in cloud
-          rail=pathlib.Path('public/features/staging-v287.js').read_text()
-          for token in ['artwork-legacy-repair.js?v=2.9.1','art-source-links.js?v=2.9.1','Binder Studio v4.0.5 preview','typography-picker.js?v=4.0.5','static-ui.css?v=4.0.5','ui-flow-polish.css?v=4.0.5','focus-presentation-mode.js?v=4.0.5','focus-presentation-mode.css?v=4.0.5']:
-              assert token in rail, token
+
+          staging=pathlib.Path('public/features/staging-v287.js').read_text()
+          for token in ['artwork-legacy-repair.js?v=2.9.1','art-source-links.js?v=2.9.1','Binder Studio v4.0.5 preview','typography-picker.js?v=4.0.5','static-ui.css?v=4.0.5','ui-flow-polish.css?v=4.0.5','focus-presentation-mode.js?v=4.0.5','focus-presentation-mode.css?v=4.0.5','page-rail-structural-fix.css?v=1.1.0','readOnlyCloud:true','Local only','Production cloud data cannot be changed here']:
+              assert token in staging, token
           for token in ['theme-animated-accents','theme-font-unified','staging-v287.css','staging-v288-fix.css']:
-              assert token not in rail, token
+              assert token not in staging, token
+
+          rail=pathlib.Path('public/styles/page-rail-structural-fix.css').read_text()
+          for token in ['grid-template-columns:minmax(0,1fr) 58px','flex-direction:column','flex-wrap:nowrap','overflow-y:auto','transform:none','box-shadow:none']:
+              assert token in rail, token
+
           themes=pathlib.Path('public/features/full-themes.js').read_text()
           assert "DEFAULT_THEME='lavender'" in themes
           for dead in ['public/styles/theme-animated-accents.css','public/styles/theme-font-unified.css','public/styles/staging-v287.css','public/styles/staging-v288-fix.css']:
               assert not pathlib.Path(dead).exists(), dead
+
           broad=pathlib.Path('src/staging-worker.js').read_text()
           assert "frieren_(sousou_no_frieren)" in broad
           assert "base+'*'" in broad
           assert "x-kbs-art-broad" in broad
+
+          app=pathlib.Path('public/app.js').read_text()
+          for token in ["item.kind==='art'||includeCards","w=art?s.columns*70:63","h=art?s.rows*95:88","const pw=columns*70,ph=rows*95","Print at 100% / Actual size","Every artwork insert is split into continuous 63 × 88mm card tiles"]:
+              assert token in app, token
+
+          index=pathlib.Path('public/index.html').read_text()
+          sw=pathlib.Path('public/sw.js').read_text()
+          assert 'serviceWorker.register' not in index
+          assert "self.registration.unregister()" in sw
+          assert "addEventListener('fetch'" not in sw
           print('STATIC_PROD_COMPAT_PASS')
           PY
 
@@ -99,6 +116,30 @@ jobs:
         shell: bash
         run: |
           node <<'JS'
-          const {chromium}=require('playwright');const PREVIEW='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';const sleep=ms=>new Promise(r=>setTimeout(r,ms));async function waitLive(){for(let i=0;i<60;i++){const r=await fetch(PREVIEW+'/api/config?compat='+Date.now(),{cache:'no-store'}).catch(()=>null);if(r?.ok){const cfg=await r.json().catch(()=>({}));if(cfg.previewReadOnly===true&&cfg.previewEnvironment==='prod-db-compat-preview'&&r.headers.get('x-kbs-preview-read-only')==='1')return;}await sleep(5000)}throw new Error('Read-only prod preview did not propagate')}
-          (async()=>{await waitLive();const browser=await chromium.launch({headless:true}),context=await browser.newContext({viewport:{width:1440,height:1100}}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});await page.goto(PREVIEW+'/?qa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});await page.waitForFunction(()=>globalThis.KBSPreviewBuild?.version==='4.0.5'&&globalThis.KBSFullThemes&&globalThis.KBSTypography,{timeout:30000});const identity=await page.evaluate(()=>({version:document.querySelector('#versionLink')?.textContent.trim(),meta:document.querySelector('meta[name="kbs-build"]')?.content,theme:document.body.dataset.theme,motion:KBSPreviewBuild.motion,flow:!!document.querySelector('#kbsUiFlowPolishStyle')}));if(identity.version!=='v4.0.5 STAGING'||identity.meta!=='4.0.5-staging-preview'||identity.theme!=='lavender'||identity.motion!=='calm'||!identity.flow)throw new Error('Preview identity mismatch: '+JSON.stringify(identity));const cfgResp=await page.request.get(PREVIEW+'/api/config'),cfg=await cfgResp.json(),cfgHeaders=cfgResp.headers();if(!cfg.databaseReady||cfg.authReady!==false||cfg.productionAuthConfigured!==true||cfg.syncVersion!==2||cfg.googleClientId!==''||cfg.previewReadOnly!==true||cfg.previewEnvironment!=='prod-db-compat-preview'||cfgHeaders['x-kbs-preview-read-only']!=='1'||!String(cfgHeaders['x-robots-tag']||'').includes('noindex'))throw new Error('Read-only preview config mismatch: '+JSON.stringify(cfg));const meResp=await page.request.get(PREVIEW+'/api/me'),me=await meResp.json();if(!meResp.ok()||me.authenticated!==false||me.user!==null||me.previewReadOnly!==true)throw new Error('Preview account isolation mismatch');for(const probe of [{path:'/api/auth/google',method:'POST'},{path:'/api/logout',method:'POST'},{path:'/api/sync',method:'PUT'},{path:'/api/sync',method:'DELETE'}]){const r=await page.request.fetch(PREVIEW+probe.path,{method:probe.method,data:{qa:true}}),body=await r.json().catch(()=>({}));if(r.status()!==403||r.headers()['x-kbs-preview-read-only']!=='1'||body.previewReadOnly!==true)throw new Error('Mutation boundary failed for '+probe.method+' '+probe.path+': '+r.status())}await page.click('#libraryArtworkTab');await page.waitForFunction(()=>globalThis.KBSArtworkRepair&&globalThis.KBSArtSourceLinks,{timeout:10000});const broadResp=await page.request.get(PREVIEW+'/api/art-feed?tag=frieren&pid=0'),broad=await broadResp.json(),broadHeader=broadResp.headers()['x-kbs-art-broad'];if(!broadResp.ok()||broadHeader!=='1'||broad.broad!==true||!Array.isArray(broad.results)||broad.results.length<10)throw new Error('Broad artwork endpoint regression');if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));console.log('PROD_PREVIEW_V405_READ_ONLY_PASS',JSON.stringify({identity,frierenResults:broad.results.length}));await browser.close()})().catch(e=>{console.error(e);process.exit(1)});
+          const {chromium}=require('playwright');
+          const PREVIEW='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          async function waitLive(){for(let i=0;i<60;i++){const r=await fetch(PREVIEW+'/api/config?compat='+Date.now(),{cache:'no-store'}).catch(()=>null);if(r?.ok){const cfg=await r.json().catch(()=>({}));if(cfg.previewReadOnly===true&&cfg.previewEnvironment==='prod-db-compat-preview'&&r.headers.get('x-kbs-preview-read-only')==='1')return;}await sleep(5000)}throw new Error('Read-only prod preview did not propagate')}
+          (async()=>{
+            await waitLive();
+            const browser=await chromium.launch({headless:true}),context=await browser.newContext({viewport:{width:1440,height:1100}}),page=await context.newPage(),errors=[];
+            page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+            await page.goto(PREVIEW+'/?qa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForFunction(()=>globalThis.KBSPreviewBuild?.version==='4.0.5'&&globalThis.KBSPreviewBuild?.readOnlyCloud===true&&globalThis.KBSFullThemes&&globalThis.KBSTypography,{timeout:30000});
+            const identity=await page.evaluate(()=>({version:document.querySelector('#versionLink')?.textContent.trim(),meta:document.querySelector('meta[name="kbs-build"]')?.content,theme:document.body.dataset.theme,motion:KBSPreviewBuild.motion,readOnlyCloud:KBSPreviewBuild.readOnlyCloud,flow:!!document.querySelector('#kbsUiFlowPolishStyle'),railHref:document.querySelector('#kbsPageRailStructuralFixStyle')?.getAttribute('href')}));
+            if(identity.version!=='v4.0.5 STAGING'||identity.meta!=='4.0.5-staging-preview'||identity.theme!=='lavender'||identity.motion!=='calm'||identity.readOnlyCloud!==true||!identity.flow||!String(identity.railHref||'').includes('v=1.1.0'))throw new Error('Preview identity mismatch: '+JSON.stringify(identity));
+
+            const rail=await page.evaluate(()=>{const heading=document.querySelector('.binder-heading-module'),nav=document.querySelector('.binder-heading-module .editor-page-nav'),numbers=document.querySelector('.binder-heading-module .page-numbers');const hs=getComputedStyle(heading),ns=getComputedStyle(nav),ps=getComputedStyle(numbers);return{headingDisplay:hs.display,columns:hs.gridTemplateColumns,navWidth:nav.getBoundingClientRect().width,direction:ps.flexDirection,wrap:ps.flexWrap,overflowY:ps.overflowY,navTransform:ns.transform}});
+            if(rail.headingDisplay!=='grid'||rail.navWidth<40||rail.navWidth>50||rail.direction!=='column'||rail.wrap!=='nowrap'||!['auto','scroll'].includes(rail.overflowY)||rail.navTransform!=='none')throw new Error('Vertical page rail regression: '+JSON.stringify(rail));
+
+            await page.waitForFunction(()=>document.querySelector('#cloudAccountLabel')?.textContent==='Local only'&&document.querySelector('#cloudSetupHint')?.textContent.includes('Production cloud data cannot be changed here.'),{timeout:10000});
+            const cfgResp=await page.request.get(PREVIEW+'/api/config'),cfg=await cfgResp.json(),cfgHeaders=cfgResp.headers();
+            if(!cfg.databaseReady||cfg.authReady!==false||cfg.productionAuthConfigured!==true||cfg.syncVersion!==2||cfg.googleClientId!==''||cfg.previewReadOnly!==true||cfg.previewEnvironment!=='prod-db-compat-preview'||cfgHeaders['x-kbs-preview-read-only']!=='1'||!String(cfgHeaders['x-robots-tag']||'').includes('noindex'))throw new Error('Read-only preview config mismatch: '+JSON.stringify(cfg));
+            const meResp=await page.request.get(PREVIEW+'/api/me'),me=await meResp.json();if(!meResp.ok()||me.authenticated!==false||me.user!==null||me.previewReadOnly!==true)throw new Error('Preview account isolation mismatch');
+            for(const probe of [{path:'/api/auth/google',method:'POST'},{path:'/api/logout',method:'POST'},{path:'/api/sync',method:'PUT'},{path:'/api/sync',method:'DELETE'}]){const r=await page.request.fetch(PREVIEW+probe.path,{method:probe.method,data:{qa:true}}),body=await r.json().catch(()=>({}));if(r.status()!==403||r.headers()['x-kbs-preview-read-only']!=='1'||body.previewReadOnly!==true)throw new Error('Mutation boundary failed for '+probe.method+' '+probe.path+': '+r.status())}
+            await page.click('#libraryArtworkTab');await page.waitForFunction(()=>globalThis.KBSArtworkRepair&&globalThis.KBSArtSourceLinks,{timeout:10000});
+            const broadResp=await page.request.get(PREVIEW+'/api/art-feed?tag=frieren&pid=0'),broad=await broadResp.json(),broadHeader=broadResp.headers()['x-kbs-art-broad'];if(!broadResp.ok()||broadHeader!=='1'||broad.broad!==true||!Array.isArray(broad.results)||broad.results.length<10)throw new Error('Broad artwork endpoint regression');
+            if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
+            console.log('PROD_PREVIEW_V405_READ_ONLY_PASS',JSON.stringify({identity,rail,frierenResults:broad.results.length}));await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
           JS
