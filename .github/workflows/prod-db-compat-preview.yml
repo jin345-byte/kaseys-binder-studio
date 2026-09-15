@@ -48,7 +48,7 @@ jobs:
           assert db['database_id']=='ea5aaa71-88e3-4bff-b997-7aa9bff3c24d'
 
           worker=pathlib.Path('src/prod-preview-worker.js').read_text()
-          for token in ['2.9.8-read-only-prod-db-boundary','previewReadOnly:true','blockedPreviewMutation','x-kbs-preview-read-only','x-robots-tag']:
+          for token in ['2.9.9-canonical-character-art-read-only','previewReadOnly:true','blockedPreviewMutation','x-kbs-preview-read-only','x-robots-tag',"'satoru gojo':['gojou_satoru']","'gojo satoru':['gojou_satoru']"]:
               assert token in worker, token
           for forbidden in ['DELETE FROM sessions','INSERT INTO sessions','INSERT INTO binder_snapshots','UPDATE binder_snapshots']:
               assert forbidden not in worker, forbidden
