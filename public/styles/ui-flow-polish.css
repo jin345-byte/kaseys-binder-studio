@@ -1,4 +1,4 @@
-/* Kasey's Binder Studio v4.0.5.3 — calm professional flow polish.
+/* Kasey's Binder Studio v4.0.5.4 — calm professional flow polish.
    Rounded controls, consistent spacing, no pulsing/glow motion, and safer responsive flow.
    Page-rail geometry intentionally lives only in page-rail-structural-fix.css. */
 :root{--kbs-radius-control:13px;--kbs-radius-panel:16px;--kbs-radius-pill:999px;--kbs-control-h:42px}
@@ -27,6 +27,17 @@ button:active,.btn:active,.version-link:active,.artlink:active,.theme-button:act
 input,select,textarea{min-height:42px!important;padding:9px 11px!important;font-size:13px!important;line-height:1.25!important}
 .controls,.searchrow,.variant-filters,.sectionhead,.canvashead,.arthead,.artadd,.binder-toolbar,.viewer-nav,.mobile-page-actions{min-width:0!important}
 .controls>*,.searchrow>*,.variant-filters>*,.sectionhead>*,.canvashead>*,.arthead>*,.artadd>*,.binder-toolbar>*,.viewer-nav>*,.mobile-page-actions>*{min-width:0!important}
+
+/* These named controls had high-specificity legacy rules that could still win
+   over the generic control contract in desktop/tablet themes. Keep the public
+   controls readable and consistently rounded regardless of theme order. */
+#versionLink,#mobilePreviewToggle,#guidedTourLaunch,#cloudAccountBtn,
+#searchBtn,#openBinders,#previewBinder,#printTiles,#clear,#clearArtist,#fullThemeSelect{
+  border-radius:var(--kbs-radius-control)!important;
+}
+#versionLink{font-size:11px!important;line-height:1.2!important;min-height:42px!important;padding:8px 11px!important}
+#mobilePreviewToggle,#guidedTourLaunch,#cloudAccountBtn,#searchBtn,#openBinders,#previewBinder,#printTiles,#clear,#clearArtist{font-size:max(11px,0.75rem)!important}
+#fullThemeSelect{font-size:13px!important;min-height:42px!important}
 
 /* Print control: keep the Cards selector as a clean text toggle instead of a cramped checkbox/button hybrid. */
 .print-control{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:stretch!important;gap:8px!important;min-width:0!important}
@@ -57,6 +68,9 @@ input,select,textarea{min-height:42px!important;padding:9px 11px!important;font-
   :root{--kbs-control-h:44px}
   input,select,textarea{min-height:44px!important;font-size:16px!important}
   .controls>button,.controls .btn,.searchrow .btn,.artadd .btn,.binder-toolbar .btn,.viewer-nav .btn,.mobile-page-actions .btn{min-height:44px!important}
+  #versionLink,#mobilePreviewToggle,#guidedTourLaunch,#cloudAccountBtn,#searchBtn,#openBinders,#previewBinder,#printTiles,#clear,#clearArtist,#fullThemeSelect{border-radius:12px!important}
+  #versionLink{font-size:10px!important;min-height:42px!important;padding:7px 6px!important}
+  #fullThemeSelect{min-height:44px!important;font-size:16px!important}
   .binder-toolbar{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
   .binder-toolbar .binder-status,#binderStatus{grid-column:1 / -1!important}
   .page-card-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}
