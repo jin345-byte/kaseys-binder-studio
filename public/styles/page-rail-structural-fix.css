@@ -1,9 +1,11 @@
 /* Kasey's Binder Studio — binder page rail structural fix v1.1.0.
    This is intentionally unconditional. Earlier versions depended on viewport/
-   container state and could fall back to the legacy horizontal nav. */
+   container state and could fall back to the legacy horizontal nav.
+   This file is the authoritative owner of page-rail geometry. */
 
 /* The heading and page navigator are two separate columns at every width. */
-.binder-heading-module{
+.binder-heading-module,
+.canvas-side-controls>.binder-heading-module{
   display:grid!important;
   grid-template-columns:minmax(0,1fr) 58px!important;
   grid-template-rows:auto!important;
@@ -12,6 +14,8 @@
   width:100%!important;
   min-width:0!important;
   max-width:none!important;
+  margin:0!important;
+  padding:0!important;
   overflow:visible!important;
 }
 
@@ -26,6 +30,7 @@
   width:100%!important;
   margin:0!important;
   overflow:hidden!important;
+  text-align:left!important;
 }
 .binder-heading-module .canvashead>div,
 .binder-heading-module .canvashead h2,
@@ -58,6 +63,7 @@
   margin:0!important;
   padding:0!important;
   overflow:hidden!important;
+  transform:none!important;
 }
 .binder-heading-module .page-arrow{
   display:grid!important;
@@ -123,23 +129,47 @@
   box-shadow:none!important;
 }
 
-/* Narrow phones: keep the heading readable while preserving the vertical rail. */
-@media(max-width:520px){
-  .binder-heading-module{
-    grid-template-columns:minmax(0,1fr) 52px!important;
+/* The dedicated rail owns mobile structure too. Undo older rules that moved the
+   entire heading module into a narrow second column and hid its title. */
+@media(max-width:760px){
+  .canvas-side-controls{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:stretch!important;
+    justify-content:flex-start!important;
     gap:8px!important;
-    padding:8px!important;
+    width:100%!important;
+    min-width:0!important;
+    text-align:left!important;
   }
+  .canvas-side-controls>.binder-heading-module{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 52px!important;
+    grid-column:auto!important;
+    grid-row:auto!important;
+    align-self:stretch!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    padding:8px!important;
+    gap:8px!important;
+    overflow:visible!important;
+  }
+  .binder-heading-module .canvashead{display:flex!important}
   .binder-heading-module .editor-page-nav{
     grid-template-columns:42px!important;
     width:42px!important;
     min-width:42px!important;
     max-width:42px!important;
+    min-height:220px!important;
+    max-height:min(58vh,360px)!important;
   }
   .binder-heading-module .page-numbers{
     width:42px!important;
     min-width:42px!important;
     max-width:42px!important;
+    min-height:126px!important;
+    max-height:268px!important;
   }
   .binder-heading-module .page-arrow{
     width:38px!important;
@@ -155,4 +185,88 @@
     max-height:36px!important;
     flex-basis:36px!important;
   }
+}
+
+/* Forced Mobile Preview can be narrow inside a wide desktop viewport, so it
+   needs selectors at least as specific as the legacy mobile-preview rules. */
+body.mobile-lab-enabled .canvas .canvas-side-controls{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  justify-content:flex-start!important;
+  gap:8px!important;
+  width:100%!important;
+  min-width:0!important;
+  text-align:left!important;
+}
+body.mobile-lab-enabled .canvas .canvas-side-controls>.binder-heading-module{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 52px!important;
+  grid-template-rows:auto!important;
+  grid-column:auto!important;
+  grid-row:auto!important;
+  align-self:stretch!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+  padding:8px!important;
+  gap:8px!important;
+  overflow:visible!important;
+}
+body.mobile-lab-enabled .canvas .binder-heading-module .canvashead{
+  display:flex!important;
+  grid-column:1!important;
+  grid-row:1!important;
+  text-align:left!important;
+}
+body.mobile-lab-enabled .canvas .binder-heading-module .editor-page-nav{
+  grid-column:2!important;
+  grid-row:1!important;
+  display:grid!important;
+  grid-template-columns:42px!important;
+  grid-template-rows:40px minmax(126px,1fr) 40px!important;
+  width:42px!important;
+  min-width:42px!important;
+  max-width:42px!important;
+  min-height:220px!important;
+  max-height:min(58vh,360px)!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+}
+body.mobile-lab-enabled .canvas .binder-heading-module .page-numbers{
+  display:flex!important;
+  flex-direction:column!important;
+  flex-wrap:nowrap!important;
+  align-items:center!important;
+  width:42px!important;
+  min-width:42px!important;
+  max-width:42px!important;
+  min-height:126px!important;
+  max-height:268px!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+}
+body.mobile-lab-enabled .canvas .binder-heading-module .page-arrow{
+  width:38px!important;
+  min-width:38px!important;
+  max-width:38px!important;
+}
+body.mobile-lab-enabled .canvas .binder-heading-module .page-number{
+  flex:0 0 36px!important;
+  width:36px!important;
+  min-width:36px!important;
+  max-width:36px!important;
+  height:36px!important;
+  min-height:36px!important;
+  max-height:36px!important;
+}
+body.mobile-lab-enabled .canvas .canvas-side-controls>.library-module,
+body.mobile-lab-enabled .canvas .canvas-side-controls>.selected-module,
+body.mobile-lab-enabled .canvas .canvas-side-controls>.appearance-module,
+body.mobile-lab-enabled .canvas .canvas-side-controls>.mobile-page-actions{
+  grid-column:auto!important;
+  grid-row:auto!important;
+  width:100%!important;
+  min-width:0!important;
 }
