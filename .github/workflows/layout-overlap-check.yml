@@ -41,6 +41,7 @@ jobs:
           const BASE='https://kaseys-binder-studio-prod-preview.jin345.workers.dev';
           const sleep=ms=>new Promise(r=>setTimeout(r,ms));
           async function waitLive(){for(let i=0;i<60;i++){const r=await fetch(BASE+'/features/staging-v287.js?overlap='+Date.now(),{cache:'no-store'}).catch(()=>null),t=r?.ok?await r.text():'';if(t.includes('v4.0.5 preview')&&t.includes('ui-flow-polish.css?v=4.0.5'))return;await sleep(5000)}throw new Error('v4.0.5 overlap assets did not propagate')}
+          async function ensurePageControls(page){await page.evaluate(()=>document.querySelector('[data-mobile-lab="page"]')?.click());await page.waitForFunction(()=>{const e=document.querySelector('#kbsFontSelect');if(!e)return false;const s=getComputedStyle(e),r=e.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0},{timeout:10000})}
           (async()=>{
             await waitLive();const browser=await chromium.launch({headless:true});const failures=[];
             const themes=['jolteon','pokedex','game-boy','neo-genesis','team-rocket','lavender','cyberpunk','cozy-sakura','dark-academia','e-ink','retro-card-shop'];
@@ -53,7 +54,7 @@ jobs:
               if(vp.name==='mobile')await page.evaluate(()=>document.querySelector('[data-mobile-lab="cards"]')?.click());
               const checkCard=async label=>{const x=await page.evaluate(()=>{const root=document.querySelector('#cards .card-item'),copy=root?.querySelector('.item-copy'),detail=root?.querySelector('.card-detail-row'),num=root?.querySelector('.card-number'),artist=root?.querySelector('.card-artist');if(!root||!copy||!detail||!num||!artist)return null;const rr=root.getBoundingClientRect(),cr=copy.getBoundingClientRect(),dr=detail.getBoundingClientRect(),nr=num.getBoundingClientRect(),ar=artist.getBoundingClientRect();return{rr,cr,dr,nr,ar,rootScroll:root.scrollHeight,rootClient:root.clientHeight,copyScroll:copy.scrollHeight,copyClient:copy.clientHeight}});if(!x){failures.push(`${vp.name}/${label}: missing QA card`);return}if([x.cr,x.dr,x.nr,x.ar].some(r=>r.bottom>x.rr.bottom+1||r.left<x.rr.left-1||r.right>x.rr.right+1))failures.push(`${vp.name}/${label}: card metadata clips`);if(x.rootScroll>x.rootClient+1||x.copyScroll>x.copyClient+1)failures.push(`${vp.name}/${label}: card hidden overflow`)};
               for(const theme of themes){await page.evaluate(t=>KBSFullThemes.apply(t,{persist:false,applyPalette:false}),theme);await checkCard(theme)}
-              await page.evaluate(()=>KBSFullThemes.apply('lavender',{persist:false,applyPalette:false}));for(const font of fonts){await page.selectOption('#kbsFontSelect',font);await checkCard('font-'+font)}
+              await page.evaluate(()=>KBSFullThemes.apply('lavender',{persist:false,applyPalette:false}));if(vp.name==='mobile')await ensurePageControls(page);for(const font of fonts){await page.selectOption('#kbsFontSelect',font);await checkCard('font-'+font)}
 
               if(vp.name==='desktop')await page.locator('#openBinders:visible').click();else await page.evaluate(()=>document.querySelector('#mobilePageBinders')?.click()||document.querySelector('#openBinders')?.click());
               await page.waitForSelector('#binderModal.open',{timeout:15000});await page.waitForFunction(()=>!!document.querySelector('#kbsBinderCoverDesignerScript'),{timeout:15000});
