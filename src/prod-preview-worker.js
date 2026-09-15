@@ -1,6 +1,6 @@
 import stagingWorker from './staging-worker.js';
 
-const PREVIEW_BUILD='2.9.8-read-only-prod-db-boundary';
+const PREVIEW_BUILD='2.9.9-canonical-character-art-read-only';
 const PREVIEW_ENVIRONMENT='prod-db-compat-preview';
 const SAFE_STAGING_GET_APIS=new Set(['/api/art-image','/api/art-feed','/api/art-feed-v2','/api/card-search']);
 
@@ -18,6 +18,10 @@ const POKEMON_CHARACTER_ALIASES={
   'elesa':'kamitsure_(pokemon)','roxie':'homika_(pokemon)',
   'steven stone':'daigo_(pokemon)','lance':'wataru_(pokemon)',
   'professor oak':'ookido_yukinari'
+};
+const CHARACTER_CANONICAL_ALIASES={
+  'satoru gojo':['gojou_satoru'],
+  'gojo satoru':['gojou_satoru']
 };
 
 const previewJson=(data,status=200,extra={})=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store, no-cache, must-revalidate, max-age=0','x-kbs-preview-read-only':'1',...extra}});
@@ -64,7 +68,7 @@ function reversedTwoPartName(raw){
 }
 function characterQueryPlan(raw){
   const original=tidyQuery(raw);if(!original)return [];
-  const key=normalizedKey(original);
+  const key=normalizedKey(original),canonical=CHARACTER_CANONICAL_ALIASES[key]||[];
   const fromMatch=original.match(/^(.+?)\s+from\s+(.+)$/i);
   if(fromMatch){
     const character=tidyQuery(fromMatch[1]),series=tidyQuery(fromMatch[2]);
@@ -81,10 +85,10 @@ function characterQueryPlan(raw){
     return [...new Set(alias?[alias,qualified]:[original,qualified])].slice(0,2);
   }
   if(alias)return [...new Set([original,alias])].slice(0,2);
-  if(stripped&&stripped.toLowerCase()!==original.toLowerCase())return [original,stripped];
+  if(stripped&&stripped.toLowerCase()!==original.toLowerCase())return [...new Set([original,stripped,...canonical])];
   const reversed=reversedTwoPartName(original);
-  if(reversed&&normalizedKey(reversed)!==key)return [original,reversed];
-  return [original];
+  if(reversed&&normalizedKey(reversed)!==key)return [...new Set([original,reversed,...canonical])];
+  return [...new Set([original,...canonical])];
 }
 
 async function callArtV2(request,env,ctx,query,pid){
