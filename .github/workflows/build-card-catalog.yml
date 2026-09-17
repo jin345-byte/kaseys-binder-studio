@@ -3,7 +3,7 @@ name: Build Unified Card Catalog
 on:
   workflow_dispatch:
   push:
-    branches: [staging-ui-auth-test]
+    branches: [prod-db-compat-preview]
     paths:
       - 'scripts/build-unified-catalog.mjs'
       - '.github/workflows/build-card-catalog.yml'
@@ -17,7 +17,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: binder-studio-unified-catalog
+  group: binder-studio-unified-catalog-preview
   cancel-in-progress: false
 
 jobs:
@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: staging-ui-auth-test
+          ref: prod-db-compat-preview
           fetch-depth: 0
 
       - uses: actions/setup-node@v4
@@ -49,8 +49,11 @@ jobs:
             echo "Skipping duplicate DST cron; New York hour is $hour"
           fi
 
-      - name: Build unified English + Pocket catalog
+      - name: Build unified Pokémon + Pocket + Union Arena catalog
         if: steps.gate.outputs.run == 'true'
+        env:
+          SCRYDEX_API_KEY: ${{ secrets.SCRYDEX_API_KEY }}
+          SCRYDEX_TEAM_ID: ${{ secrets.SCRYDEX_TEAM_ID }}
         run: node scripts/build-unified-catalog.mjs
 
       - name: Read build result
@@ -76,6 +79,7 @@ jobs:
           if(m.cards<15500)throw new Error('Catalog card count too low');
           if(m.english<15000)throw new Error('English card count too low');
           if(m.pocket<500)throw new Error('Pocket card count too low');
+          if(m.unionArena<6000)throw new Error('Union Arena card count too low');
           let total=0;
           for(const c of m.chunks){
             const rows=JSON.parse(fs.readFileSync('public/catalog/'+c.file,'utf8'));
@@ -86,38 +90,38 @@ jobs:
           console.log(`VALID ${m.cards} cards · ${m.chunks.length} chunks · ${m.version}`);
           JS
 
-      - name: Commit catalog snapshot
+      - name: Commit catalog snapshot to current staging branch
         if: steps.gate.outputs.run == 'true' && steps.result.outputs.changed == 'true'
         shell: bash
         run: |
           git config user.name "Binder Studio Catalog Bot"
           git config user.email "actions@users.noreply.github.com"
-          git add public/catalog
+          git add public/catalog catalog-build-result.json
           git commit -m "Update unified card catalog ${{ steps.result.outputs.version }}"
-          git push origin HEAD:staging-ui-auth-test
+          git push origin HEAD:prod-db-compat-preview
 
-      - name: Deploy catalog to staging Cloudflare
-        if: steps.gate.outputs.run == 'true' && (steps.result.outputs.changed == 'true' || github.event_name != 'schedule')
+      - name: Deploy catalog to read-only staging preview
+        if: steps.gate.outputs.run == 'true' && (steps.result.outputs.changed == 'true' || github.event_name == 'workflow_dispatch')
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         shell: bash
         run: |
-          git fetch origin staging-ui-auth-test
-          git reset --hard origin/staging-ui-auth-test
+          git fetch origin prod-db-compat-preview
+          git reset --hard origin/prod-db-compat-preview
           npm install --no-save wrangler@4 >/dev/null 2>&1
-          npx wrangler deploy --config=wrangler.staging.jsonc
+          npx wrangler deploy --config=wrangler.prod-preview.jsonc
 
-      - name: Smoke-test deployed manifest
-        if: steps.gate.outputs.run == 'true'
+      - name: Smoke-test deployed catalog manifest
+        if: steps.gate.outputs.run == 'true' && (steps.result.outputs.changed == 'true' || github.event_name == 'workflow_dispatch')
         shell: bash
         run: |
           node <<'JS'
           (async()=>{
             const expected=require('./public/catalog/manifest.json');
-            const base='https://kaseys-binder-studio-staging.jin345.workers.dev/catalog/manifest.json';
+            const base='https://kaseys-binder-studio-prod-preview.jin345.workers.dev/catalog/manifest.json';
             let last='';
-            for(let attempt=1;attempt<=12;attempt++){
+            for(let attempt=1;attempt<=18;attempt++){
               try{
                 const r=await fetch(base+'?t='+Date.now(),{cache:'no-store'});
                 if(!r.ok){last='HTTP '+r.status;throw new Error(last)}
@@ -128,7 +132,7 @@ jobs:
                 }
                 last=`got ${m.version}/${m.cards}, expected ${expected.version}/${expected.cards}`;
               }catch(e){last=e.message||String(e)}
-              console.log(`Waiting for Cloudflare propagation (${attempt}/12): ${last}`);
+              console.log(`Waiting for Cloudflare propagation (${attempt}/18): ${last}`);
               await new Promise(r=>setTimeout(r,5000));
             }
             throw new Error('Catalog did not propagate: '+last);
