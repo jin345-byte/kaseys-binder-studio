@@ -7,6 +7,11 @@ const ROOT=process.cwd();
 const OUT=path.join(ROOT,'public','catalog');
 const RESULT=path.join(ROOT,'catalog-build-result.json');
 const RAW='https://raw.githubusercontent.com/PokemonTCG/pokemon-tcg-data/master';
+const SCRYDEX_BASE='https://api.scrydex.com/pokemon/v1/en';
+const SCRYDEX_API_KEY=String(process.env.SCRYDEX_API_KEY||'').trim();
+const SCRYDEX_TEAM_ID=String(process.env.SCRYDEX_TEAM_ID||'').trim();
+const SCRYDEX_ENABLED=Boolean(SCRYDEX_API_KEY&&SCRYDEX_TEAM_ID);
+const SCRYDEX_RECENT_DAYS=240;
 const POCKET_SERIES='https://api.tcgdex.net/v2/en/series/tcgp';
 const POCKET_SET='https://api.tcgdex.net/v2/en/sets/';
 const UNION_ARENA_FULL='https://github.com/HanClinto/tcgjson/releases/latest/download/union-arena.full.json.gz';
@@ -15,11 +20,11 @@ const CHUNK_SIZE=4000;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const norm=v=>String(v??'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 
-async function fetchJson(url,{retries=4,delay=450}={}){
+async function fetchJson(url,{retries=4,delay=450,headers={}}={}){
   let last;
   for(let i=0;i<=retries;i++){
     try{
-      const r=await fetch(url,{headers:{Accept:'application/json','User-Agent':'Kaseys-Binder-Studio-Catalog-Builder/1.1'}});
+      const r=await fetch(url,{headers:{Accept:'application/json','User-Agent':'Kaseys-Binder-Studio-Catalog-Builder/1.2',...headers}});
       if(r.ok)return await r.json();
       last=new Error(`${r.status} ${r.statusText} for ${url}`);
       if(!(r.status===429||r.status>=500)||i===retries)throw last;
@@ -29,11 +34,16 @@ async function fetchJson(url,{retries=4,delay=450}={}){
   throw last||new Error(`Fetch failed: ${url}`);
 }
 
+async function fetchScrydex(url){
+  if(!SCRYDEX_ENABLED)throw new Error('Scrydex credentials are not configured');
+  return fetchJson(url,{headers:{'X-Api-Key':SCRYDEX_API_KEY,'X-Team-ID':SCRYDEX_TEAM_ID}});
+}
+
 async function fetchMaybeGzipJson(url,{retries=4,delay=700}={}){
   let last;
   for(let i=0;i<=retries;i++){
     try{
-      const r=await fetch(url,{headers:{Accept:'application/octet-stream,application/gzip,application/json','User-Agent':'Kaseys-Binder-Studio-Catalog-Builder/1.1'}});
+      const r=await fetch(url,{headers:{Accept:'application/octet-stream,application/gzip,application/json','User-Agent':'Kaseys-Binder-Studio-Catalog-Builder/1.2'}});
       if(!r.ok){
         last=new Error(`${r.status} ${r.statusText} for ${url}`);
         if(!(r.status===429||r.status>=500)||i===retries)throw last;
@@ -61,6 +71,25 @@ function englishRow(c,set){
     name:c.name||'Unknown card',originalName:c.name||'',localId:String(c.number??''),setId:set.id||c.set?.id||'',rawSetId:set.id||c.set?.id||'',setName:set.name||c.set?.name||set.id||'',series:set.series||c.set?.series||'',releaseDate:set.releaseDate||c.set?.releaseDate||'',
     illustrator:c.artist||'',artist:c.artist||'',rarity:c.rarity||'',supertype:c.supertype||'',subtypes:Array.isArray(c.subtypes)?c.subtypes:[],pokedexNumbers:Array.isArray(c.nationalPokedexNumbers)?c.nationalPokedexNumbers:[],
     imageHigh:c.images?.large||c.images?.small||'',imageLow:c.images?.small||c.images?.large||'',imageFallbacks:[c.images?.large,c.images?.small].filter(Boolean),imageSource:'Pokémon TCG data',kind:'card'
+  });
+}
+
+function scrydexImageSet(images){
+  const list=Array.isArray(images)?images:[];
+  const front=list.find(x=>String(x?.type||'').toLowerCase()==='front')||list[0]||{};
+  const fallbacks=[front.large,front.medium,front.small].filter(Boolean);
+  return {high:front.large||front.medium||front.small||'',low:front.small||front.medium||front.large||'',fallbacks};
+}
+function scrydexRow(c){
+  const set=c?.expansion||{};
+  const imgs=scrydexImageSet(c?.images);
+  const dex=Array.isArray(c?.national_pokedex_numbers)?c.national_pokedex_numbers:Array.isArray(c?.nationalPokedexNumbers)?c.nationalPokedexNumbers:[];
+  const localId=c?.number??c?.local_id??c?.localId??c?.expansion_sort_order??'';
+  return searchKeys({
+    id:`ptcg:${c.id}`,primaryId:c.id,sourceKey:`ptcg:${c.id}`,language:'en',game:'pokemon',gameLabel:'Pokémon TCG',catalog:'english',catalogLabel:'Pokémon TCG',source:'scrydex-pokemon',
+    name:c.name||'Unknown card',originalName:c.name||'',localId:String(localId),setId:set.id||'',rawSetId:set.id||'',setName:set.name||set.id||'',series:set.series||'',releaseDate:String(set.release_date||set.releaseDate||'').replaceAll('/','-'),
+    illustrator:c.illustrator||c.artist||'',artist:c.illustrator||c.artist||'',rarity:c.rarity||'',supertype:c.supertype||'',subtypes:Array.isArray(c.subtypes)?c.subtypes:[],pokedexNumbers:dex,
+    imageHigh:imgs.high,imageLow:imgs.low,imageFallbacks:imgs.fallbacks,imageSource:'Scrydex',kind:'card'
   });
 }
 
@@ -100,17 +129,64 @@ async function mapLimit(items,limit,fn){
   await Promise.all(workers);return out;
 }
 
-async function buildEnglish(){
-  console.log('Fetching Pokémon English set catalog…');
+async function fetchScrydexPages(baseUrl){
+  const out=[];let page=1,total=Infinity;
+  while(out.length<total){
+    const join=baseUrl.includes('?')?'&':'?';
+    const body=await fetchScrydex(`${baseUrl}${join}page=${page}&page_size=100`);
+    const rows=Array.isArray(body?.data)?body.data:[];
+    out.push(...rows);
+    total=Number(body?.totalCount??body?.total_count??out.length);
+    if(!rows.length||rows.length<100)break;
+    page++;
+    if(page>500)throw new Error('Scrydex pagination safety limit reached');
+  }
+  return out;
+}
+
+async function buildEnglishLegacy(){
+  console.log('Fetching Pokémon English legacy catalog…');
   const sets=await fetchJson(`${RAW}/sets/en.json`);
   if(!Array.isArray(sets)||sets.length<100)throw new Error(`English set catalog looked incomplete (${sets?.length||0})`);
   let done=0;
   const chunks=await mapLimit(sets,10,async set=>{
     const cards=await fetchJson(`${RAW}/cards/en/${encodeURIComponent(set.id)}.json`);
-    done++;if(done%20===0||done===sets.length)console.log(`Pokémon English sets ${done}/${sets.length}`);
+    done++;if(done%20===0||done===sets.length)console.log(`Pokémon English legacy sets ${done}/${sets.length}`);
     return Array.isArray(cards)?cards.map(c=>englishRow(c,set)):[];
   });
   return chunks.flat();
+}
+
+async function enrichRecentEnglishFromScrydex(legacy){
+  if(!SCRYDEX_ENABLED){
+    console.log('Scrydex credentials not configured; using legacy Pokémon source only.');
+    return {rows:legacy,source:'PokemonTCG/pokemon-tcg-data'};
+  }
+  console.log('Checking Scrydex for newly released English Pokémon sets…');
+  const expansions=await fetchScrydexPages(`${SCRYDEX_BASE}/expansions`);
+  const cutoff=Date.now()-SCRYDEX_RECENT_DAYS*86400000;
+  const futureLimit=Date.now()+7*86400000;
+  const recent=expansions.filter(set=>{
+    if(set?.is_online_only||set?.isOnlineOnly)return false;
+    const raw=String(set?.release_date||set?.releaseDate||'').replaceAll('/','-');
+    const t=Date.parse(raw);
+    return Number.isFinite(t)&&t>=cutoff&&t<=futureLimit;
+  }).sort((a,b)=>String(a.release_date||a.releaseDate||'').localeCompare(String(b.release_date||b.releaseDate||'')));
+  if(!recent.length){console.log('Scrydex returned no recent English expansions; retaining legacy catalog.');return {rows:legacy,source:'PokemonTCG/pokemon-tcg-data + Scrydex recent-set check'};}
+  console.log(`Scrydex recent-set window: ${recent.length} expansions over ${SCRYDEX_RECENT_DAYS} days`);
+  const freshChunks=await mapLimit(recent,3,async(set,i)=>{
+    const cards=await fetchScrydexPages(`${SCRYDEX_BASE}/expansions/${encodeURIComponent(set.id)}/cards`);
+    console.log(`Scrydex ${i+1}/${recent.length}: ${set.name||set.id} · ${cards.length} cards`);
+    return cards.map(scrydexRow);
+  });
+  const merged=new Map(legacy.map(row=>[row.id,row]));
+  for(const row of freshChunks.flat())merged.set(row.id,row);
+  return {rows:[...merged.values()],source:'PokemonTCG/pokemon-tcg-data + Scrydex recent releases'};
+}
+
+async function buildEnglish(){
+  const legacy=await buildEnglishLegacy();
+  return enrichRecentEnglishFromScrydex(legacy);
 }
 
 async function buildPocket(){
@@ -143,7 +219,8 @@ async function buildUnionArena(){
 }
 
 await fs.mkdir(OUT,{recursive:true});
-const [english,pocket,unionArena]=await Promise.all([buildEnglish(),buildPocket(),buildUnionArena()]);
+const [englishBuild,pocket,unionArena]=await Promise.all([buildEnglish(),buildPocket(),buildUnionArena()]);
+const english=englishBuild.rows;
 if(english.length<15000)throw new Error(`English catalog too small: ${english.length}`);
 if(pocket.length<500)throw new Error(`Pocket catalog too small: ${pocket.length}`);
 if(unionArena.length<6000)throw new Error(`Union Arena catalog too small: ${unionArena.length}`);
@@ -154,7 +231,7 @@ const contentHash=crypto.createHash('sha256').update(stable).digest('hex');
 const oldManifest=await fs.readFile(path.join(OUT,'manifest.json'),'utf8').then(JSON.parse).catch(()=>null);
 const counts={pokemon:english.length,pocket:pocket.length,unionArena:unionArena.length};
 if(oldManifest?.contentHash===contentHash){
-  await fs.writeFile(RESULT,JSON.stringify({changed:false,version:oldManifest.version,cards:all.length,english:english.length,pocket:pocket.length,unionArena:unionArena.length,counts},null,2));
+  await fs.writeFile(RESULT,JSON.stringify({changed:false,version:oldManifest.version,cards:all.length,english:english.length,pocket:pocket.length,unionArena:unionArena.length,counts,pokemonSource:englishBuild.source},null,2));
   console.log(`Catalog unchanged (${all.length.toLocaleString()} cards)`);
   process.exit(0);
 }
@@ -172,7 +249,7 @@ for(const entry of await fs.readdir(OUT)){
   if(/^cards-\d+\.json$/.test(entry)&&!chunkFiles.some(x=>x.file===entry))await fs.rm(path.join(OUT,entry));
 }
 const sets=new Set(all.map(x=>x.setId).filter(Boolean));
-const manifest={schema:2,version,contentHash,generatedAt:new Date().toISOString(),cards:all.length,english:english.length,pocket:pocket.length,unionArena:unionArena.length,counts,sets:sets.size,chunkSize:CHUNK_SIZE,chunks:chunkFiles,sources:{pokemon:'PokemonTCG/pokemon-tcg-data',pocket:'TCGdex',unionArena:'HanClinto/tcgjson + TCGplayer CDN'}};
+const manifest={schema:2,version,contentHash,generatedAt:new Date().toISOString(),cards:all.length,english:english.length,pocket:pocket.length,unionArena:unionArena.length,counts,sets:sets.size,chunkSize:CHUNK_SIZE,chunks:chunkFiles,sources:{pokemon:englishBuild.source,pocket:'TCGdex',unionArena:'HanClinto/tcgjson + TCGplayer CDN'}};
 await fs.writeFile(path.join(OUT,'manifest.json'),JSON.stringify(manifest,null,2));
-await fs.writeFile(RESULT,JSON.stringify({changed:true,...manifest},null,2));
+await fs.writeFile(RESULT,JSON.stringify({changed:true,...manifest,pokemonSource:englishBuild.source},null,2));
 console.log(`Built ${all.length.toLocaleString()} cards (${english.length.toLocaleString()} Pokémon + ${pocket.length.toLocaleString()} Pocket + ${unionArena.length.toLocaleString()} Union Arena) in ${chunkFiles.length} chunks; version ${version}`);
