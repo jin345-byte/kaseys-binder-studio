@@ -1,4 +1,4 @@
-/* Kasey's Binder Studio — binder page rail structural fix v1.1.0.
+/* Kasey's Binder Studio — binder page rail structural fix v1.2.0.
    This is intentionally unconditional. Earlier versions depended on viewport/
    container state and could fall back to the legacy horizontal nav.
    This file is the authoritative owner of page-rail geometry. */
@@ -29,19 +29,22 @@
   min-width:0!important;
   width:100%!important;
   margin:0!important;
-  overflow:hidden!important;
+  overflow:visible!important;
   text-align:left!important;
 }
 .binder-heading-module .canvashead>div,
 .binder-heading-module .canvashead h2,
 .binder-heading-module .canvashead .status{
   min-width:0!important;
+  width:100%!important;
   max-width:100%!important;
 }
 .binder-heading-module .canvashead h2,
 .binder-heading-module .canvashead .status{
   white-space:normal!important;
-  overflow-wrap:anywhere!important;
+  overflow:visible!important;
+  overflow-wrap:break-word!important;
+  word-break:normal!important;
   text-overflow:clip!important;
 }
 
@@ -129,8 +132,8 @@
   box-shadow:none!important;
 }
 
-/* The dedicated rail owns mobile structure too. Undo older rules that moved the
-   entire heading module into a narrow second column and hid its title. */
+/* The dedicated rail owns mobile structure too. Keep the page rail vertical,
+   but give the heading copy a real readable text column with no clipping. */
 @media(max-width:760px){
   .canvas-side-controls{
     display:flex!important;
@@ -144,18 +147,54 @@
   }
   .canvas-side-controls>.binder-heading-module{
     display:grid!important;
-    grid-template-columns:minmax(0,1fr) 52px!important;
+    grid-template-columns:minmax(0,1fr) 46px!important;
     grid-column:auto!important;
     grid-row:auto!important;
     align-self:stretch!important;
     width:100%!important;
     min-width:0!important;
     max-width:none!important;
-    padding:8px!important;
+    padding:11px 10px 12px!important;
     gap:8px!important;
     overflow:visible!important;
   }
-  .binder-heading-module .canvashead{display:flex!important}
+  .binder-heading-module .canvashead{
+    display:flex!important;
+    gap:0!important;
+    padding:1px 2px 0!important;
+    overflow:visible!important;
+  }
+  .binder-heading-module .canvashead>div{width:100%!important;min-width:0!important}
+  .binder-heading-module .canvashead .eyebrow{
+    display:block!important;
+    margin:0 0 4px!important;
+    font-size:11px!important;
+    line-height:1.25!important;
+    letter-spacing:.01em!important;
+    white-space:normal!important;
+  }
+  .binder-heading-module .canvashead h2{
+    display:block!important;
+    margin:0 0 8px!important;
+    padding:0!important;
+    font-size:16px!important;
+    line-height:1.25!important;
+    font-weight:750!important;
+    white-space:normal!important;
+    overflow:visible!important;
+    overflow-wrap:break-word!important;
+  }
+  .binder-heading-module .canvashead .status{
+    display:block!important;
+    margin:0!important;
+    padding:0!important;
+    font-size:11px!important;
+    line-height:1.45!important;
+    white-space:normal!important;
+    overflow:visible!important;
+    overflow-wrap:break-word!important;
+    word-break:normal!important;
+  }
   .binder-heading-module .editor-page-nav{
     grid-template-columns:42px!important;
     width:42px!important;
@@ -201,7 +240,7 @@ body.mobile-lab-enabled .canvas .canvas-side-controls{
 }
 body.mobile-lab-enabled .canvas .canvas-side-controls>.binder-heading-module{
   display:grid!important;
-  grid-template-columns:minmax(0,1fr) 52px!important;
+  grid-template-columns:minmax(0,1fr) 46px!important;
   grid-template-rows:auto!important;
   grid-column:auto!important;
   grid-row:auto!important;
@@ -209,7 +248,7 @@ body.mobile-lab-enabled .canvas .canvas-side-controls>.binder-heading-module{
   width:100%!important;
   min-width:0!important;
   max-width:none!important;
-  padding:8px!important;
+  padding:11px 10px 12px!important;
   gap:8px!important;
   overflow:visible!important;
 }
@@ -217,7 +256,41 @@ body.mobile-lab-enabled .canvas .binder-heading-module .canvashead{
   display:flex!important;
   grid-column:1!important;
   grid-row:1!important;
+  gap:0!important;
+  padding:1px 2px 0!important;
+  overflow:visible!important;
   text-align:left!important;
+}
+body.mobile-lab-enabled .canvas .binder-heading-module .canvashead>div{width:100%!important;min-width:0!important}
+body.mobile-lab-enabled .canvas .binder-heading-module .canvashead .eyebrow{
+  display:block!important;
+  margin:0 0 4px!important;
+  font-size:11px!important;
+  line-height:1.25!important;
+  letter-spacing:.01em!important;
+  white-space:normal!important;
+}
+body.mobile-lab-enabled .canvas .binder-heading-module .canvashead h2{
+  display:block!important;
+  margin:0 0 8px!important;
+  padding:0!important;
+  font-size:16px!important;
+  line-height:1.25!important;
+  font-weight:750!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  overflow-wrap:break-word!important;
+}
+body.mobile-lab-enabled .canvas .binder-heading-module .canvashead .status{
+  display:block!important;
+  margin:0!important;
+  padding:0!important;
+  font-size:11px!important;
+  line-height:1.45!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  overflow-wrap:break-word!important;
+  word-break:normal!important;
 }
 body.mobile-lab-enabled .canvas .binder-heading-module .editor-page-nav{
   grid-column:2!important;
