@@ -1,9 +1,7 @@
-/* Kasey's Binder Studio — binder page rail structural fix v1.2.0.
-   This is intentionally unconditional. Earlier versions depended on viewport/
-   container state and could fall back to the legacy horizontal nav.
-   This file is the authoritative owner of page-rail geometry. */
+/* Kasey's Binder Studio — page navigation structural fix v1.3.0.
+   Desktop keeps the vertical rail. Phone layouts use a compact horizontal pager
+   so the binder title and guidance get the full card width. */
 
-/* The heading and page navigator are two separate columns at every width. */
 .binder-heading-module,
 .canvas-side-controls>.binder-heading-module{
   display:grid!important;
@@ -36,19 +34,17 @@
 .binder-heading-module .canvashead h2,
 .binder-heading-module .canvashead .status{
   min-width:0!important;
-  width:100%!important;
   max-width:100%!important;
 }
 .binder-heading-module .canvashead h2,
 .binder-heading-module .canvashead .status{
   white-space:normal!important;
-  overflow:visible!important;
   overflow-wrap:break-word!important;
   word-break:normal!important;
   text-overflow:clip!important;
 }
 
-/* True vertical rail: prev, scrollable page numbers, next. */
+/* Desktop/tablet vertical rail. */
 .binder-heading-module .editor-page-nav{
   grid-column:2!important;
   grid-row:1!important;
@@ -132,8 +128,7 @@
   box-shadow:none!important;
 }
 
-/* The dedicated rail owns mobile structure too. Keep the page rail vertical,
-   but give the heading copy a real readable text column with no clipping. */
+/* Phone: full-width heading followed by a compact Previous / Page / Next row. */
 @media(max-width:760px){
   .canvas-side-controls{
     display:flex!important;
@@ -147,21 +142,22 @@
   }
   .canvas-side-controls>.binder-heading-module{
     display:grid!important;
-    grid-template-columns:minmax(0,1fr) 46px!important;
-    grid-column:auto!important;
-    grid-row:auto!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:auto auto!important;
     align-self:stretch!important;
     width:100%!important;
     min-width:0!important;
     max-width:none!important;
-    padding:11px 10px 12px!important;
-    gap:8px!important;
+    padding:12px!important;
+    gap:10px!important;
     overflow:visible!important;
   }
   .binder-heading-module .canvashead{
+    grid-column:1!important;
+    grid-row:1!important;
     display:flex!important;
-    gap:0!important;
-    padding:1px 2px 0!important;
+    width:100%!important;
+    padding:0!important;
     overflow:visible!important;
   }
   .binder-heading-module .canvashead>div{width:100%!important;min-width:0!important}
@@ -171,14 +167,13 @@
     font-size:11px!important;
     line-height:1.25!important;
     letter-spacing:.01em!important;
-    white-space:normal!important;
   }
   .binder-heading-module .canvashead h2{
     display:block!important;
-    margin:0 0 8px!important;
+    margin:0 0 7px!important;
     padding:0!important;
-    font-size:16px!important;
-    line-height:1.25!important;
+    font-size:17px!important;
+    line-height:1.24!important;
     font-weight:750!important;
     white-space:normal!important;
     overflow:visible!important;
@@ -188,7 +183,8 @@
     display:block!important;
     margin:0!important;
     padding:0!important;
-    font-size:11px!important;
+    max-width:34rem!important;
+    font-size:12px!important;
     line-height:1.45!important;
     white-space:normal!important;
     overflow:visible!important;
@@ -196,43 +192,95 @@
     word-break:normal!important;
   }
   .binder-heading-module .editor-page-nav{
-    grid-template-columns:42px!important;
-    width:42px!important;
-    min-width:42px!important;
-    max-width:42px!important;
-    min-height:220px!important;
-    max-height:min(58vh,360px)!important;
-  }
-  .binder-heading-module .page-numbers{
-    width:42px!important;
-    min-width:42px!important;
-    max-width:42px!important;
-    min-height:126px!important;
-    max-height:268px!important;
+    grid-column:1!important;
+    grid-row:2!important;
+    display:grid!important;
+    grid-template-columns:44px minmax(0,1fr) 44px!important;
+    grid-template-rows:44px!important;
+    align-items:center!important;
+    justify-items:stretch!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    min-height:44px!important;
+    max-height:44px!important;
+    gap:8px!important;
+    overflow:visible!important;
   }
   .binder-heading-module .page-arrow{
-    width:38px!important;
-    min-width:38px!important;
-    max-width:38px!important;
+    width:44px!important;
+    min-width:44px!important;
+    max-width:44px!important;
+    height:44px!important;
+    min-height:44px!important;
+    max-height:44px!important;
+    border-radius:12px!important;
+    font-size:20px!important;
+  }
+  .binder-heading-module .page-numbers{
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    justify-content:center!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:44px!important;
+    min-height:44px!important;
+    max-height:44px!important;
+    overflow:hidden!important;
+    padding:0!important;
+    gap:0!important;
   }
   .binder-heading-module .page-number{
-    width:36px!important;
-    min-width:36px!important;
-    max-width:36px!important;
-    height:36px!important;
-    min-height:36px!important;
-    max-height:36px!important;
-    flex-basis:36px!important;
+    display:none!important;
+  }
+  .binder-heading-module .page-number.active,
+  .binder-heading-module .page-number[aria-current="page"]{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    flex:1 1 auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:44px!important;
+    min-height:44px!important;
+    max-height:44px!important;
+    padding:0 14px!important;
+    border-radius:12px!important;
+    font-size:0!important;
+    font-weight:700!important;
+    white-space:nowrap!important;
+  }
+  .binder-heading-module .page-number.active::before,
+  .binder-heading-module .page-number[aria-current="page"]::before{
+    content:"Page " attr(data-page-label)!important;
+    font-size:13px!important;
+    line-height:1!important;
   }
 }
 
-/* Forced Mobile Preview can be narrow inside a wide desktop viewport, so it
-   needs selectors at least as specific as the legacy mobile-preview rules. */
+/* Existing page buttons do not currently carry data-page-label. Fall back to
+   showing their numeric text when the attribute is absent. */
+@media(max-width:760px){
+  .binder-heading-module .page-number.active:not([data-page-label]),
+  .binder-heading-module .page-number[aria-current="page"]:not([data-page-label]){
+    font-size:13px!important;
+  }
+  .binder-heading-module .page-number.active:not([data-page-label])::before,
+  .binder-heading-module .page-number[aria-current="page"]:not([data-page-label])::before{
+    content:"Page"!important;
+    margin-right:5px!important;
+    font-size:13px!important;
+  }
+}
+
+/* Forced Mobile Preview mirrors real phone geometry. */
 body.mobile-lab-enabled .canvas .canvas-side-controls{
   display:flex!important;
   flex-direction:column!important;
   align-items:stretch!important;
-  justify-content:flex-start!important;
   gap:8px!important;
   width:100%!important;
   min-width:0!important;
@@ -240,106 +288,78 @@ body.mobile-lab-enabled .canvas .canvas-side-controls{
 }
 body.mobile-lab-enabled .canvas .canvas-side-controls>.binder-heading-module{
   display:grid!important;
-  grid-template-columns:minmax(0,1fr) 46px!important;
-  grid-template-rows:auto!important;
-  grid-column:auto!important;
-  grid-row:auto!important;
-  align-self:stretch!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-template-rows:auto auto!important;
   width:100%!important;
   min-width:0!important;
-  max-width:none!important;
-  padding:11px 10px 12px!important;
-  gap:8px!important;
+  padding:12px!important;
+  gap:10px!important;
   overflow:visible!important;
 }
 body.mobile-lab-enabled .canvas .binder-heading-module .canvashead{
-  display:flex!important;
   grid-column:1!important;
   grid-row:1!important;
-  gap:0!important;
-  padding:1px 2px 0!important;
+  display:flex!important;
+  width:100%!important;
+  padding:0!important;
   overflow:visible!important;
   text-align:left!important;
 }
-body.mobile-lab-enabled .canvas .binder-heading-module .canvashead>div{width:100%!important;min-width:0!important}
-body.mobile-lab-enabled .canvas .binder-heading-module .canvashead .eyebrow{
-  display:block!important;
-  margin:0 0 4px!important;
-  font-size:11px!important;
-  line-height:1.25!important;
-  letter-spacing:.01em!important;
-  white-space:normal!important;
-}
-body.mobile-lab-enabled .canvas .binder-heading-module .canvashead h2{
-  display:block!important;
-  margin:0 0 8px!important;
-  padding:0!important;
-  font-size:16px!important;
-  line-height:1.25!important;
-  font-weight:750!important;
-  white-space:normal!important;
-  overflow:visible!important;
-  overflow-wrap:break-word!important;
-}
-body.mobile-lab-enabled .canvas .binder-heading-module .canvashead .status{
-  display:block!important;
-  margin:0!important;
-  padding:0!important;
-  font-size:11px!important;
-  line-height:1.45!important;
-  white-space:normal!important;
-  overflow:visible!important;
-  overflow-wrap:break-word!important;
-  word-break:normal!important;
-}
 body.mobile-lab-enabled .canvas .binder-heading-module .editor-page-nav{
-  grid-column:2!important;
-  grid-row:1!important;
+  grid-column:1!important;
+  grid-row:2!important;
   display:grid!important;
-  grid-template-columns:42px!important;
-  grid-template-rows:40px minmax(126px,1fr) 40px!important;
-  width:42px!important;
-  min-width:42px!important;
-  max-width:42px!important;
-  min-height:220px!important;
-  max-height:min(58vh,360px)!important;
+  grid-template-columns:44px minmax(0,1fr) 44px!important;
+  grid-template-rows:44px!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+  min-height:44px!important;
+  max-height:44px!important;
+  gap:8px!important;
   margin:0!important;
   padding:0!important;
-  overflow:hidden!important;
+  overflow:visible!important;
 }
 body.mobile-lab-enabled .canvas .binder-heading-module .page-numbers{
   display:flex!important;
-  flex-direction:column!important;
-  flex-wrap:nowrap!important;
+  flex-direction:row!important;
   align-items:center!important;
-  width:42px!important;
-  min-width:42px!important;
-  max-width:42px!important;
-  min-height:126px!important;
-  max-height:268px!important;
-  overflow-y:auto!important;
-  overflow-x:hidden!important;
+  justify-content:center!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+  min-height:44px!important;
+  max-height:44px!important;
+  overflow:hidden!important;
+  padding:0!important;
 }
 body.mobile-lab-enabled .canvas .binder-heading-module .page-arrow{
-  width:38px!important;
-  min-width:38px!important;
-  max-width:38px!important;
+  width:44px!important;
+  min-width:44px!important;
+  max-width:44px!important;
+  height:44px!important;
+  min-height:44px!important;
+  max-height:44px!important;
 }
-body.mobile-lab-enabled .canvas .binder-heading-module .page-number{
-  flex:0 0 36px!important;
-  width:36px!important;
-  min-width:36px!important;
-  max-width:36px!important;
-  height:36px!important;
-  min-height:36px!important;
-  max-height:36px!important;
+body.mobile-lab-enabled .canvas .binder-heading-module .page-number{display:none!important}
+body.mobile-lab-enabled .canvas .binder-heading-module .page-number.active,
+body.mobile-lab-enabled .canvas .binder-heading-module .page-number[aria-current="page"]{
+  display:flex!important;
+  flex:1 1 auto!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+  height:44px!important;
+  min-height:44px!important;
+  max-height:44px!important;
+  padding:0 14px!important;
+  font-size:13px!important;
 }
 body.mobile-lab-enabled .canvas .canvas-side-controls>.library-module,
 body.mobile-lab-enabled .canvas .canvas-side-controls>.selected-module,
 body.mobile-lab-enabled .canvas .canvas-side-controls>.appearance-module,
 body.mobile-lab-enabled .canvas .canvas-side-controls>.mobile-page-actions{
-  grid-column:auto!important;
-  grid-row:auto!important;
   width:100%!important;
   min-width:0!important;
 }
