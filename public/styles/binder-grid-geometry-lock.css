@@ -1,13 +1,17 @@
-/* Binder Studio staging — fixed binder grid geometry.
-   Artwork may span slots, but must never resize/reflow the underlying card tracks.
+/* Binder Studio staging — fixed binder grid geometry v1.2.0.
+   Artwork may span slots, but must never resize/reflow the underlying card tracks
+   or change the visible binder-page dimensions.
    Applies to both the editor grid and the full Binder Viewer. */
 
 #grid.grid,
 #viewerPage .grid{
   grid-auto-flow:row!important;
+  grid-auto-rows:minmax(0,1fr)!important;
   align-items:stretch!important;
   justify-items:stretch!important;
-  contain:layout style!important;
+  min-width:0!important;
+  min-height:0!important;
+  contain:layout style size!important;
 }
 
 /* A standard trading-card slot is 2.5:3.5. Lock the whole page geometry so
@@ -43,9 +47,14 @@
   min-height:0!important;
   max-width:none!important;
   max-height:none!important;
+  inline-size:100%!important;
+  block-size:100%!important;
+  min-inline-size:0!important;
+  min-block-size:0!important;
   aspect-ratio:auto!important;
   align-self:stretch!important;
   justify-self:stretch!important;
+  overflow:hidden!important;
 }
 
 #grid.grid > .pocket .sleeve,
@@ -58,6 +67,8 @@
   min-height:0!important;
   max-width:100%!important;
   max-height:100%!important;
+  min-inline-size:0!important;
+  min-block-size:0!important;
 }
 
 /* Images can crop/position inside artwork tiles without changing layout size. */
@@ -66,11 +77,13 @@
 #viewerPage .grid > .pocket.art,
 #viewerPage .grid > .pocket.art .sleeve{
   overflow:hidden!important;
+  contain:paint!important;
 }
 
 #grid.grid > .pocket.art img,
 #viewerPage .grid > .pocket.art img{
   object-fit:cover!important;
+  object-position:var(--art-x,50%) var(--art-y,50%);
 }
 
 /* The viewer is display-only. Prevent any inherited intrinsic sizing or
