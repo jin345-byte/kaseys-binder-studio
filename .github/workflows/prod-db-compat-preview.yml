@@ -33,6 +33,8 @@ jobs:
           node --check src/prod-preview-worker.js
           node --check public/features/cloud-sync.js
           node --check public/features/artwork-legacy-repair.js
+          node --check public/features/viewer-legacy-layout-repair.js
+          node --check public/features/union-arena-set-repair.js
           node --check public/features/art-source-links.js
           node --check public/features/full-themes.js
           node --check public/features/typography-picker.js
@@ -57,7 +59,7 @@ jobs:
           assert "format:'KBS-CLOUD-1'" in cloud
 
           staging=pathlib.Path('public/features/staging-v287.js').read_text()
-          for token in ['artwork-legacy-repair.js?v=2.9.1','art-source-links.js?v=2.9.1','Binder Studio v4.0.5 preview','typography-picker.js?v=4.0.5','static-ui.css?v=4.0.5','ui-flow-polish.css?v=4.0.5','focus-presentation-mode.js?v=4.0.5','focus-presentation-mode.css?v=4.0.5','page-rail-structural-fix.css?v=1.1.0','readOnlyCloud:true','Local only','Production cloud data cannot be changed here']:
+          for token in ['artwork-legacy-repair.js?v=2.9.1','viewer-legacy-layout-repair.js?v=1.0.0','union-arena-set-repair.js?v=1.0.0','art-source-links.js?v=2.9.1','Binder Studio v4.0.5 preview','typography-picker.js?v=4.0.6','static-ui.css?v=4.0.5','ui-flow-polish.css?v=4.0.5','focus-presentation-mode.js?v=4.0.5','focus-presentation-mode.css?v=4.0.5','page-rail-structural-fix.css?v=1.1.0','binder-grid-geometry-lock.css?v=1.1.0','readOnlyCloud:true','Local only','Production cloud data cannot be changed here']:
               assert token in staging, token
           for token in ['theme-animated-accents','theme-font-unified','staging-v287.css','staging-v288-fix.css']:
               assert token not in staging, token
