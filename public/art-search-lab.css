@@ -102,10 +102,11 @@
 .art-search-submit{min-height:34px!important;height:34px!important;padding:0 12px!important;border-radius:9px!important;white-space:nowrap;font-size:10px!important}
 
 .auto-artwork-results-wrap{display:grid;grid-template-rows:auto auto minmax(0,1fr);gap:6px;min-height:0;padding:0 0 8px;border-bottom:1px solid color-mix(in srgb,var(--line) 78%,transparent)}
-.auto-artwork-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.auto-artwork-head{display:flex;align-items:center;justify-content:space-between;gap:8px;overflow:visible}
 .auto-artwork-head>div:first-child{display:flex;align-items:baseline;gap:7px;min-width:0}
 .auto-artwork-head small{color:var(--muted);font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.auto-artwork-head-actions{display:flex;align-items:center;gap:5px;flex:0 0 auto}
+/* Keep the artwork count and More button safely above the result viewport edge. */
+.auto-artwork-head-actions{display:flex;align-items:center;gap:5px;flex:0 0 auto;position:relative;z-index:5;transform:translateY(-7px)}
 .auto-artwork-more{min-height:28px;padding:2px 8px;border:1px solid color-mix(in srgb,var(--accent) 42%,var(--line));border-radius:8px;background:color-mix(in srgb,var(--accent) 10%,var(--surface2));color:var(--accent);font-size:8px;font-weight:900}
 .auto-artwork-more:disabled{opacity:.45;cursor:default}
 .auto-artwork-scroll{min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-right:3px}
@@ -209,6 +210,7 @@ body.mobile-lab-enabled .auto-artwork-results{grid-template-columns:repeat(2,min
 body.mobile-lab-enabled .auto-artwork-head{align-items:flex-start}
 body.mobile-lab-enabled .auto-artwork-head>div:first-child{display:grid;gap:2px}
 body.mobile-lab-enabled .auto-artwork-head small{max-width:230px}
+body.mobile-lab-enabled .auto-artwork-head-actions{transform:translateY(-5px)}
 body.mobile-lab-enabled .auto-art-card{padding:5px}
 body.mobile-lab-enabled .auto-art-size{grid-template-columns:1fr;gap:2px}
 body.mobile-lab-enabled .auto-art-add{min-height:34px!important}
