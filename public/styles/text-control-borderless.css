@@ -1,5 +1,4 @@
-/* Binder Studio staging — remove the visual box from the Live binder page header.
-   This intentionally targets the container itself, not just its child buttons. */
+/* Binder Studio staging — simplify the Live binder page heading. */
 
 body[data-theme] .canvas-side-controls > .binder-heading-module,
 body[data-theme] .binder-heading-module.control-module,
@@ -15,7 +14,18 @@ body[data-theme] .binder-heading-module.control-module,
 }
 
 body[data-theme] .binder-heading-module .canvashead,
-.binder-heading-module .canvashead,
+.binder-heading-module .canvashead {
+  border:none!important;
+  box-shadow:none!important;
+  background:transparent!important;
+  overflow:visible!important;
+  min-width:0!important;
+  max-width:none!important;
+  align-items:center!important;
+  justify-content:center!important;
+  text-align:center!important;
+}
+
 body[data-theme] .binder-heading-module .canvashead > div,
 .binder-heading-module .canvashead > div {
   border:none!important;
@@ -23,23 +33,26 @@ body[data-theme] .binder-heading-module .canvashead > div,
   background:transparent!important;
   overflow:visible!important;
   min-width:0!important;
+  width:100%!important;
   max-width:none!important;
+  text-align:center!important;
 }
 
+body[data-theme] .binder-heading-module .canvashead .eyebrow,
+.binder-heading-module .canvashead .eyebrow,
 body[data-theme] .binder-heading-module .canvashead h2,
+.binder-heading-module .canvashead h2 {
+  display:block!important;
+  width:100%!important;
+  text-align:center!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
+
+/* Remove the instructional sentence entirely. */
 body[data-theme] .binder-heading-module .canvashead .status,
-.binder-heading-module .canvashead h2,
 .binder-heading-module .canvashead .status {
-  border:none!important;
-  box-shadow:none!important;
-  background:transparent!important;
-  height:auto!important;
-  max-height:none!important;
-  white-space:normal!important;
-  overflow:visible!important;
-  overflow-wrap:normal!important;
-  word-break:normal!important;
-  text-overflow:clip!important;
+  display:none!important;
 }
 
 body[data-theme] .binder-heading-module .editor-page-nav,
