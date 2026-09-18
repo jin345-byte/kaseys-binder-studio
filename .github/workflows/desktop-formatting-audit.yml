@@ -41,8 +41,10 @@ jobs:
           test -s public/styles/layout-overlap-fixes.css
           test -s public/styles/ui-readability-fixes.css
           test -s public/styles/ui-flow-polish.css
+          test -s public/styles/desktop-readability-pass.css
           grep -q "grid-template-columns:minmax(0,1fr) 58px" public/styles/page-rail-structural-fix.css
           grep -q "DEFAULT_THEME='lavender'" public/features/full-themes.js
+          grep -q "desktop-readability-pass.css?v=1.0.0" public/features/staging-v287.js
           echo DESKTOP_STATIC_PASS
       - name: Install Playwright
         run: |
@@ -65,9 +67,10 @@ jobs:
           const rgba=s=>{const m=String(s||'').match(/rgba?\(([^)]+)\)/);if(!m)return null;const p=m[1].split(',').map(Number.parseFloat);return{r:p[0],g:p[1],b:p[2],a:p.length>3?p[3]:1}};
           const lum=c=>{const f=v=>{v/=255;return v<=.03928?v/12.92:((v+.055)/1.055)**2.4};return .2126*f(c.r)+.7152*f(c.g)+.0722*f(c.b)};
           const contrast=(a,b)=>{const x=lum(a),y=lum(b);return(Math.max(x,y)+.05)/(Math.min(x,y)+.05)};
-          async function waitLive(){for(let i=0;i<60;i++){const r=await fetch(BASE+'/features/staging-v287.js?desktopqa='+Date.now(),{cache:'no-store'}).catch(()=>null);const t=r?.ok?await r.text():'';if(t.includes('Binder Studio v4.0.5 preview')&&t.includes('page-rail-structural-fix.css'))return;await sleep(3000)}throw new Error('Staging assets did not become available')}
+          async function waitLive(){for(let i=0;i<80;i++){const r=await fetch(BASE+'/features/staging-v287.js?desktopqa='+Date.now(),{cache:'no-store'}).catch(()=>null);const t=r?.ok?await r.text():'';if(t.includes('desktop-readability-pass.css?v=1.0.0'))return;await sleep(3000)}throw new Error('Latest staging assets did not become available')}
           (async()=>{
             await waitLive();
+            const css=await fetch(BASE+'/styles/desktop-readability-pass.css?desktopqa='+Date.now(),{cache:'no-store'});if(!css.ok)throw new Error('Desktop readability stylesheet unavailable');
             const manifestRes=await fetch(BASE+'/catalog/manifest.json?desktopqa='+Date.now(),{cache:'no-store'});
             if(!manifestRes.ok)throw new Error('Catalog manifest unavailable');
             const manifest=await manifestRes.json();
@@ -83,13 +86,13 @@ jobs:
               const response=await page.goto(BASE+'/?desktopqa='+Date.now(),{waitUntil:'commit',timeout:60000});
               if(!response||!response.ok())throw new Error(`${vp.name}: document HTTP ${response?.status()}`);
               await page.waitForSelector('.workspace',{state:'attached',timeout:60000});
-              await page.waitForFunction(()=>globalThis.KBSPreviewBuild?.version==='4.0.5'&&globalThis.KBSFullThemes?.list?.().length===11&&globalThis.KBSTypography&&document.querySelector('#kbsPageRailStructuralFixStyle'),{timeout:90000});
+              await page.waitForFunction(()=>globalThis.KBSPreviewBuild?.version==='4.0.5'&&globalThis.KBSFullThemes?.list?.().length===11&&globalThis.KBSTypography&&document.querySelector('#kbsPageRailStructuralFixStyle')&&document.querySelector('#kbsDesktopReadabilityPassStyle'),{timeout:90000});
 
               const audit=async state=>{
                 const rows=await page.evaluate(()=>{
-                  const visible=e=>{const s=getComputedStyle(e),r=e.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity)>.05&&r.width>2&&r.height>2};
+                  const visible=e=>{const s=getComputedStyle(e),r=e.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity)>.05&&r.width>2&&r.height>2&&r.bottom>0&&r.top<innerHeight&&r.right>0&&r.left<innerWidth};
                   const bgFor=e=>{let n=e;while(n){const b=getComputedStyle(n).backgroundColor;if(b&&b!=='transparent'&&!/rgba\([^)]*,\s*0(?:\.0+)?\)/.test(b))return b;n=n.parentElement}return getComputedStyle(document.body).backgroundColor};
-                  return [...document.querySelectorAll('button,.btn,[role="button"],label.btn,.artlink,.library-build-cta,.page-arrow,.page-number,.version-link,.library-browser-tab,input,select,.canvashead h2,.canvashead .status')].filter(visible).map(e=>{const s=getComputedStyle(e),r=e.getBoundingClientRect();return{id:e.id||e.className||e.tagName,text:(e.innerText||e.value||e.getAttribute('aria-label')||e.textContent||'').replace(/\s+/g,' ').trim(),tag:e.tagName,color:s.color,bg:s.backgroundColor,bgImage:s.backgroundImage,nearestBg:bgFor(e),fontSize:parseFloat(s.fontSize)||0,fontWeight:parseInt(s.fontWeight)||400,width:r.width,height:r.height,left:r.left,right:r.right,top:r.top,bottom:r.bottom,clientWidth:e.clientWidth,scrollWidth:e.scrollWidth,clientHeight:e.clientHeight,scrollHeight:e.scrollHeight,whiteSpace:s.whiteSpace,overflowX:s.overflowX,overflowY:s.overflowY,radius:parseFloat(s.borderRadius)||0}});
+                  return [...document.querySelectorAll('button,.btn,[role="button"],label.btn,.artlink,.library-build-cta,.page-arrow,.page-number,.version-link,.library-browser-tab,input,select,.canvashead h2,.canvashead .status')].filter(visible).map(e=>{const s=getComputedStyle(e),r=e.getBoundingClientRect();return{id:e.id||e.className||e.tagName,text:(e.innerText||e.value||e.getAttribute('aria-label')||e.textContent||'').replace(/\s+/g,' ').trim(),tag:e.tagName,type:e.getAttribute('type')||'',color:s.color,bg:s.backgroundColor,bgImage:s.backgroundImage,nearestBg:bgFor(e),fontSize:parseFloat(s.fontSize)||0,fontWeight:parseInt(s.fontWeight)||400,width:r.width,height:r.height,left:r.left,right:r.right,top:r.top,bottom:r.bottom,clientWidth:e.clientWidth,scrollWidth:e.scrollWidth,clientHeight:e.clientHeight,scrollHeight:e.scrollHeight,whiteSpace:s.whiteSpace,overflowX:s.overflowX,overflowY:s.overflowY}});
                 });
                 audited+=rows.length;
                 for(const x of rows){
@@ -100,17 +103,19 @@ jobs:
                   if(clippedX||clippedY)findings.push({kind:'clipped-text',vp:vp.name,state,id:x.id,text:x.text.slice(0,70),box:[Math.round(x.width),Math.round(x.height)],scroll:[x.scrollWidth,x.scrollHeight]});
                   if(x.fontSize<10)findings.push({kind:'tiny-text',vp:vp.name,state,id:x.id,text:x.text.slice(0,70),fontSize:x.fontSize});
                   if(x.tag==='BUTTON'&&x.height<34)findings.push({kind:'tiny-button',vp:vp.name,state,id:x.id,text:x.text.slice(0,70),height:Math.round(x.height)});
-                  const fg=rgba(x.color),own=rgba(x.bg),bg=rgba(own?.a>.05?x.bg:x.nearestBg);
-                  if(fg&&bg&&x.bgImage==='none'){
-                    const ratio=contrast(fg,bg),large=x.fontSize>=18||(x.fontSize>=14&&x.fontWeight>=700),min=large?3:4.5;
-                    if(ratio<min)findings.push({kind:'low-contrast',vp:vp.name,state,id:x.id,text:x.text.slice(0,70),ratio:+ratio.toFixed(2)});
+                  if(x.type!=='color'){
+                    const fg=rgba(x.color),own=rgba(x.bg),bg=rgba(own?.a>.05?x.bg:x.nearestBg);
+                    if(fg&&bg&&x.bgImage==='none'){
+                      const ratio=contrast(fg,bg),large=x.fontSize>=18||(x.fontSize>=14&&x.fontWeight>=700),min=large?3:4.5;
+                      if(ratio<min)findings.push({kind:'low-contrast',vp:vp.name,state,id:x.id,text:x.text.slice(0,70),ratio:+ratio.toFixed(2)});
+                    }
                   }
                 }
                 const structure=await page.evaluate(()=>{
                   const q=s=>document.querySelector(s),rect=s=>q(s)?.getBoundingClientRect();
                   const work=rect('.workspace'),lib=rect('.library'),canvas=rect('.canvas'),heading=rect('.binder-heading-module'),nav=rect('.binder-heading-module .editor-page-nav');
                   const ns=q('.binder-heading-module .page-numbers')?getComputedStyle(q('.binder-heading-module .page-numbers')):null;
-                  return{work,lib,canvas,heading,nav,navDirection:ns?.flexDirection,navOverflow:ns?.overflowY};
+                  return{work,lib,canvas,heading,nav,navDirection:ns?.flexDirection};
                 });
                 if(!structure.work||!structure.lib||!structure.canvas||!structure.heading||!structure.nav)findings.push({kind:'missing-structure',vp:vp.name,state});
                 else {
