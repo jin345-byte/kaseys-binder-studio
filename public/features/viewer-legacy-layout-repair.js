@@ -1,0 +1,90 @@
+/* Binder Studio staging — legacy viewer placement normalization.
+   Existing saved artwork from older layout versions can retain spans that collide
+   with newer fixed pocket geometry. Normalize only the viewer rendering so users
+   do not need to remove/re-add artwork. Stored page data is left untouched. */
+(function(){
+  const original=globalThis.fullViewerMarkup;
+  if(typeof original!=='function')return;
+
+  function layoutFor(raw){
+    const layout=String(raw||'3x3');
+    if(layout==='2x2')return{layout,columns:2,rows:2,total:4};
+    if(layout==='4x3')return{layout,columns:4,rows:3,total:12};
+    return{layout:'3x3',columns:3,rows:3,total:9};
+  }
+
+  function cleanSpan(item){
+    if(!item||item.kind!=='art')return{columns:1,rows:1};
+    const parts=String(item.size||'1x1').split('x').map(Number);
+    return{
+      columns:Number.isFinite(parts[0])&&parts[0]>0?Math.floor(parts[0]):1,
+      rows:Number.isFinite(parts[1])&&parts[1]>0?Math.floor(parts[1]):1
+    };
+  }
+
+  function safePlacements(page){
+    const s=page?.state||{};
+    const d=layoutFor(s.layout);
+    const pockets=Array.isArray(s.pockets)?s.pockets:[];
+    const occupied=new Set();
+    const placements=[];
+
+    for(let i=0;i<d.total;i++){
+      const item=pockets[i];
+      if(!item||occupied.has(i))continue;
+
+      let {columns:cs,rows:rs}=cleanSpan(item);
+      const col=i%d.columns;
+      const row=Math.floor(i/d.columns);
+
+      cs=Math.max(1,Math.min(cs,d.columns-col));
+      rs=Math.max(1,Math.min(rs,d.rows-row));
+
+      const fits=(w,h)=>{
+        if(col+w>d.columns||row+h>d.rows)return false;
+        for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+          const idx=i+y*d.columns+x;
+          if(occupied.has(idx))return false;
+        }
+        return true;
+      };
+
+      /* Legacy pages can contain overlapping spans. Preserve the intended span
+         when possible; otherwise gracefully reduce it until it fits the current
+         fixed pocket matrix instead of allowing CSS Grid to create implicit rows. */
+      if(!fits(cs,rs)){
+        const candidates=[
+          [Math.min(cs,d.columns-col),1],
+          [1,Math.min(rs,d.rows-row)],
+          [1,1]
+        ];
+        const next=candidates.find(([w,h])=>fits(w,h));
+        if(!next)continue;
+        [cs,rs]=next;
+      }
+
+      for(let y=0;y<rs;y++)for(let x=0;x<cs;x++)occupied.add(i+y*d.columns+x);
+      placements.push({index:i,item,cs,rs,col:col+1,row:row+1});
+    }
+    return{state:s,d,placements};
+  }
+
+  globalThis.fullViewerMarkup=function(page){
+    try{
+      const {state:s,d,placements}=safePlacements(page);
+      const escFn=typeof globalThis.esc==='function'?globalThis.esc:(v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])));
+      const fallback=globalThis.defaults||{binderColor:'#111827',pageColor:'#080b12',sleeveColor:'#334155'};
+      let html='';
+      for(const p of placements){
+        const item=p.item;
+        const im=item&&(item.imageHigh||item.imageLow||item.image);
+        const pos=item?.kind==='art'?`object-position:${Number.isFinite(item.cropX)?item.cropX:50}% ${Number.isFinite(item.cropY)?item.cropY:50}%`:'';
+        html+=`<span class="pocket ${item?'filled':''} ${item?.kind||''}" style="--sc:${p.cs};--sr:${p.rs};grid-column:${p.col}/span ${p.cs};grid-row:${p.row}/span ${p.rs}">${im?`<span class="sleeve"><img src="${escFn(im)}" style="${pos}"></span>`:''}</span>`;
+      }
+      return `<div class="grid l${escFn(d.layout)}" style="--binder:${escFn(s.binderColor||fallback.binderColor)};--page:${escFn(s.pageColor||fallback.pageColor)};--sleeve:${escFn(s.sleeveColor||fallback.sleeveColor)}">${html}</div>`;
+    }catch(err){
+      console.warn('Viewer legacy layout normalization failed; using original viewer markup.',err);
+      return original(page);
+    }
+  };
+})();
