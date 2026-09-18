@@ -1,0 +1,50 @@
+/* Binder Studio staging — simplify small text-heavy controls to avoid cramped bordered boxes. */
+#versionLink,
+.version-link,
+#autoArtworkLoadMore,
+#addUrl,
+.artadd label.btn,
+.artadd .btn[for="artFile"],
+.artadd .upload.btn,
+.artadd label.upload,
+#guidedDemoNext {
+  border:none!important;
+  box-shadow:none!important;
+  height:auto!important;
+  min-height:34px!important;
+  max-height:none!important;
+  line-height:1.25!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+
+#autoArtworkLoadMore,
+#addUrl,
+.artadd label.btn,
+.artadd .btn[for="artFile"],
+.artadd .upload.btn,
+.artadd label.upload {
+  padding:8px 10px!important;
+  font-size:11px!important;
+}
+
+#versionLink,
+.version-link {
+  min-height:34px!important;
+  padding:6px 8px!important;
+  font-size:11px!important;
+}
+
+/* Help/status copy should read as copy, not as a constrained control. */
+.canvashead .status,
+#status {
+  border:none!important;
+  box-shadow:none!important;
+  height:auto!important;
+  max-height:none!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  line-height:1.35!important;
+}
