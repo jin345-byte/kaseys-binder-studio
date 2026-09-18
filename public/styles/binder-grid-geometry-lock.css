@@ -1,0 +1,63 @@
+/* Binder Studio staging — fixed binder grid geometry.
+   Artwork may span slots, but must never resize/reflow the underlying card tracks. */
+
+#grid.grid{
+  grid-auto-flow:row!important;
+  align-items:stretch!important;
+  justify-items:stretch!important;
+  contain:layout style!important;
+}
+
+/* A standard trading-card slot is 2.5:3.5. Lock the whole page geometry so
+   every row/column remains stable regardless of artwork span or image ratio. */
+#grid.grid.l2x2{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  grid-template-rows:repeat(2,minmax(0,1fr))!important;
+  aspect-ratio:5/7!important;
+}
+
+#grid.grid.l3x3{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  grid-template-rows:repeat(3,minmax(0,1fr))!important;
+  aspect-ratio:5/7!important;
+}
+
+#grid.grid.l4x3{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  grid-template-rows:repeat(3,minmax(0,1fr))!important;
+  aspect-ratio:20/21!important;
+}
+
+/* Once the parent tracks are fixed, individual tiles must fill their assigned
+   cells rather than contributing a competing intrinsic aspect ratio. */
+#grid.grid > .pocket{
+  width:100%!important;
+  height:100%!important;
+  min-width:0!important;
+  min-height:0!important;
+  max-width:none!important;
+  max-height:none!important;
+  aspect-ratio:auto!important;
+  align-self:stretch!important;
+  justify-self:stretch!important;
+}
+
+#grid.grid > .pocket .sleeve,
+#grid.grid > .pocket img{
+  min-width:0!important;
+  min-height:0!important;
+  max-width:100%!important;
+  max-height:100%!important;
+}
+
+/* Images can crop/position inside artwork tiles without changing layout size. */
+#grid.grid > .pocket.art,
+#grid.grid > .pocket.art .sleeve{
+  overflow:hidden!important;
+}
+
+#grid.grid > .pocket.art img{
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+}
