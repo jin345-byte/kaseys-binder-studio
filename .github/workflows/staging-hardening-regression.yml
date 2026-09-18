@@ -57,7 +57,7 @@ jobs:
           for token in [
               'body.mobile-lab-enabled .canvas .canvas-side-controls',
               'body.mobile-lab-enabled .canvas .binder-heading-module .canvashead',
-              'grid-template-columns:minmax(0,1fr) 52px',
+              'grid-template-columns:minmax(0,1fr) 58px',
               'flex-direction:column',
               'flex-wrap:nowrap',
               'overflow-y:auto'
