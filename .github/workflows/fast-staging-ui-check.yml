@@ -1,0 +1,100 @@
+name: Fast Staging UI Check
+
+on:
+  push:
+    branches: [prod-db-compat-preview]
+  workflow_run:
+    workflows: ["Production D1 Compatibility Preview"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: binder-studio-fast-staging-ui
+  cancel-in-progress: true
+
+env:
+  PREVIEW: https://kaseys-binder-studio-prod-preview.jin345.workers.dev
+
+jobs:
+  preflight:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: prod-db-compat-preview
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Fast syntax and staging asset checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check public/app.js
+          node --check public/features/staging-v287.js
+          node --check public/features/viewer-legacy-layout-repair.js
+          node --check public/features/union-arena-set-repair.js
+          node --check public/features/typography-picker.js
+          test -s public/styles/binder-grid-geometry-lock.css
+          grep -q "viewer-legacy-layout-repair.js" public/features/staging-v287.js
+          grep -q "union-arena-set-repair.js" public/features/staging-v287.js
+          grep -q "binder-grid-geometry-lock.css" public/features/staging-v287.js
+          grep -q "typography-picker.js?v=4.0.6" public/features/staging-v287.js
+          echo "FAST_PREFLIGHT_PASS"
+
+  live-assets:
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: prod-db-compat-preview
+      - name: Verify staging serves the current branch assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          nonce="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-$(date +%s)"
+          check_asset(){
+            local path="$1"
+            local tmp="/tmp/$(basename "$path")"
+            curl --fail --silent --show-error \
+              -H 'Cache-Control: no-cache' \
+              -H 'Pragma: no-cache' \
+              "${PREVIEW}/${path}?fast-check=${nonce}" -o "$tmp"
+            if ! cmp -s "public/${path}" "$tmp"; then
+              echo "::error file=public/${path}::Staging is not serving the current branch version of ${path}"
+              echo "Local SHA256:  $(sha256sum "public/${path}" | cut -d' ' -f1)"
+              echo "Served SHA256: $(sha256sum "$tmp" | cut -d' ' -f1)"
+              exit 1
+            fi
+            echo "LIVE_ASSET_MATCH ${path}"
+          }
+          check_asset "features/staging-v287.js"
+          check_asset "features/viewer-legacy-layout-repair.js"
+          check_asset "features/union-arena-set-repair.js"
+          check_asset "features/typography-picker.js"
+          check_asset "styles/binder-grid-geometry-lock.css"
+      - name: Verify staging page boots without obvious runtime failure
+        shell: bash
+        run: |
+          set -euo pipefail
+          nonce="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-$(date +%s)"
+          html="$(curl --fail --silent --show-error -H 'Cache-Control: no-cache' "${PREVIEW}/?fast-check=${nonce}")"
+          printf '%s' "$html" | grep -q 'id="grid"'
+          printf '%s' "$html" | grep -q 'id="binderViewer"'
+          printf '%s' "$html" | grep -q 'features/staging-v287.js'
+          cfg="$(curl --fail --silent --show-error -H 'Cache-Control: no-cache' "${PREVIEW}/api/config?fast-check=${nonce}")"
+          node -e 'const x=JSON.parse(process.argv[1]);if(x.previewReadOnly!==true||x.previewEnvironment!=="prod-db-compat-preview")process.exit(1)' "$cfg"
+          echo "LIVE_STAGING_BOOT_PASS"
+
+  deployment-failed:
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Stop before live verification
+        run: |
+          echo "::error::Production D1 Compatibility Preview failed. Staging was not updated, so no UI fix should be reported as live."
+          exit 1
