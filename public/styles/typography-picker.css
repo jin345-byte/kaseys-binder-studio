@@ -1,9 +1,29 @@
-/* Kasey's Binder Studio v4.0.5 — readable font choices and theme-safe typography. */
+/* Kasey's Binder Studio v4.0.6 — expanded font choices and theme-safe typography. */
 :root{--kbs-font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
 body[data-kbs-font="system"],body:not([data-kbs-font]){--kbs-font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
 body[data-kbs-font="verdana"]{--kbs-font-family:Verdana,Geneva,sans-serif}
 body[data-kbs-font="trebuchet"]{--kbs-font-family:"Trebuchet MS",Arial,sans-serif}
 body[data-kbs-font="georgia"]{--kbs-font-family:Georgia,"Times New Roman",serif}
+body[data-kbs-font="arial"]{--kbs-font-family:Arial,Helvetica,sans-serif}
+body[data-kbs-font="helvetica"]{--kbs-font-family:Helvetica,Arial,sans-serif}
+body[data-kbs-font="segoe"]{--kbs-font-family:"Segoe UI",Tahoma,Arial,sans-serif}
+body[data-kbs-font="tahoma"]{--kbs-font-family:Tahoma,Verdana,sans-serif}
+body[data-kbs-font="calibri"]{--kbs-font-family:Calibri,"Segoe UI",Arial,sans-serif}
+body[data-kbs-font="candara"]{--kbs-font-family:Candara,Calibri,"Segoe UI",sans-serif}
+body[data-kbs-font="century"]{--kbs-font-family:"Century Gothic",Futura,Arial,sans-serif}
+body[data-kbs-font="gill"]{--kbs-font-family:"Gill Sans","Gill Sans MT",Calibri,sans-serif}
+body[data-kbs-font="franklin"]{--kbs-font-family:"Franklin Gothic Medium","Arial Narrow",Arial,sans-serif}
+body[data-kbs-font="optima"]{--kbs-font-family:Optima,"Segoe UI",Arial,sans-serif}
+body[data-kbs-font="arialrounded"]{--kbs-font-family:"Arial Rounded MT Bold","Trebuchet MS",Arial,sans-serif}
+body[data-kbs-font="garamond"]{--kbs-font-family:Garamond,"Times New Roman",serif}
+body[data-kbs-font="palatino"]{--kbs-font-family:Palatino,"Palatino Linotype","Book Antiqua",serif}
+body[data-kbs-font="times"]{--kbs-font-family:"Times New Roman",Times,serif}
+body[data-kbs-font="bookman"]{--kbs-font-family:"Bookman Old Style",Bookman,Georgia,serif}
+body[data-kbs-font="courier"]{--kbs-font-family:"Courier New",Courier,monospace}
+body[data-kbs-font="consolas"]{--kbs-font-family:Consolas,"Lucida Console",monospace}
+body[data-kbs-font="lucida"]{--kbs-font-family:"Lucida Console",Monaco,monospace}
+body[data-kbs-font="impact"]{--kbs-font-family:Impact,Haettenschweiler,"Arial Narrow Bold",sans-serif}
+body[data-kbs-font="comic"]{--kbs-font-family:"Comic Sans MS","Comic Sans",cursive}
 body[data-theme]{--theme-font:var(--kbs-font-family)!important;--font-display:var(--kbs-font-family)!important;--font-ui:var(--kbs-font-family)!important;--font-body:var(--kbs-font-family)!important}
 body,body .app,body h1,body h2,body h3,body button,body input,body select,body textarea,body .item-copy,body .set-chip,body .badge,body .status,body small{font-family:var(--kbs-font-family)!important}
 .font-choice-control{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:7px!important;width:100%!important;min-width:0!important;padding:10px!important;border:1px solid var(--line)!important;border-radius:13px!important;background:color-mix(in srgb,var(--surface2) 84%,transparent)!important}
