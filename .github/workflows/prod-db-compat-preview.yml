@@ -114,6 +114,38 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler deploy --config=wrangler.prod-preview.jsonc
 
+      - name: Verify deployed staging assets match this commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          PREVIEW='https://kaseys-binder-studio-prod-preview.jin345.workers.dev'
+          nonce="${GITHUB_SHA}-${GITHUB_RUN_ID}-$(date +%s)"
+          check_asset(){
+            local path="$1"
+            local tmp="/tmp/$(basename "$path")"
+            local matched=0
+            for attempt in $(seq 1 24); do
+              if curl --fail --silent --show-error -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' "${PREVIEW}/${path}?deploy-check=${nonce}-${attempt}" -o "$tmp" && cmp -s "public/${path}" "$tmp"; then
+                matched=1
+                break
+              fi
+              sleep 5
+            done
+            if [ "$matched" -ne 1 ]; then
+              echo "::error file=public/${path}::Deployed staging asset does not match this commit"
+              echo "Local SHA256:  $(sha256sum "public/${path}" | cut -d' ' -f1)"
+              if [ -f "$tmp" ]; then echo "Served SHA256: $(sha256sum "$tmp" | cut -d' ' -f1)"; fi
+              exit 1
+            fi
+            echo "LIVE_ASSET_MATCH ${path}"
+          }
+          check_asset 'features/staging-v287.js'
+          check_asset 'features/viewer-legacy-layout-repair.js'
+          check_asset 'features/union-arena-set-repair.js'
+          check_asset 'features/typography-picker.js'
+          check_asset 'styles/binder-grid-geometry-lock.css'
+          echo 'LIVE_ASSET_SET_PASS'
+
       - name: Browser smoke test preview
         shell: bash
         run: |
