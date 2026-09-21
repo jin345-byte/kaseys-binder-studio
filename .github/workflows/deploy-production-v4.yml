@@ -10,31 +10,37 @@ permissions:
 
 jobs:
   deploy:
-    if: github.event.head_commit.message == 'Deploy Lavender-only production theme'
+    if: github.event.head_commit.message == 'Deploy exact prod preview UI to production'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout approved main
         uses: actions/checkout@v4
         with:
           ref: main
-      - name: Verify approved Lavender-only revision
+      - name: Verify approved exact-preview revision
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "191cecb9d7507180480a17b0ae9ecf35f8f0505f"
+          test "$(git rev-parse HEAD)" = "db0a05a3f9319c001d0041fa94a99e2632a5ad2e"
           grep -q 'kaseys-binder-studio-db' wrangler.jsonc
           grep -q 'ea5aaa71-88e3-4bff-b997-7aa9bff3c24d' wrangler.jsonc
-          test -e public/features/lavender-only.js
+          grep -q 'ZEROCHAN_USERNAME' wrangler.jsonc
           node --check src/worker.js
+          node --check src/prod-preview-worker.js
+          node --check src/staging-worker.js
           node --check public/features/cloud-sync.js
-          node --check public/features/production-v4.js
-          node --check public/features/lavender-only.js
+          node --check public/features/production-v405.js
+          node --check public/features/staging-fetch-shim.js
+          node --check public/features/art-search-lab.js
           grep -q 'syncVersion:2' src/worker.js
-          grep -q 'themeLocked:true' public/features/production-v4.js
-          grep -q "theme:'lavender'" public/features/production-v4.js
-          grep -q 'body data-theme="lavender"' public/index.html
-          ! grep -q "features/full-themes.js" public/features/production-v4.js
-          ! grep -q "features/theme-picker-fit.js" public/features/production-v4.js
+          grep -q 'SAFE_PREVIEW_GET_APIS' src/worker.js
+          grep -q 'productionPreviewUi:true' src/worker.js
+          grep -q 'productionSafe:true' public/features/production-v405.js
+          grep -q 'readOnlyCloud:false' public/features/production-v405.js
+          grep -q 'libraryArtworkTab' public/index.html
+          grep -q 'autoArtworkLoadMore' public/index.html
+          grep -q 'features/production-v405.js' public/index.html
+          grep -q 'features/staging-fetch-shim.js' public/index.html
       - name: Install Wrangler
         run: npm install --global wrangler@4
       - name: Deploy production Worker and assets
@@ -42,7 +48,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: wrangler deploy --config=wrangler.jsonc
-      - name: Verify production API and Lavender lock
+      - name: Verify production API and exact preview UI
         shell: bash
         run: |
           set -euo pipefail
@@ -50,10 +56,10 @@ jobs:
           for i in 1 2 3 4 5 6; do
             BODY="$(curl -fsS "$BASE/api/config" || true)"
             INDEX="$(curl -fsS "$BASE/" || true)"
-            LOADER="$(curl -fsS "$BASE/features/production-v4.js" || true)"
-            LOCK="$(curl -fsS "$BASE/features/lavender-only.js" || true)"
-            if echo "$BODY" | grep -q '"syncVersion":2' && echo "$INDEX" | grep -q 'body data-theme="lavender"' && echo "$LOADER" | grep -q 'themeLocked:true' && echo "$LOCK" | grep -q "const THEME='lavender'"; then
-              echo 'Production Lavender-only theme verified.'
+            LOADER="$(curl -fsS "$BASE/features/production-v405.js" || true)"
+            SHIM="$(curl -fsS "$BASE/features/staging-fetch-shim.js" || true)"
+            if echo "$BODY" | grep -q '"syncVersion":2' && echo "$BODY" | grep -q '"productionPreviewUi":true' && echo "$INDEX" | grep -q 'libraryArtworkTab' && echo "$INDEX" | grep -q 'autoArtworkLoadMore' && echo "$LOADER" | grep -q 'readOnlyCloud:false' && echo "$SHIM" | grep -q '/api/art-feed-v3'; then
+              echo 'Production exact preview UI and writable backend verified.'
               exit 0
             fi
             sleep 5
