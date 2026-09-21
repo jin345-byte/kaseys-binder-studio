@@ -1,0 +1,55 @@
+/* Binder Studio staging — fixed binder grid geometry v1.2.0.
+   Artwork may span slots, but must never resize/reflow the underlying card tracks
+   or change the visible binder-page dimensions.
+   Applies to both the editor grid and the full Binder Viewer. */
+
+#grid.grid,
+#viewerPage .grid{
+  grid-auto-flow:row!important;
+  grid-auto-rows:minmax(0,1fr)!important;
+  align-items:stretch!important;
+  justify-items:stretch!important;
+  min-width:0!important;
+  min-height:0!important;
+  contain:layout style size!important;
+}
+#grid.grid.l2x2,
+#viewerPage .grid.l2x2{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  grid-template-rows:repeat(2,minmax(0,1fr))!important;
+  aspect-ratio:5/7!important;
+}
+#grid.grid.l3x3,
+#viewerPage .grid.l3x3{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  grid-template-rows:repeat(3,minmax(0,1fr))!important;
+  aspect-ratio:5/7!important;
+}
+#grid.grid.l4x3,
+#viewerPage .grid.l4x3{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  grid-template-rows:repeat(3,minmax(0,1fr))!important;
+  aspect-ratio:20/21!important;
+}
+#grid.grid > .pocket,
+#viewerPage .grid > .pocket{
+  width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;inline-size:100%!important;block-size:100%!important;min-inline-size:0!important;min-block-size:0!important;aspect-ratio:auto!important;align-self:stretch!important;justify-self:stretch!important;overflow:hidden!important;
+}
+#grid.grid > .pocket .sleeve,
+#grid.grid > .pocket img,
+#viewerPage .grid > .pocket .sleeve,
+#viewerPage .grid > .pocket img{
+  width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;max-width:100%!important;max-height:100%!important;min-inline-size:0!important;min-block-size:0!important;
+}
+#grid.grid > .pocket.art,
+#grid.grid > .pocket.art .sleeve,
+#viewerPage .grid > .pocket.art,
+#viewerPage .grid > .pocket.art .sleeve{
+  overflow:hidden!important;contain:paint!important;
+}
+#grid.grid > .pocket.art img,
+#viewerPage .grid > .pocket.art img{
+  object-fit:cover!important;object-position:var(--art-x,50%) var(--art-y,50%);
+}
+#viewerPage .grid > .pocket{margin:0!important;transform:none!important}
+#viewerPage .grid > .pocket .sleeve{display:block!important;box-sizing:border-box!important}
