@@ -1,0 +1,2 @@
+Deploy production startup performance hotfix for theme flash and initial card-search responsiveness.
+Approved main: 5f65922571b880c91b2a92c8fe0991a4d66dcb5e
