@@ -1,1 +1,1 @@
-Trigger production deployment for non-destructive artwork tray removal.
+Trigger production deployment for page numbering and obsolete mobile navigation cleanup.
