@@ -10,24 +10,26 @@ permissions:
 
 jobs:
   deploy:
-    if: github.event.head_commit.message == 'Deploy non-destructive artwork tray removal'
+    if: github.event.head_commit.message == 'Deploy page numbering and nav cleanup'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout approved main
         uses: actions/checkout@v4
         with:
           ref: main
-      - name: Verify approved artwork tray revision
+      - name: Verify approved page-numbering revision
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "a079272b01043c755f103a52f8542fba7e3f8ecd"
+          test "$(git rev-parse HEAD)" = "5d79abf130df62d8addb9e92550a10620d11f9b5"
           grep -q 'kaseys-binder-studio-db' wrangler.jsonc
           grep -q 'ea5aaa71-88e3-4bff-b997-7aa9bff3c24d' wrangler.jsonc
           node --check src/worker.js
-          node --check public/features/staging-polish.js
-          grep -q 'binder placement kept' public/features/staging-polish.js
-          grep -q 'data-remove-art' public/features/staging-polish.js
+          node --check public/features/mobile-lab.js
+          node --check public/features/binder-lab.js
+          grep -q "mobileLabBottomNav')?.remove" public/features/mobile-lab.js
+          grep -q 'normalizePages' public/features/binder-lab.js
+          grep -q 'Page ${i+1}' public/features/binder-lab.js
           grep -q 'syncVersion:2' src/worker.js
       - name: Install Wrangler
         run: npm install --global wrangler@4
@@ -36,16 +38,17 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: wrangler deploy --config=wrangler.jsonc
-      - name: Verify production artwork tray behavior patch
+      - name: Verify production page numbering and nav cleanup
         shell: bash
         run: |
           set -euo pipefail
           BASE='https://kaseys-binder-studio.jin345.workers.dev'
           for i in 1 2 3 4 5 6; do
             BODY="$(curl -fsS "$BASE/api/config" || true)"
-            JS="$(curl -fsS "$BASE/features/staging-polish.js" || true)"
-            if echo "$BODY" | grep -q '"syncVersion":2' && echo "$JS" | grep -q 'binder placement kept' && echo "$JS" | grep -q 'data-remove-art'; then
-              echo 'Production non-destructive artwork tray removal verified.'
+            MOBILE="$(curl -fsS "$BASE/features/mobile-lab.js" || true)"
+            BINDER="$(curl -fsS "$BASE/features/binder-lab.js" || true)"
+            if echo "$BODY" | grep -q '"syncVersion":2' && echo "$MOBILE" | grep -q "mobileLabBottomNav')?.remove" && echo "$BINDER" | grep -q 'normalizePages' && echo "$BINDER" | grep -q 'Page ${i+1}'; then
+              echo 'Production page numbering and obsolete nav cleanup verified.'
               exit 0
             fi
             sleep 5
