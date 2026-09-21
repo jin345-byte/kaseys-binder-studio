@@ -10,26 +10,24 @@ permissions:
 
 jobs:
   deploy:
-    if: github.event.head_commit.message == 'Deploy desktop-only mobile gate'
+    if: github.event.head_commit.message == 'Deploy non-destructive artwork tray removal'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout approved main
         uses: actions/checkout@v4
         with:
           ref: main
-      - name: Verify approved mobile-gate revision
+      - name: Verify approved artwork tray revision
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "0c883122aeecec1d559c88f8a24fd9a19bd3118d"
+          test "$(git rev-parse HEAD)" = "a079272b01043c755f103a52f8542fba7e3f8ecd"
           grep -q 'kaseys-binder-studio-db' wrangler.jsonc
           grep -q 'ea5aaa71-88e3-4bff-b997-7aa9bff3c24d' wrangler.jsonc
           node --check src/worker.js
-          node --check public/features/mobile-lab.js
-          grep -q 'mobileComingSoon' public/features/mobile-lab.js
-          grep -q 'Mobile version in the works' public/features/mobile-lab.js
-          grep -q 'mobile-preview-toggle{display:none!important}' public/styles/mobile-lab.css
-          grep -q 'mobile-coming-soon' public/styles/mobile-lab.css
+          node --check public/features/staging-polish.js
+          grep -q 'binder placement kept' public/features/staging-polish.js
+          grep -q 'data-remove-art' public/features/staging-polish.js
           grep -q 'syncVersion:2' src/worker.js
       - name: Install Wrangler
         run: npm install --global wrangler@4
@@ -38,17 +36,16 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: wrangler deploy --config=wrangler.jsonc
-      - name: Verify production desktop-only mobile gate
+      - name: Verify production artwork tray behavior patch
         shell: bash
         run: |
           set -euo pipefail
           BASE='https://kaseys-binder-studio.jin345.workers.dev'
           for i in 1 2 3 4 5 6; do
             BODY="$(curl -fsS "$BASE/api/config" || true)"
-            JS="$(curl -fsS "$BASE/features/mobile-lab.js" || true)"
-            CSS="$(curl -fsS "$BASE/styles/mobile-lab.css" || true)"
-            if echo "$BODY" | grep -q '"syncVersion":2' && echo "$JS" | grep -q 'Mobile version in the works' && echo "$JS" | grep -q 'mobileComingSoon' && echo "$CSS" | grep -q 'mobile-preview-toggle{display:none!important}' && echo "$CSS" | grep -q 'mobile-coming-soon'; then
-              echo 'Production desktop-only mobile gate verified.'
+            JS="$(curl -fsS "$BASE/features/staging-polish.js" || true)"
+            if echo "$BODY" | grep -q '"syncVersion":2' && echo "$JS" | grep -q 'binder placement kept' && echo "$JS" | grep -q 'data-remove-art'; then
+              echo 'Production non-destructive artwork tray removal verified.'
               exit 0
             fi
             sleep 5
