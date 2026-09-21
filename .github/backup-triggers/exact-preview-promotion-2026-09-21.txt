@@ -1,1 +1,1 @@
-Trigger production deployment for desktop-only mobile gate.
+Trigger production deployment for non-destructive artwork tray removal.
