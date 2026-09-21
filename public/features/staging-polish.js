@@ -39,4 +39,22 @@
   function artOfPkmProxy(raw){try{const u=new URL(raw);if(u.protocol!=='https:')return raw;if(u.hostname.toLowerCase()==='cdn.artofpkm.com')return `/api/art-image?url=${encodeURIComponent(u.href)}`;return raw}catch{return raw}}
   async function decodedImage(url){const img=new Image();img.decoding='async';img.src=url;await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(new Error('Image could not be decoded'))});if(!img.naturalWidth||!img.naturalHeight)throw new Error('Image had no usable dimensions');return{width:img.naturalWidth,height:img.naturalHeight}}
   if(addUrlButton&&artUrlInput){addUrlButton.onclick=async()=>{const raw=artUrlInput.value.trim();if(!/^https:\/\//i.test(raw))return typeof toast==='function'&&toast('Paste a direct HTTPS image link');const proxied=artOfPkmProxy(raw),isArtOfPkm=proxied!==raw,oldText=addUrlButton.textContent;try{addUrlButton.disabled=true;if(isArtOfPkm)addUrlButton.textContent='Checking image…';if(isArtOfPkm){const response=await fetch(proxied,{cache:'no-store'});if(!response.ok)throw new Error(`Art of Pokémon image unavailable (${response.status})`);if(!(response.headers.get('content-type')||'').toLowerCase().startsWith('image/'))throw new Error('Art of Pokémon returned something other than an image');await response.body?.cancel().catch(()=>{});await decodedImage(proxied)}if(typeof addArt!=='function')throw new Error('Artwork tray is not ready');addArt(proxied,'Artwork',isArtOfPkm?`Art of Pokémon · ${raw}`:'',artSize?.value||'1x1');artUrlInput.value='';if(typeof toast==='function')toast(isArtOfPkm?'Art of Pokémon image added through Binder Studio':'Artwork added')}catch(e){console.warn('Artwork link could not be added',e);if(typeof toast==='function')toast(e?.message||'Artwork could not be loaded')}finally{addUrlButton.disabled=false;addUrlButton.textContent=oldText||'Add link'}}}
+
+  /* Removing an artwork from the tray is intentionally non-destructive to placed binder artwork. */
+  document.addEventListener('click',e=>{
+    const button=e.target.closest?.('[data-remove-art]');
+    if(!button)return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const artworkId=button.dataset.removeArt;
+    try{
+      if(typeof state==='undefined'||!Array.isArray(state.artworks))return;
+      state.artworks=state.artworks.filter(x=>x?.id!==artworkId);
+      if(typeof selected!=='undefined'&&selected?.id===artworkId)selected=null;
+      if(typeof save==='function')save();
+      if(typeof renderArts==='function')renderArts();
+      if(typeof renderSelected==='function')renderSelected();
+      if(typeof toast==='function')toast('Artwork removed from tray · binder placement kept');
+    }catch(err){console.error('Could not remove artwork from tray safely',err)}
+  },true);
 })();
