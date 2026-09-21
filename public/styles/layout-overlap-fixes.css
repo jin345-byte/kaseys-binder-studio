@@ -1,0 +1,229 @@
+/* Kasey's Binder Studio v4.0.3 staging — targeted overlap/readability fixes.
+   Loaded last so fixed-height legacy/theme rules cannot collapse text-bearing UI. */
+
+/* Card library: reserve real space for title + metadata so badges/pills never
+   get clipped against the bottom edge of each result card. */
+#cards .card-item{
+  box-sizing:border-box!important;
+  height:auto!important;
+  min-height:238px!important;
+  max-height:none!important;
+  padding:6px 6px 8px!important;
+  overflow:hidden!important;
+}
+#cards .card-item .pick{
+  box-sizing:border-box!important;
+  display:grid!important;
+  grid-template-rows:154px minmax(54px,auto)!important;
+  align-content:start!important;
+  gap:8px!important;
+  height:auto!important;
+  min-height:224px!important;
+  padding:0!important;
+  overflow:visible!important;
+}
+#cards .card-item .card-image-wrap{
+  box-sizing:border-box!important;
+  height:154px!important;
+  min-height:154px!important;
+  max-height:154px!important;
+  overflow:hidden!important;
+}
+#cards .card-item .card-image-wrap img{
+  height:154px!important;
+  min-height:154px!important;
+  max-height:154px!important;
+}
+#cards .card-item .item-copy{
+  box-sizing:border-box!important;
+  display:grid!important;
+  grid-template-rows:auto auto!important;
+  align-content:start!important;
+  gap:6px!important;
+  min-width:0!important;
+  min-height:54px!important;
+  padding:1px 0 4px!important;
+  overflow:visible!important;
+}
+#cards .card-item .item-copy>strong{
+  box-sizing:border-box!important;
+  display:block!important;
+  min-width:0!important;
+  min-height:15px!important;
+  margin:0!important;
+  font-size:11px!important;
+  line-height:1.25!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+#cards .card-item .card-detail-row{
+  box-sizing:border-box!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:5px!important;
+  min-width:0!important;
+  min-height:24px!important;
+  height:auto!important;
+  padding:0!important;
+  overflow:visible!important;
+}
+#cards .card-item .card-number,
+#cards .card-item .card-artist{
+  box-sizing:border-box!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  min-height:22px!important;
+  height:auto!important;
+  margin:0!important;
+  padding:3px 6px!important;
+  font-size:10px!important;
+  line-height:1.2!important;
+  vertical-align:middle!important;
+}
+#cards .card-item .card-number{flex:0 0 auto!important}
+#cards .card-item .card-artist{
+  flex:1 1 auto!important;
+  min-width:0!important;
+  max-width:100%!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+
+/* Saved binder shelf: legacy .binder-chip/theme height rules were shrinking the
+   cover card, forcing the footer up into the cover. Keep the cover and footer in
+   normal document flow and never let flexbox shrink the cover face. */
+.binder-list.binder-shelf{
+  align-items:start!important;
+  grid-auto-rows:auto!important;
+  overflow:visible!important;
+}
+.binder-list.binder-shelf .binder-cover-card,
+.binder-list .binder-chip.binder-cover-card{
+  box-sizing:border-box!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  gap:8px!important;
+  width:100%!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  padding:0!important;
+  margin:0!important;
+  overflow:visible!important;
+  position:relative!important;
+}
+.binder-list.binder-shelf .binder-cover-face{
+  box-sizing:border-box!important;
+  display:grid!important;
+  flex:0 0 auto!important;
+  width:100%!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  aspect-ratio:3 / 4!important;
+  overflow:hidden!important;
+  position:relative!important;
+  margin:0!important;
+}
+.binder-list.binder-shelf .binder-cover-footer{
+  box-sizing:border-box!important;
+  position:static!important;
+  display:flex!important;
+  flex:0 0 auto!important;
+  align-items:flex-start!important;
+  justify-content:space-between!important;
+  gap:8px!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:24px!important;
+  height:auto!important;
+  margin:0!important;
+  padding:1px 3px 3px!important;
+  transform:none!important;
+  overflow:visible!important;
+}
+.binder-list.binder-shelf .binder-cover-footer strong{
+  flex:1 1 auto!important;
+  min-width:0!important;
+  margin:0!important;
+  font-size:11px!important;
+  line-height:1.3!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  overflow-wrap:anywhere!important;
+  text-overflow:clip!important;
+}
+.binder-list.binder-shelf .binder-cover-footer small{
+  flex:0 0 auto!important;
+  margin:0!important;
+  font-size:10px!important;
+  line-height:1.3!important;
+  white-space:nowrap!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+
+/* Page cards: keep title and actions on separate rows. This removes the last
+   width-dependent collision path in My Binders. */
+#pageBrowser .page-card{
+  box-sizing:border-box!important;
+  height:auto!important;
+  min-height:0!important;
+  overflow:hidden!important;
+}
+#pageBrowser .page-card-meta{
+  box-sizing:border-box!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  align-items:start!important;
+  gap:8px!important;
+  width:100%!important;
+  min-width:0!important;
+  padding-top:8px!important;
+  overflow:visible!important;
+}
+#pageBrowser .page-card-meta>strong{
+  display:block!important;
+  min-width:0!important;
+  margin:0!important;
+  font-size:12px!important;
+  line-height:1.3!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  overflow-wrap:anywhere!important;
+  text-overflow:clip!important;
+}
+#pageBrowser .page-card-actions{
+  position:static!important;
+  width:100%!important;
+  margin:0!important;
+}
+
+@media(max-width:1250px){
+  #cards .card-item{min-height:228px!important}
+  #cards .card-item .pick{grid-template-rows:145px minmax(54px,auto)!important;min-height:214px!important}
+  #cards .card-item .card-image-wrap,
+  #cards .card-item .card-image-wrap img{height:145px!important;min-height:145px!important;max-height:145px!important}
+}
+
+@media(max-width:760px){
+  #cards .card-item{min-height:222px!important;padding-bottom:8px!important}
+  #cards .card-item .pick{grid-template-rows:138px minmax(56px,auto)!important;min-height:208px!important}
+  #cards .card-item .card-image-wrap,
+  #cards .card-item .card-image-wrap img{height:138px!important;min-height:138px!important;max-height:138px!important}
+  #cards .card-item .item-copy{min-height:56px!important;gap:5px!important}
+  #cards .card-item .card-number,
+  #cards .card-item .card-artist{min-height:23px!important;font-size:10px!important}
+  .binder-list.binder-shelf{grid-template-columns:repeat(2,minmax(0,1fr))!important;align-items:start!important}
+  .binder-list.binder-shelf .binder-cover-footer{min-height:28px!important;padding-inline:2px!important}
+}
+
+@media(max-width:390px){
+  #cards .card-item{min-height:230px!important}
+  #cards .card-item .pick{grid-template-rows:145px minmax(57px,auto)!important;min-height:216px!important}
+  #cards .card-item .card-image-wrap,
+  #cards .card-item .card-image-wrap img{height:145px!important;min-height:145px!important;max-height:145px!important}
+}

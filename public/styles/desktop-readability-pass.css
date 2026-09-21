@@ -1,0 +1,58 @@
+/* Kasey's Binder Studio — desktop readability pass v1.0.0.
+   Staging-only additive overrides based on automated desktop QA.
+   No mobile geometry or binder-card sizing is changed here. */
+
+@media (min-width:761px){
+  /* The live-page guidance was rendering at 9px in every desktop viewport. */
+  .binder-heading-module .canvashead .status{
+    font-size:12px!important;
+    line-height:1.45!important;
+    font-weight:600!important;
+    color:var(--text)!important;
+    opacity:.88!important;
+    white-space:normal!important;
+    overflow:visible!important;
+    overflow-wrap:break-word!important;
+  }
+
+  .binder-heading-module .canvashead h2,
+  #canvasTitle{
+    color:var(--text)!important;
+    opacity:1!important;
+    text-shadow:0 1px 1px color-mix(in srgb,var(--bg) 35%,transparent)!important;
+  }
+
+  /* Small artwork controls were 8–9px and difficult to scan. */
+  #autoArtworkLoadMore,
+  #addUrl,
+  .artadd label.upload,
+  .artadd .upload.btn{
+    font-size:12px!important;
+    line-height:1.2!important;
+    min-height:38px!important;
+  }
+  #autoArtworkLoadMore{min-width:54px!important;padding:7px 10px!important}
+  #addUrl{padding:8px 11px!important}
+  .artadd label.upload,.artadd .upload.btn{padding:8px 11px!important}
+
+  /* Keep the staging/build target comfortable to click without changing its look. */
+  #versionLink,.version-link{
+    min-height:36px!important;
+    padding-top:7px!important;
+    padding-bottom:7px!important;
+  }
+}
+
+/* Explicit cross-theme title/help readability. These two pieces of text sit on
+   layered translucent panels, so use the theme foreground rather than muted
+   theme tokens that can become too close to those surfaces. */
+body[data-theme="cozy-sakura"] .binder-heading-module .canvashead .status,
+body[data-theme="dark-academia"] .binder-heading-module .canvashead .status,
+body[data-theme="e-ink"] .binder-heading-module .canvashead .status,
+body[data-theme="retro-card-shop"] .binder-heading-module .canvashead .status,
+body[data-theme="dark-academia"] #canvasTitle,
+body[data-theme="e-ink"] #canvasTitle,
+body[data-theme="retro-card-shop"] #canvasTitle{
+  color:var(--text)!important;
+  opacity:1!important;
+}

@@ -1,0 +1,295 @@
+/* Kasey's Binder Studio v3 theme lab — full visual themes.
+   Loaded after existing visual layers so these tokens are authoritative without
+   disturbing binder/page/sleeve color input IDs used by the guided tour. */
+
+:root{
+  --theme-font:Inter,"Segoe UI",system-ui,sans-serif;
+  --theme-panel-radius:18px;
+  --theme-button-radius:12px;
+  --theme-shadow:0 18px 52px rgba(0,0,0,.24);
+  --theme-orb-a:#f5d52f;
+  --theme-orb-b:#63d4e5;
+  --theme-orb-c:#ffffff;
+  --theme-binder-texture:repeating-linear-gradient(90deg,rgba(255,255,255,.07) 0 1px,rgba(0,0,0,.08) 1px 3px);
+  --theme-page-texture:repeating-linear-gradient(35deg,rgba(255,255,255,.03) 0 1px,rgba(0,0,0,.03) 1px 3px);
+  --theme-sleeve-texture:linear-gradient(135deg,rgba(255,255,255,.11),transparent 34%,rgba(0,0,0,.08));
+}
+
+body[data-theme]{
+  font-family:var(--theme-font)!important;
+  color:var(--text)!important;
+  transition:background-color .28s ease,color .22s ease;
+}
+body[data-theme] .app,
+body[data-theme] button,
+body[data-theme] input,
+body[data-theme] select,
+body[data-theme] textarea{font-family:inherit!important}
+body[data-theme] .panel{
+  border-color:color-mix(in srgb,var(--line) 90%,transparent)!important;
+  border-radius:var(--theme-panel-radius)!important;
+  background:linear-gradient(155deg,color-mix(in srgb,var(--surface) 96%,#fff 4%),color-mix(in srgb,var(--surface2) 94%,transparent))!important;
+  box-shadow:var(--theme-shadow)!important;
+  backdrop-filter:blur(14px);
+}
+body[data-theme] .browser-pane,
+body[data-theme] .control-module,
+body[data-theme] .build-info-content section{
+  background:linear-gradient(145deg,color-mix(in srgb,var(--surface) 91%,transparent),color-mix(in srgb,var(--surface2) 92%,transparent))!important;
+  border-color:var(--line)!important;
+}
+body[data-theme] .btn,
+body[data-theme] .page-arrow,
+body[data-theme] .page-number,
+body[data-theme] .library-build-cta,
+body[data-theme] .artlink,
+body[data-theme] .version-link{
+  border-radius:var(--theme-button-radius)!important;
+  border-color:color-mix(in srgb,var(--line) 78%,var(--accent) 22%)!important;
+  color:var(--text)!important;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 92%,#fff 8%),color-mix(in srgb,var(--surface2) 88%,var(--accent) 12%))!important;
+  box-shadow:0 5px 15px color-mix(in srgb,var(--text) 8%,transparent),inset 0 1px rgba(255,255,255,.13)!important;
+}
+body[data-theme] .btn:hover,
+body[data-theme] .page-arrow:hover,
+body[data-theme] .page-number:hover,
+body[data-theme] .artlink:hover{
+  border-color:var(--accent)!important;
+  box-shadow:0 8px 22px color-mix(in srgb,var(--accent) 20%,transparent)!important;
+}
+body[data-theme] input,
+body[data-theme] select,
+body[data-theme] textarea{
+  color:var(--text)!important;
+  background:color-mix(in srgb,var(--surface) 92%,var(--surface2) 8%)!important;
+  border-color:var(--line)!important;
+}
+body[data-theme] .eyebrow,
+body[data-theme] .brand small{color:var(--accent2)!important}
+body[data-theme] .badge,
+body[data-theme] .status,
+body[data-theme] small{color:var(--muted)}
+
+/* Binder, page and sleeve materials keep user-selected colors but gain the active theme's texture. */
+body[data-theme] .grid{
+  border-color:transparent!important;
+  background:
+    var(--theme-page-texture) padding-box,
+    linear-gradient(var(--page,#080b12),var(--page,#080b12)) padding-box,
+    var(--theme-binder-texture) border-box,
+    linear-gradient(var(--binder,#111827),var(--binder,#111827)) border-box!important;
+  box-shadow:inset 0 0 34px rgba(0,0,0,.28),0 14px 34px rgba(0,0,0,.28)!important;
+}
+body[data-theme] .pocket .sleeve{
+  background:
+    var(--theme-sleeve-texture),
+    linear-gradient(var(--sleeve,#334155),var(--sleeve,#334155))!important;
+  box-shadow:0 0 0 1px color-mix(in srgb,#fff 18%,transparent),0 2px 5px rgba(0,0,0,.35)!important;
+}
+
+/* Compact theme picker — deliberately one control so the Appearance panel stays simple. */
+.full-theme-control{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  gap:8px!important;
+  align-items:center!important;
+  width:100%!important;
+  min-height:52px!important;
+  padding:7px 9px 7px 12px!important;
+  border:1px solid color-mix(in srgb,var(--line) 88%,transparent)!important;
+  border-radius:13px!important;
+  background:color-mix(in srgb,var(--surface2) 78%,transparent)!important;
+}
+.full-theme-copy{display:grid;gap:2px;min-width:0}
+.full-theme-copy strong{font-size:12px;line-height:1;font-weight:900;color:var(--text)}
+.full-theme-copy small{font-size:9px;line-height:1.15;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#fullThemeSelect{
+  width:min(190px,42vw)!important;
+  min-height:36px!important;
+  padding:6px 28px 6px 9px!important;
+  font-size:11px!important;
+  font-weight:800!important;
+}
+.full-theme-palette{grid-column:1/-1;display:flex;gap:4px;height:5px;border-radius:999px;overflow:hidden;opacity:.85}
+.full-theme-palette span{flex:1;background:var(--theme-swatch)}
+.theme-tier-badge{display:inline-flex;align-items:center;width:max-content;padding:2px 6px;border:1px solid color-mix(in srgb,var(--accent) 45%,var(--line));border-radius:999px;color:var(--accent2);font-size:8px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
+
+/* Theme transition: short enough to feel responsive and disabled for reduced-motion users. */
+body.theme-switching .panel,
+body.theme-switching .grid,
+body.theme-switching .btn,
+body.theme-switching .control-module{animation:fullThemeReveal .38s cubic-bezier(.2,.75,.25,1) both}
+@keyframes fullThemeReveal{from{filter:saturate(.72) brightness(.92);transform:translateY(2px)}to{filter:none;transform:none}}
+
+/* Existing environmental scene becomes a reusable accent layer. */
+body[data-theme] .theme-scene{opacity:.9!important;pointer-events:none!important}
+body[data-theme] .theme-orb{filter:blur(2px);mix-blend-mode:screen}
+body[data-theme] .orb-a{background:var(--theme-orb-a)!important}
+body[data-theme] .orb-b{background:var(--theme-orb-b)!important}
+body[data-theme] .orb-c{background:var(--theme-orb-c)!important}
+body[data-theme] .theme-ribbon{border-color:color-mix(in srgb,var(--accent) 25%,transparent)!important}
+
+/* 0 — existing Voltage Lab, retained as the compatibility/default theme. */
+body[data-theme="jolteon"]{
+  --bg:#0c1218;--surface:#111922;--surface2:#18232c;--line:#394650;
+  --text:#f7f9ee;--muted:#a5b0b5;--accent:#f5d52f;--accent2:#63d4e5;
+  --theme-font:"Arial Narrow",Arial,sans-serif;--theme-panel-radius:10px;--theme-button-radius:5px;
+  --theme-orb-a:#f5d52f;--theme-orb-b:#63d4e5;--theme-orb-c:#dffaff;
+  --theme-binder-texture:repeating-linear-gradient(90deg,rgba(245,213,47,.11) 0 1px,transparent 1px 10px),linear-gradient(135deg,rgba(99,212,229,.08),transparent 48%);
+  --theme-page-texture:linear-gradient(rgba(245,213,47,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(99,212,229,.04) 1px,transparent 1px);
+  --theme-sleeve-texture:linear-gradient(120deg,rgba(245,213,47,.18),transparent 28%,rgba(99,212,229,.10));
+  background:linear-gradient(rgba(245,213,47,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(99,212,229,.03) 1px,transparent 1px),#090f14!important;
+  background-size:26px 26px,26px 26px,auto!important;
+}
+
+/* 1 — Pokédex */
+body[data-theme="pokedex"]{
+  --bg:#21090c;--surface:#3a1016;--surface2:#551820;--line:#8f3940;
+  --text:#fff8eb;--muted:#dcbfc0;--accent:#ff3b3f;--accent2:#8ee7ff;
+  --theme-font:"Segoe UI",system-ui,sans-serif;--theme-panel-radius:14px;--theme-button-radius:9px;
+  --theme-orb-a:#ff3b3f;--theme-orb-b:#8ee7ff;--theme-orb-c:#f7e28b;
+  --theme-binder-texture:repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 1px,transparent 1px 7px),linear-gradient(90deg,rgba(0,0,0,.18),transparent 30%,rgba(255,255,255,.06));
+  --theme-page-texture:radial-gradient(circle at 18px 18px,rgba(142,231,255,.08) 0 2px,transparent 3px),linear-gradient(135deg,rgba(255,59,63,.05),transparent);
+  --theme-sleeve-texture:linear-gradient(135deg,rgba(142,231,255,.16),transparent 30%,rgba(255,255,255,.04));
+  background:radial-gradient(circle at 14% 8%,rgba(255,59,63,.22),transparent 32%),linear-gradient(145deg,#28080d,#090b10 62%)!important;
+}
+body[data-theme="pokedex"] .k-logo{box-shadow:0 0 0 3px #8ee7ff55,0 0 24px #8ee7ff44!important}
+
+/* 2 — Game Boy */
+body[data-theme="game-boy"]{
+  --bg:#202617;--surface:#39452a;--surface2:#4f5d38;--line:#75845c;
+  --text:#d8e59d;--muted:#a9b678;--accent:#a7c957;--accent2:#dce8a4;
+  --theme-font:"Courier New",ui-monospace,monospace;--theme-panel-radius:7px;--theme-button-radius:4px;
+  --theme-orb-a:#a7c957;--theme-orb-b:#63764a;--theme-orb-c:#d8e59d;
+  --theme-binder-texture:repeating-linear-gradient(0deg,rgba(216,229,157,.08) 0 1px,transparent 1px 4px),repeating-linear-gradient(90deg,rgba(0,0,0,.08) 0 1px,transparent 1px 4px);
+  --theme-page-texture:linear-gradient(rgba(216,229,157,.05) 50%,transparent 50%);--theme-sleeve-texture:linear-gradient(90deg,rgba(216,229,157,.10),transparent 50%,rgba(0,0,0,.08));
+  background:linear-gradient(#222a1a,#151a11)!important;
+}
+body[data-theme="game-boy"] .panel{image-rendering:pixelated;box-shadow:6px 6px 0 #0f130c88!important}
+body[data-theme="game-boy"] .btn{text-transform:uppercase;letter-spacing:.04em}
+
+/* 3 — Neo Genesis */
+body[data-theme="neo-genesis"]{
+  --bg:#171229;--surface:#27203b;--surface2:#342c48;--line:#685c83;
+  --text:#fff8e8;--muted:#c7bfd7;--accent:#f3c75f;--accent2:#8fd6c8;
+  --theme-font:Georgia,"Times New Roman",serif;--theme-panel-radius:20px;--theme-button-radius:14px;
+  --theme-orb-a:#f3c75f;--theme-orb-b:#8fd6c8;--theme-orb-c:#b6a5ff;
+  --theme-binder-texture:repeating-radial-gradient(circle at 0 0,rgba(243,199,95,.10) 0 1px,transparent 2px 8px),linear-gradient(135deg,rgba(143,214,200,.09),transparent 50%);
+  --theme-page-texture:radial-gradient(circle at 20% 20%,rgba(182,165,255,.07),transparent 35%),radial-gradient(circle at 80% 65%,rgba(243,199,95,.05),transparent 30%);
+  --theme-sleeve-texture:linear-gradient(120deg,rgba(243,199,95,.15),transparent 38%,rgba(143,214,200,.10));
+  background:radial-gradient(circle at 15% 10%,#40335b 0,transparent 28%),radial-gradient(circle at 84% 15%,#20453f 0,transparent 24%),#120f20!important;
+}
+
+/* 4 — Team Rocket */
+body[data-theme="team-rocket"]{
+  --bg:#08090c;--surface:#111319;--surface2:#1b1e26;--line:#4b4e58;
+  --text:#f7f7f8;--muted:#a9abb2;--accent:#e51937;--accent2:#b8b8c0;
+  --theme-font:Impact,"Arial Narrow",Arial,sans-serif;--theme-panel-radius:8px;--theme-button-radius:4px;
+  --theme-orb-a:#e51937;--theme-orb-b:#ffffff;--theme-orb-c:#5b5e68;
+  --theme-binder-texture:repeating-linear-gradient(135deg,rgba(229,25,55,.12) 0 2px,transparent 2px 10px),linear-gradient(90deg,rgba(255,255,255,.04),transparent);
+  --theme-page-texture:linear-gradient(45deg,rgba(255,255,255,.025) 25%,transparent 25% 75%,rgba(229,25,55,.035) 75%);
+  --theme-sleeve-texture:linear-gradient(135deg,rgba(229,25,55,.18),transparent 35%,rgba(255,255,255,.04));
+  background:radial-gradient(circle at 74% 12%,rgba(229,25,55,.16),transparent 26%),linear-gradient(#0d0e12,#050608)!important;
+}
+body[data-theme="team-rocket"] .brand h1,body[data-theme="team-rocket"] .eyebrow{text-transform:uppercase;letter-spacing:.045em}
+
+/* 5 — Lavender */
+body[data-theme="lavender"]{
+  --bg:#171323;--surface:#272038;--surface2:#342b49;--line:#685b83;
+  --text:#fbf7ff;--muted:#c8bdd8;--accent:#b792ff;--accent2:#efb8ff;
+  --theme-font:"Segoe UI",system-ui,sans-serif;--theme-panel-radius:24px;--theme-button-radius:16px;
+  --theme-orb-a:#b792ff;--theme-orb-b:#efb8ff;--theme-orb-c:#9bd8ff;
+  --theme-binder-texture:radial-gradient(circle at 20% 20%,rgba(239,184,255,.12) 0 2px,transparent 3px 14px),linear-gradient(120deg,rgba(183,146,255,.08),transparent);
+  --theme-page-texture:radial-gradient(circle at 12px 12px,rgba(255,255,255,.045) 0 1px,transparent 2px 12px);
+  --theme-sleeve-texture:linear-gradient(135deg,rgba(239,184,255,.20),transparent 35%,rgba(155,216,255,.12));
+  background:radial-gradient(circle at 20% 0,rgba(183,146,255,.24),transparent 32%),radial-gradient(circle at 92% 24%,rgba(239,184,255,.15),transparent 28%),#120f1d!important;
+}
+
+/* 6 — Cyberpunk */
+body[data-theme="cyberpunk"]{
+  --bg:#060713;--surface:#0d1020;--surface2:#151a2b;--line:#343b59;
+  --text:#f9fbff;--muted:#9ca8c8;--accent:#00f5d4;--accent2:#ff2bd6;
+  --theme-font:Rajdhani,"Arial Narrow",sans-serif;--theme-panel-radius:5px;--theme-button-radius:3px;
+  --theme-orb-a:#00f5d4;--theme-orb-b:#ff2bd6;--theme-orb-c:#ffe74c;
+  --theme-binder-texture:repeating-linear-gradient(90deg,rgba(0,245,212,.14) 0 1px,transparent 1px 13px),repeating-linear-gradient(0deg,rgba(255,43,214,.07) 0 1px,transparent 1px 21px);
+  --theme-page-texture:linear-gradient(rgba(0,245,212,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,43,214,.04) 1px,transparent 1px);
+  --theme-sleeve-texture:linear-gradient(125deg,rgba(0,245,212,.20),transparent 28%,rgba(255,43,214,.16));
+  background:linear-gradient(rgba(0,245,212,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,43,214,.025) 1px,transparent 1px),radial-gradient(circle at 75% 0,rgba(255,43,214,.16),transparent 27%),#050610!important;
+  background-size:32px 32px,32px 32px,auto,auto!important;
+}
+body[data-theme="cyberpunk"] .panel{box-shadow:0 0 0 1px rgba(0,245,212,.08),0 20px 60px rgba(0,0,0,.62)!important}
+
+/* 7 — Cozy Sakura */
+body[data-theme="cozy-sakura"]{
+  --bg:#f7e8eb;--surface:#fff8f5;--surface2:#f2dde1;--line:#d6b9c0;
+  --text:#4e3440;--muted:#806b74;--accent:#d97991;--accent2:#95677c;
+  --theme-font:Georgia,"Times New Roman",serif;--theme-panel-radius:24px;--theme-button-radius:16px;
+  --theme-orb-a:#f0a7b8;--theme-orb-b:#ffd2dc;--theme-orb-c:#d9b8a1;
+  --theme-binder-texture:radial-gradient(ellipse at 22% 30%,rgba(217,121,145,.14) 0 2px,transparent 3px 18px),linear-gradient(125deg,rgba(255,255,255,.28),transparent 45%);
+  --theme-page-texture:radial-gradient(circle at 15px 12px,rgba(149,103,124,.055) 0 1px,transparent 2px 13px);
+  --theme-sleeve-texture:linear-gradient(135deg,rgba(255,255,255,.34),transparent 36%,rgba(217,121,145,.10));
+  background:radial-gradient(circle at 12% 5%,#ffdfe7 0,transparent 30%),radial-gradient(circle at 88% 12%,#f4cfda 0,transparent 26%),#f5e8e6!important;
+}
+body[data-theme="cozy-sakura"] .panel{box-shadow:0 16px 42px rgba(111,77,89,.15)!important}
+
+/* 8 — Dark Academia */
+body[data-theme="dark-academia"]{
+  --bg:#17130f;--surface:#241d17;--surface2:#30271f;--line:#655342;
+  --text:#f0e4cc;--muted:#b8a88d;--accent:#b68b4c;--accent2:#d7c28f;
+  --theme-font:Georgia,"Times New Roman",serif;--theme-panel-radius:12px;--theme-button-radius:7px;
+  --theme-orb-a:#b68b4c;--theme-orb-b:#6f5035;--theme-orb-c:#d7c28f;
+  --theme-binder-texture:repeating-linear-gradient(92deg,rgba(215,194,143,.06) 0 1px,rgba(0,0,0,.06) 1px 4px),linear-gradient(120deg,rgba(182,139,76,.09),transparent 48%);
+  --theme-page-texture:repeating-linear-gradient(0deg,rgba(240,228,204,.025) 0 1px,transparent 1px 5px);
+  --theme-sleeve-texture:linear-gradient(130deg,rgba(215,194,143,.12),transparent 30%,rgba(0,0,0,.10));
+  background:radial-gradient(circle at 15% 5%,rgba(111,80,53,.28),transparent 34%),linear-gradient(#1d1712,#0e0c09)!important;
+}
+
+/* 9 — E-Ink */
+body[data-theme="e-ink"]{
+  --bg:#e7e5df;--surface:#f2f0e9;--surface2:#dedbd2;--line:#aaa69c;
+  --text:#272724;--muted:#66645d;--accent:#3c3b37;--accent2:#5d5b54;
+  --theme-font:Georgia,"Times New Roman",serif;--theme-panel-radius:4px;--theme-button-radius:3px;
+  --theme-orb-a:#77756d;--theme-orb-b:#b1aea5;--theme-orb-c:#4d4c47;
+  --theme-binder-texture:repeating-linear-gradient(0deg,rgba(39,39,36,.08) 0 1px,transparent 1px 3px),repeating-linear-gradient(90deg,rgba(39,39,36,.035) 0 1px,transparent 1px 5px);
+  --theme-page-texture:radial-gradient(circle,rgba(39,39,36,.045) 0 1px,transparent 1.2px);--theme-sleeve-texture:linear-gradient(135deg,rgba(255,255,255,.18),transparent 45%,rgba(0,0,0,.05));
+  background:radial-gradient(circle at 30% 20%,#f0eee7,#dedbd2 70%)!important;
+}
+body[data-theme="e-ink"] .theme-scene{display:none!important}
+body[data-theme="e-ink"] .panel{backdrop-filter:none!important;box-shadow:0 4px 0 rgba(39,39,36,.14)!important}
+body[data-theme="e-ink"] img{filter:saturate(.88) contrast(.98)}
+
+/* 10 — Retro Card Shop */
+body[data-theme="retro-card-shop"]{
+  --bg:#2b1e18;--surface:#f0d6a7;--surface2:#dfbd82;--line:#7e5438;
+  --text:#39261d;--muted:#6d513f;--accent:#c44832;--accent2:#2f6c64;
+  --theme-font:"Trebuchet MS","Segoe UI",sans-serif;--theme-panel-radius:10px;--theme-button-radius:7px;
+  --theme-orb-a:#c44832;--theme-orb-b:#2f6c64;--theme-orb-c:#e0a83a;
+  --theme-binder-texture:repeating-linear-gradient(90deg,rgba(57,38,29,.10) 0 1px,transparent 1px 7px),linear-gradient(135deg,rgba(255,255,255,.13),transparent 45%);
+  --theme-page-texture:repeating-linear-gradient(0deg,rgba(57,38,29,.045) 0 1px,transparent 1px 4px);
+  --theme-sleeve-texture:linear-gradient(135deg,rgba(255,255,255,.18),transparent 36%,rgba(196,72,50,.08));
+  background:radial-gradient(circle at 50% -10%,#6e4932 0,transparent 36%),linear-gradient(#39271e,#241914)!important;
+}
+body[data-theme="retro-card-shop"] .panel{box-shadow:0 7px 0 #170f0b55,0 20px 45px rgba(0,0,0,.25)!important}
+
+/* Theme-specific environmental animation personalities. */
+body[data-theme="pokedex"] .theme-scene{animation:themeScanner 7s ease-in-out infinite alternate}
+body[data-theme="game-boy"] .theme-scene{animation:themePixelDrift 9s steps(5,end) infinite alternate}
+body[data-theme="neo-genesis"] .theme-scene,body[data-theme="lavender"] .theme-scene,body[data-theme="cozy-sakura"] .theme-scene{animation:themeFloat 18s ease-in-out infinite alternate}
+body[data-theme="team-rocket"] .theme-scene{animation:themeRocketPulse 8s ease-in-out infinite alternate}
+body[data-theme="cyberpunk"] .theme-scene{animation:themeCyber 4.8s steps(4,end) infinite alternate}
+body[data-theme="dark-academia"] .theme-scene,body[data-theme="retro-card-shop"] .theme-scene{animation:themeWarmDrift 22s ease-in-out infinite alternate}
+@keyframes themeScanner{from{transform:translateY(-6px);filter:brightness(.9)}to{transform:translateY(7px);filter:brightness(1.12)}}
+@keyframes themePixelDrift{from{transform:translate(0,0)}to{transform:translate(8px,4px)}}
+@keyframes themeFloat{from{transform:translate(-5px,1px) scale(1)}to{transform:translate(7px,-5px) scale(1.035)}}
+@keyframes themeRocketPulse{from{filter:saturate(.85)}to{filter:saturate(1.2)}}
+@keyframes themeCyber{from{transform:translateX(-3px);filter:hue-rotate(0deg)}to{transform:translateX(4px);filter:hue-rotate(8deg)}}
+@keyframes themeWarmDrift{from{transform:translateY(0)}to{transform:translateY(-6px)}}
+
+@media(max-width:700px){
+  .full-theme-control{grid-template-columns:1fr!important}
+  #fullThemeSelect{width:100%!important;max-width:none!important}
+}
+@media(prefers-reduced-motion:reduce){
+  body.theme-switching .panel,body.theme-switching .grid,body.theme-switching .btn,body.theme-switching .control-module,
+  body[data-theme] .theme-scene{animation:none!important;transition:none!important}
+}

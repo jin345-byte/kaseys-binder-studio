@@ -1,0 +1,88 @@
+/* Binder Studio v2.9.3 — compact external artwork source shortcuts. */
+(function(){
+  'use strict';
+  const section=document.querySelector('#autoArtworkSection');
+  if(!section||document.querySelector('#artSourceLinks'))return;
+
+  function clean(raw){return String(raw||'').trim().replace(/\s+(ex|gx|vmax|vstar|v-union|v|break|lv\.?\s*x|star)$/i,'').trim()}
+  function query(){return clean(document.querySelector('#artSearchQuery')?.value||document.querySelector('#subject')?.value||'')}
+  function booruTag(raw){return clean(raw).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[’']/g,'').replace(/[^a-z0-9♀♂._-]+/g,'_').replace(/^_+|_+$/g,'')}
+  function speciesSlug(raw){
+    if(typeof pokemonSpeciesSlug==='function')return pokemonSpeciesSlug(raw);
+    return clean(raw).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[.'’]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  }
+  function zerochanPath(raw){
+    const q=clean(raw).replace(/\s+/g,' ');
+    return q?`https://www.zerochan.net/${encodeURIComponent(q).replace(/%20/g,'+')}`:'https://www.zerochan.net/';
+  }
+
+  const row=document.createElement('div');
+  row.className='art-source-links';
+  row.id='artSourceLinks';
+  row.innerHTML=`<span>More art:</span>
+    <button type="button" class="art-source-chip art-source-primary" id="artSourcePkm">Art of Pokémon ↗</button>
+    <a class="art-source-chip" id="artSourceDeviant" href="https://www.deviantart.com/" target="_blank" rel="noopener noreferrer">DeviantArt ↗</a>
+    <a class="art-source-chip" id="artSourceSafe" href="https://safebooru.org/" target="_blank" rel="noopener noreferrer">Safebooru ↗</a>
+    <a class="art-source-chip" id="artSourceZerochan" href="https://www.zerochan.net/" target="_blank" rel="noopener noreferrer">Zerochan ↗</a>`;
+
+  const searchTools=section.querySelector('.art-search-tools');
+  if(searchTools)searchTools.insertAdjacentElement('afterend',row);
+  else section.insertBefore(row,section.firstChild);
+
+  const pkm=row.querySelector('#artSourcePkm');
+  const dev=row.querySelector('#artSourceDeviant');
+  const safe=row.querySelector('#artSourceSafe');
+  const zerochan=row.querySelector('#artSourceZerochan');
+
+  function refresh(){
+    const raw=query();
+    const encoded=encodeURIComponent(raw?`${raw} pokemon`:'pokemon');
+    dev.href=`https://www.deviantart.com/search?q=${encoded}`;
+    const tag=booruTag(raw)||'pokemon';
+    safe.href=`https://safebooru.org/index.php?page=post&s=list&tags=${encodeURIComponent(tag)}`;
+    zerochan.href=zerochanPath(raw);
+    zerochan.title=raw?`Open ${raw} on Zerochan`:'Open Zerochan';
+    pkm.title=raw?`Open ${raw} on Art of Pokémon`:'Open Art of Pokémon';
+  }
+
+  async function openArtOfPokemon(){
+    const raw=query();
+    if(!raw){window.open('https://www.artofpkm.com/pokemon','_blank','noopener');return}
+    const old=pkm.textContent;
+    pkm.disabled=true;pkm.textContent='Finding…';
+    try{
+      const slug=speciesSlug(raw);
+      const response=await fetch(`https://pokeapi.co/api/v2/pokemon-species/${encodeURIComponent(slug)}`,{headers:{Accept:'application/json'},cache:'no-store'});
+      if(!response.ok)throw new Error('species not found');
+      const data=await response.json();
+      const id=Number(data?.id);
+      if(!Number.isFinite(id)||id<1)throw new Error('invalid species id');
+      window.open(`https://www.artofpkm.com/pokemon/${id}/artwork`,'_blank','noopener');
+    }catch(error){
+      console.warn('Art of Pokémon lookup failed',error);
+      window.open('https://www.artofpkm.com/pokemon','_blank','noopener');
+      if(typeof toast==='function')toast(`Could not match “${raw}” on Art of Pokémon. Opened all Pokémon instead.`);
+    }finally{pkm.disabled=false;pkm.textContent=old}
+  }
+
+  pkm.addEventListener('click',openArtOfPokemon);
+  document.querySelector('#artSearchQuery')?.addEventListener('input',refresh,{passive:true});
+  document.querySelector('#subject')?.addEventListener('input',refresh,{passive:true});
+  refresh();
+
+  const style=document.createElement('style');
+  style.id='artSourceLinksStyle';
+  style.textContent=`
+    .art-source-links{display:flex;align-items:center;gap:5px;min-width:0;margin:-1px 0 5px;padding:0 2px;white-space:nowrap;overflow-x:auto;scrollbar-width:none}
+    .art-source-links::-webkit-scrollbar{display:none}
+    .art-source-links>span{flex:0 0 auto;color:var(--muted);font-size:7px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
+    .art-source-chip{flex:0 0 auto;min-height:23px!important;height:23px;padding:2px 7px;border:1px solid var(--line);border-radius:999px;background:color-mix(in srgb,var(--surface2) 84%,transparent);color:var(--muted);font:800 8px/1 Rajdhani,system-ui,sans-serif;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+    .art-source-chip:hover,.art-source-chip:focus-visible{border-color:color-mix(in srgb,var(--accent) 52%,var(--line));color:var(--text);outline:none}
+    .art-source-chip:disabled{opacity:.58;cursor:wait}
+    .art-source-primary{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 32%,var(--line));background:color-mix(in srgb,var(--accent) 8%,var(--surface2))}
+    body.mobile-lab-enabled .art-source-links{padding-bottom:1px;margin-bottom:4px}
+    body.mobile-lab-enabled .art-source-chip{min-height:25px!important;height:25px;font-size:8px}
+  `;
+  document.head.appendChild(style);
+  globalThis.KBSArtSourceLinks={refresh,query,openArtOfPokemon,zerochanPath};
+})();
