@@ -1,5 +1,0 @@
-/* Production cleanup: legacy first-time library setup panel is obsolete. */
-#librarySetupCard,
-.library-setup-card{
-  display:none!important;
-}

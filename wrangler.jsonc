@@ -15,6 +15,7 @@
     }
   ],
   "vars": {
-    "GOOGLE_CLIENT_ID": "666882296502-0jg87086n0vr39cd5guef38pg66toter.apps.googleusercontent.com"
+    "GOOGLE_CLIENT_ID": "666882296502-0jg87086n0vr39cd5guef38pg66toter.apps.googleusercontent.com",
+    "ZEROCHAN_USERNAME": "KaseysBinderStudio"
   }
 }

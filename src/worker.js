@@ -1,6 +1,9 @@
+import previewWorker from './prod-preview-worker.js';
+
 const SESSION_COOKIE='kbs_session';
 const SESSION_MAX_AGE=2592000;
 const MAX_SYNC_BYTES=1850000;
+const SAFE_PREVIEW_GET_APIS=new Set(['/api/art-image','/api/art-feed','/api/art-feed-v2','/api/art-feed-v3','/api/card-search']);
 
 const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
 function cookies(r){const o={};for(const p of(r.headers.get('cookie')||'').split(';')){const i=p.indexOf('=');if(i>-1)o[p.slice(0,i).trim()]=decodeURIComponent(p.slice(i+1).trim())}return o}
@@ -14,7 +17,7 @@ async function sessionUser(r,e){if(!e.DB)return null;const t=cookies(r)[SESSION_
 
 async function api(r,e){
   const url=new URL(r.url),p=url.pathname;
-  if(p==='/api/config'&&r.method==='GET')return json({googleClientId:e.GOOGLE_CLIENT_ID||'',databaseReady:Boolean(e.DB),authReady:Boolean(e.DB&&e.GOOGLE_CLIENT_ID),syncVersion:2});
+  if(p==='/api/config'&&r.method==='GET')return json({googleClientId:e.GOOGLE_CLIENT_ID||'',databaseReady:Boolean(e.DB),authReady:Boolean(e.DB&&e.GOOGLE_CLIENT_ID),syncVersion:2,productionPreviewUi:true});
   if(p==='/api/me'&&r.method==='GET'){const u=await sessionUser(r,e);return json({authenticated:Boolean(u),user:u})}
 
   if(p==='/api/auth/google'&&r.method==='POST'){
@@ -27,7 +30,6 @@ async function api(r,e){
       if(!u){const id=crypto.randomUUID();await e.DB.prepare('INSERT INTO users(id,google_sub,email,display_name,picture_url,created_at,updated_at) VALUES(?1,?2,?3,?4,?5,?6,?6)').bind(id,c.sub,c.email||'',c.name||c.email||'Google User',c.picture||'',now).run();u={id}}
       else await e.DB.prepare('UPDATE users SET email=?2,display_name=?3,picture_url=?4,updated_at=?5 WHERE id=?1').bind(u.id,c.email||'',c.name||c.email||'',c.picture||'',now).run();
       const t=crypto.randomUUID().replaceAll('-','')+crypto.randomUUID().replaceAll('-',''),h=await sha(t),ex=now+SESSION_MAX_AGE*1000;
-      // Multi-device safety: expire only old sessions. Do not invalidate this user's other devices.
       await e.DB.prepare('DELETE FROM sessions WHERE expires_at<=?1').bind(now).run();
       await e.DB.prepare('INSERT INTO sessions(token_hash,user_id,created_at,expires_at) VALUES(?1,?2,?3,?4)').bind(h,u.id,now,ex).run();
       return json({authenticated:true,user:{id:u.id,email:c.email||'',name:c.name||c.email||'Google User',picture:c.picture||''}},200,{'set-cookie':`${SESSION_COOKIE}=${encodeURIComponent(t)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_MAX_AGE}`});
@@ -69,4 +71,9 @@ async function api(r,e){
   return json({error:'Not found.'},404);
 }
 
-export default{async fetch(r,e){const u=new URL(r.url);try{if(u.pathname.startsWith('/api/'))return await api(r,e);if(e.ASSETS)return e.ASSETS.fetch(r);return new Response('Binder Studio assets binding is unavailable.',{status:503})}catch(x){console.error('Worker error',x);return u.pathname.startsWith('/api/')?json({error:'Server error.'},500):new Response('Binder Studio temporarily unavailable.',{status:500})}}};
+export default{async fetch(r,e,ctx){const u=new URL(r.url);try{
+  if(r.method==='GET'&&SAFE_PREVIEW_GET_APIS.has(u.pathname))return previewWorker.fetch(r,e,ctx);
+  if(u.pathname.startsWith('/api/'))return await api(r,e);
+  if(e.ASSETS)return e.ASSETS.fetch(r);
+  return new Response('Binder Studio assets binding is unavailable.',{status:503})
+}catch(x){console.error('Worker error',x);return u.pathname.startsWith('/api/')?json({error:'Server error.'},500):new Response('Binder Studio temporarily unavailable.',{status:500})}}};

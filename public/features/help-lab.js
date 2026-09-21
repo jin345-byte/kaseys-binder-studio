@@ -1,4 +1,4 @@
-/* Kasey's Binder Studio v2.6.0 — Focused Guided Tour */
+/* Kasey's Binder Studio v2.8.8 — Gardevoir Guided Demonstration */
 function initKBSGuidedTour(){
   const demo=document.querySelector('#guidedDemo');
   const bubble=document.querySelector('#guidedDemoCard');
@@ -20,22 +20,24 @@ function initKBSGuidedTour(){
       {slot:6,size:'3x1',name:'Gardevoir horizontal artwork',url:'https://cdn.artofpkm.com/rme2nni75em3g8f6zu12x5wxblo6'}
     ]
   };
+
+  /* The demo still performs every action. The bubble text tells the user how to do it themselves. */
   const steps=[
-    ['#syncMasterLibrary','Card libraries','This tour uses four exact English Gardevoir printings. Build the English library first if it is not ready.'],
-    ['#catalogFilter','Use English TCG','The Gardevoir showcase uses the English TCG catalog.'],
-    ['#layout','3×3 layout','The showcase uses one complete 9-pocket page.'],
-    ['#binderColor','Binder color','A deep muted teal complements Gardevoir’s green details.'],
-    ['#pageColor','Page color','A pale lavender-rose page ties into Gardevoir’s white and pink palette.'],
-    ['#sleeveColor','Sleeve color','Dusty pink sleeves frame the Psychic-type cards.'],
-    ['#subject','Search Gardevoir','Binder Studio searches Gardevoir to locate the four exact printings.'],
-    ['#cards','Find exact cards','The tour matches card name, set name, and collector number.'],
-    ['#grid','Place cards','Slots 1, 2, 4, and 5 receive the four requested Gardevoir cards.'],
-    ['#artUrl','Vertical artwork','The supplied Art of Pokémon image is added as a 1×2 vertical insert.'],
-    ['#arts','Slots 3 + 6','The vertical artwork spans slots 3 and 6.'],
-    ['#artUrl','Horizontal artwork','The second supplied image is added as a 3×1 horizontal insert.'],
-    ['#arts','Slots 7 + 8 + 9','The horizontal artwork fills the bottom row.'],
-    ['#includeCards','Include cards','The Cards option includes the card images when printing.'],
-    ['#print','Print Inserts','Final step: this points to Print Inserts without opening it automatically.']
+    ['#syncMasterLibrary','Build the card library','Click Build Card Library once and let it reach 100% before building a page. You only need to do this again when you want to refresh the catalog.'],
+    ['#layout','Choose a page layout','Select the pocket layout that matches your binder page. For a standard 9-pocket page, choose 3×3.'],
+    ['#binderColor','Choose the binder color','Use the Binder color control to change the outer binder color. Pick any color that fits the theme you want.'],
+    ['#pageColor','Choose the page color','Use the Page color control to change the page material behind the pockets.'],
+    ['#sleeveColor','Choose the sleeve color','Use the Sleeves color control to change the surround around each card pocket.'],
+    ['#subject','Search for cards','Type a Pokémon, Trainer, or card name in the search box, then press Search.'],
+    ['#cards','Choose the exact printing','Browse the matching cards and select the printing you want. Use Set and Artist filters when you need to narrow the list.'],
+    ['#grid','Place cards on the page','Select a card, then click an empty pocket to place it. On desktop you can also drag cards directly onto pockets.'],
+    ['#libraryArtworkTab','Open the Artwork tab','Click Artwork when you want to add art instead of a card. Matching artwork, direct links, uploads, and the Art Tray all live here.'],
+    ['#artUrl','Add artwork by link','Paste a direct HTTPS image link here, choose its insert size, and click Add link. You can use Upload image instead for artwork saved on your device.'],
+    ['#arts','Place artwork from the Art Tray','Select the artwork in the Art Tray, then click the pocket where you want it to begin. Multi-pocket artwork fills the required neighboring pockets automatically.'],
+    ['#artUrl','Add another artwork insert','Repeat the same process for additional artwork: add the image, choose its size, then select it from the Art Tray.'],
+    ['#arts','Fill another area with artwork','Select the next artwork item and place it into the starting pocket for the space you want it to fill.'],
+    ['#includeCards','Choose what prints','Turn Cards on when you want the Pokémon or Trainer card images included with your printable inserts.'],
+    ['#print','Print the finished page','Click Print inserts when the page is finished. Print at 100% scale so the physical card and insert dimensions stay correct.']
   ];
 
   let current=0,running=false,highlighted=null;
@@ -67,8 +69,7 @@ function initKBSGuidedTour(){
     for(const ch of text){el.value+=ch;el.dispatchEvent(new Event('input',{bubbles:true}));await sleep(delay)}
   }
   async function searchGardevoir(){
-    const cat=document.querySelector('#catalogFilter');
-    if(cat&&cat.value!=='en'){cat.value='en';cat.dispatchEvent(new Event('change',{bubbles:true}));await sleep(700)}
+    document.querySelector('#libraryCardsTab')?.click();await sleep(220);
     await typeText(document.querySelector('#subject'),'Gardevoir',90);
     document.querySelector('#searchBtn')?.click();
     document.querySelectorAll('.autocomplete-panel,.autocomplete-results,.search-suggestions,[data-autocomplete],#autocomplete,#searchSuggestions,.typeahead,.typeahead-menu').forEach(el=>{el.hidden=true;el.style.display='none'});
@@ -91,10 +92,10 @@ function initKBSGuidedTour(){
     const g=document.createElement('div');g.className='live-demo-drag-ghost';g.innerHTML=`<img src="${card.imageHigh||card.imageLow||card.image||''}" alt="">`;document.body.appendChild(g);
     const a=src?center(src):{x:innerWidth*.25,y:innerHeight*.4},b=center(dst);g.style.left=a.x+'px';g.style.top=a.y+'px';await sleep(100);g.classList.add('moving');g.style.left=b.x+'px';g.style.top=b.y+'px';await sleep(1050);g.remove();place(slot,card);await sleep(450);
   }
-  async function addArt(spec){
+  async function addDemoArt(spec){
     await typeText(document.querySelector('#artUrl'),spec.url,4);
     const size=document.querySelector('#newArtSize');if(size&&[...size.options].some(o=>o.value===spec.size))size.value=spec.size;
-    const before=new Set((state.artworks||[]).map(a=>a.id));document.querySelector('#addUrl')?.click();await sleep(700);
+    const before=new Set((state.artworks||[]).map(a=>a.id));document.querySelector('#addUrl')?.click();await sleep(800);
     const art=(state.artworks||[]).find(a=>!before.has(a.id));if(!art)throw new Error(`Could not add ${spec.name}`);
     art.size=spec.size;art.name=spec.name;art.source='Art of Pokémon · supplied demo artwork';save();renderArts();return art;
   }
@@ -109,6 +110,7 @@ function initKBSGuidedTour(){
     clearHighlight();running=false;document.body.classList.remove('live-guided-demo-running');demo.hidden=true;demo.setAttribute('aria-hidden','true');bubble.removeAttribute('style');
     state.subject='';state.layout='3x3';state.pockets=Array(12).fill(null);state.artworks=[];selected=null;cards=[];save();
     const s=document.querySelector('#subject');if(s)s.value='';const l=document.querySelector('#layout');if(l)l.value='3x3';const ic=document.querySelector('#includeCards');if(ic)ic.checked=false;
+    document.querySelector('#libraryCardsTab')?.click();
     renderHeader();renderSelected();renderCards();renderArts();renderGrid();window.scrollTo({top:0,behavior:'smooth'});
   }
 
@@ -117,17 +119,17 @@ function initKBSGuidedTour(){
     state.subject='';state.layout='3x3';state.pockets=Array(12).fill(null);state.artworks=[];selected=null;save();renderCards();renderArts();renderSelected();renderGrid();demo.hidden=false;demo.setAttribute('aria-hidden','false');
     try{
       current=0;showStep();await sleep(DELAY);
-      current=1;showStep();await sleep(DELAY);
-      current=2;showStep();const l=document.querySelector('#layout');if(l){l.value='3x3';l.dispatchEvent(new Event('change',{bubbles:true}))}await sleep(DELAY);
-      current=3;showStep();setColor('binderColor',G.colors.binder);await sleep(DELAY);
-      current=4;showStep();setColor('pageColor',G.colors.page);await sleep(DELAY);
-      current=5;showStep();setColor('sleeveColor',G.colors.sleeve);await sleep(DELAY);
-      current=6;showStep();await searchGardevoir();await sleep(DELAY);
-      current=7;showStep();const rows=exactCards();await sleep(DELAY);
-      current=8;showStep();for(const {spec,card} of rows)await moveCard(card,spec.slot);await sleep(DELAY);
-      current=9;showStep();const v=await addArt(G.art[0]);await sleep(DELAY);
+      current=1;showStep();const l=document.querySelector('#layout');if(l){l.value='3x3';l.dispatchEvent(new Event('change',{bubbles:true}))}await sleep(DELAY);
+      current=2;showStep();setColor('binderColor',G.colors.binder);await sleep(DELAY);
+      current=3;showStep();setColor('pageColor',G.colors.page);await sleep(DELAY);
+      current=4;showStep();setColor('sleeveColor',G.colors.sleeve);await sleep(DELAY);
+      current=5;showStep();await searchGardevoir();await sleep(DELAY);
+      current=6;showStep();const rows=exactCards();await sleep(DELAY);
+      current=7;showStep();for(const {spec,card} of rows)await moveCard(card,spec.slot);await sleep(DELAY);
+      current=8;showStep();await sleep(900);document.querySelector('#libraryArtworkTab')?.click();await sleep(DELAY);
+      current=9;showStep();const v=await addDemoArt(G.art[0]);await sleep(DELAY);
       current=10;showStep();await moveArt(v,G.art[0]);await sleep(DELAY);
-      current=11;showStep();const h=await addArt(G.art[1]);await sleep(DELAY);
+      current=11;showStep();const h=await addDemoArt(G.art[1]);await sleep(DELAY);
       current=12;showStep();await moveArt(h,G.art[1]);await sleep(DELAY);
       current=13;showStep();const ic=document.querySelector('#includeCards');if(ic){ic.checked=true;ic.dispatchEvent(new Event('change',{bubbles:true}))}await sleep(DELAY);
       current=14;showStep();await sleep(DELAY);

@@ -12,26 +12,90 @@ body[data-theme] .binder-heading-module.control-module,
   border-radius:0!important;
   overflow:visible!important;
 }
+
 body[data-theme] .binder-heading-module .canvashead,
 .binder-heading-module .canvashead {
-  border:none!important;box-shadow:none!important;background:transparent!important;overflow:visible!important;min-width:0!important;max-width:none!important;align-items:center!important;justify-content:center!important;text-align:center!important;
+  border:none!important;
+  box-shadow:none!important;
+  background:transparent!important;
+  overflow:visible!important;
+  min-width:0!important;
+  max-width:none!important;
+  align-items:center!important;
+  justify-content:center!important;
+  text-align:center!important;
 }
+
 body[data-theme] .binder-heading-module .canvashead > div,
 .binder-heading-module .canvashead > div {
-  border:none!important;box-shadow:none!important;background:transparent!important;overflow:visible!important;min-width:0!important;width:100%!important;max-width:none!important;text-align:center!important;
+  border:none!important;
+  box-shadow:none!important;
+  background:transparent!important;
+  overflow:visible!important;
+  min-width:0!important;
+  width:100%!important;
+  max-width:none!important;
+  text-align:center!important;
 }
+
 body[data-theme] .binder-heading-module .canvashead .eyebrow,
 .binder-heading-module .canvashead .eyebrow,
 body[data-theme] .binder-heading-module .canvashead h2,
 .binder-heading-module .canvashead h2 {
-  display:block!important;width:100%!important;text-align:center!important;margin-left:auto!important;margin-right:auto!important;
+  display:block!important;
+  width:100%!important;
+  text-align:center!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
 }
+
+/* Remove the instructional sentence entirely. */
 body[data-theme] .binder-heading-module .canvashead .status,
-.binder-heading-module .canvashead .status {display:none!important}
-body[data-theme] .binder-heading-module .editor-page-nav,
-.binder-heading-module .editor-page-nav {border:none!important;outline:none!important;box-shadow:none!important;background:transparent!important}
-#versionLink,.version-link,#autoArtworkLoadMore,#addUrl,.artadd label.btn,.artadd .btn[for="artFile"],.artadd .upload.btn,.artadd label.upload,#guidedDemoNext {
-  border:none!important;box-shadow:none!important;height:auto!important;min-height:34px!important;max-height:none!important;line-height:1.25!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;
+.binder-heading-module .canvashead .status {
+  display:none!important;
 }
-#autoArtworkLoadMore,#addUrl,.artadd label.btn,.artadd .btn[for="artFile"],.artadd .upload.btn,.artadd label.upload {padding:8px 10px!important;font-size:11px!important}
-#versionLink,.version-link {min-height:34px!important;padding:6px 8px!important;font-size:11px!important}
+
+body[data-theme] .binder-heading-module .editor-page-nav,
+.binder-heading-module .editor-page-nav {
+  border:none!important;
+  outline:none!important;
+  box-shadow:none!important;
+  background:transparent!important;
+}
+
+#versionLink,
+.version-link,
+#autoArtworkLoadMore,
+#addUrl,
+.artadd label.btn,
+.artadd .btn[for="artFile"],
+.artadd .upload.btn,
+.artadd label.upload,
+#guidedDemoNext {
+  border:none!important;
+  box-shadow:none!important;
+  height:auto!important;
+  min-height:34px!important;
+  max-height:none!important;
+  line-height:1.25!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+
+#autoArtworkLoadMore,
+#addUrl,
+.artadd label.btn,
+.artadd .btn[for="artFile"],
+.artadd .upload.btn,
+.artadd label.upload {
+  padding:8px 10px!important;
+  font-size:11px!important;
+}
+
+#versionLink,
+.version-link {
+  min-height:34px!important;
+  padding:6px 8px!important;
+  font-size:11px!important;
+}
