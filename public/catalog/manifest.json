@@ -1,5 +1,64 @@
 {
-  "version": "production-hotfix-2026-09-21",
-  "cards": 0,
-  "chunks": []
+  "schema": 2,
+  "version": "641f650f5224",
+  "contentHash": "641f650f5224727c1809f5810ce3c842da28cb360f3d9215c5f9aa2907018778",
+  "generatedAt": "2026-09-17T19:39:00.732Z",
+  "cards": 29656,
+  "english": 20635,
+  "pocket": 2480,
+  "unionArena": 6541,
+  "counts": {
+    "pokemon": 20635,
+    "pocket": 2480,
+    "unionArena": 6541
+  },
+  "sets": 264,
+  "chunkSize": 4000,
+  "chunks": [
+    {
+      "file": "cards-001.json",
+      "count": 4000,
+      "sha256": "7338bc03c0033f194decaef71c334c93f5bd438b66f14edeff8de546b4f83682"
+    },
+    {
+      "file": "cards-002.json",
+      "count": 4000,
+      "sha256": "babdbe453c8fc7c0ea2098c4f9c12d11d16380e4e2e6338a0ab527eea4b2dc21"
+    },
+    {
+      "file": "cards-003.json",
+      "count": 4000,
+      "sha256": "5a26876a671a73b4fcc1bf6aa9f166c7b00cfc2b7816d4188fda8ffc07f0f94b"
+    },
+    {
+      "file": "cards-004.json",
+      "count": 4000,
+      "sha256": "b88b090464df011aaa0266a3ae11ce864715db55e1f0ed39090558846786f51a"
+    },
+    {
+      "file": "cards-005.json",
+      "count": 4000,
+      "sha256": "3d73cd9b33f36629e26f6dd432d594a2f2e79ee6fb7cdf8b2e5ffc6058b83337"
+    },
+    {
+      "file": "cards-006.json",
+      "count": 4000,
+      "sha256": "bf4527bd4ed4a3bff81b7d03d6ff028052cbaf339076258b57f9965afbb6abeb"
+    },
+    {
+      "file": "cards-007.json",
+      "count": 4000,
+      "sha256": "ba23f533566c02b6bd21877f28ff870cc2e25d06af71cc9cb14c6b031954e8c0"
+    },
+    {
+      "file": "cards-008.json",
+      "count": 1656,
+      "sha256": "62d7006959f27b2c565e545725c3368175fc5e8175ba63e45dfb49c8507b138f"
+    }
+  ],
+  "sources": {
+    "pokemon": "PokemonTCG/pokemon-tcg-data",
+    "pocket": "TCGdex",
+    "unionArena": "HanClinto/tcgjson + TCGplayer CDN"
+  }
 }
