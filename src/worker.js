@@ -1,4 +1,7 @@
-const SESSION_COOKIE='kbs_session';const SESSION_MAX_AGE=2592000;const MAX_SYNC_BYTES=1850000;
+const SESSION_COOKIE='kbs_session';
+const SESSION_MAX_AGE=2592000;
+const MAX_SYNC_BYTES=1850000;
+
 const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
 function cookies(r){const o={};for(const p of(r.headers.get('cookie')||'').split(';')){const i=p.indexOf('=');if(i>-1)o[p.slice(0,i).trim()]=decodeURIComponent(p.slice(i+1).trim())}return o}
 function b64u(v){const s=String(v||'').replace(/-/g,'+').replace(/_/g,'/');const p=s+'='.repeat((4-(s.length%4||4))%4);const b=atob(p);return Uint8Array.from(b,c=>c.charCodeAt(0))}
@@ -8,9 +11,62 @@ async function jwks(){const c=caches.default,k=new Request('https://kbs.internal
 async function verifyGoogle(t,aud){if(!t||!aud)throw new Error('Google login is not configured');const p=t.split('.');if(p.length!==3)throw new Error('Invalid Google credential');const h=jwtPart(p[0]),cl=jwtPart(p[1]);if(h.alg!=='RS256'||!h.kid)throw new Error('Unsupported Google credential');const j=(await jwks()).keys?.find(k=>k.kid===h.kid);if(!j)throw new Error('Google signing key was not found');const key=await crypto.subtle.importKey('jwk',j,{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['verify']);const ok=await crypto.subtle.verify('RSASSA-PKCS1-v1_5',key,b64u(p[2]),new TextEncoder().encode(`${p[0]}.${p[1]}`));const now=Math.floor(Date.now()/1000),iss=cl.iss==='https://accounts.google.com'||cl.iss==='accounts.google.com',a=Array.isArray(cl.aud)?cl.aud.includes(aud):cl.aud===aud;if(!ok||!iss||!a||Number(cl.exp||0)<=now||Number(cl.iat||0)>now+120)throw new Error('Google credential verification failed');if(cl.email&&cl.email_verified===false)throw new Error('Google email is not verified');return cl}
 function sameOrigin(r){const o=r.headers.get('origin');return!o||o===new URL(r.url).origin}
 async function sessionUser(r,e){if(!e.DB)return null;const t=cookies(r)[SESSION_COOKIE];if(!t)return null;const h=await sha(t),row=await e.DB.prepare('SELECT u.id,u.email,u.display_name,u.picture_url,s.expires_at FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=?1').bind(h).first();if(!row)return null;if(Number(row.expires_at)<=Date.now()){await e.DB.prepare('DELETE FROM sessions WHERE token_hash=?1').bind(h).run();return null}return{id:row.id,email:row.email,name:row.display_name,picture:row.picture_url}}
-async function api(r,e){const p=new URL(r.url).pathname;if(p==='/api/config'&&r.method==='GET')return json({googleClientId:e.GOOGLE_CLIENT_ID||'',databaseReady:Boolean(e.DB),authReady:Boolean(e.DB&&e.GOOGLE_CLIENT_ID),syncVersion:1});if(p==='/api/me'&&r.method==='GET'){const u=await sessionUser(r,e);return json({authenticated:Boolean(u),user:u})}
-if(p==='/api/auth/google'&&r.method==='POST'){if(!e.DB||!e.GOOGLE_CLIENT_ID)return json({error:'Cloud login setup is not complete yet.'},503);if(!sameOrigin(r))return json({error:'Origin check failed.'},403);let b;try{b=await r.json()}catch{return json({error:'Invalid request.'},400)}try{const c=await verifyGoogle(b.credential,e.GOOGLE_CLIENT_ID),now=Date.now();let u=await e.DB.prepare('SELECT id,email,display_name,picture_url FROM users WHERE google_sub=?1').bind(c.sub).first();if(!u){const id=crypto.randomUUID();await e.DB.prepare('INSERT INTO users(id,google_sub,email,display_name,picture_url,created_at,updated_at) VALUES(?1,?2,?3,?4,?5,?6,?6)').bind(id,c.sub,c.email||'',c.name||c.email||'Google User',c.picture||'',now).run();u={id}}else await e.DB.prepare('UPDATE users SET email=?2,display_name=?3,picture_url=?4,updated_at=?5 WHERE id=?1').bind(u.id,c.email||'',c.name||c.email||'',c.picture||'',now).run();const t=crypto.randomUUID().replaceAll('-','')+crypto.randomUUID().replaceAll('-',''),h=await sha(t),ex=now+SESSION_MAX_AGE*1000;await e.DB.prepare('DELETE FROM sessions WHERE expires_at<=?1 OR user_id=?2').bind(now,u.id).run();await e.DB.prepare('INSERT INTO sessions(token_hash,user_id,created_at,expires_at) VALUES(?1,?2,?3,?4)').bind(h,u.id,now,ex).run();return json({authenticated:true,user:{id:u.id,email:c.email||'',name:c.name||c.email||'Google User',picture:c.picture||''}},200,{'set-cookie':`${SESSION_COOKIE}=${encodeURIComponent(t)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_MAX_AGE}`})}catch(x){return json({error:x?.message||'Google sign-in failed.'},401)}}
-if(p==='/api/logout'&&r.method==='POST'){if(!sameOrigin(r))return json({error:'Origin check failed.'},403);if(e.DB){const t=cookies(r)[SESSION_COOKIE];if(t)await e.DB.prepare('DELETE FROM sessions WHERE token_hash=?1').bind(await sha(t)).run()}return json({ok:true},200,{'set-cookie':`${SESSION_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`})}
-if(p==='/api/sync'&&r.method==='GET'){if(!e.DB)return json({error:'Cloud database is not connected.'},503);const u=await sessionUser(r,e);if(!u)return json({error:'Sign in required.'},401);const row=await e.DB.prepare('SELECT payload,encoding,updated_at,revision FROM binder_snapshots WHERE user_id=?1').bind(u.id).first();return json({snapshot:row?{payload:row.payload,encoding:row.encoding,updatedAt:row.updated_at,revision:row.revision}:null})}
-if(p==='/api/sync'&&r.method==='PUT'){if(!e.DB)return json({error:'Cloud database is not connected.'},503);if(!sameOrigin(r))return json({error:'Origin check failed.'},403);const u=await sessionUser(r,e);if(!u)return json({error:'Sign in required.'},401);let b;try{b=await r.json()}catch{return json({error:'Invalid sync payload.'},400)}const payload=String(b.payload||''),encoding=b.encoding==='gzip-base64'?'gzip-base64':'json',size=new TextEncoder().encode(payload).byteLength;if(!payload||size>MAX_SYNC_BYTES)return json({error:'Binder snapshot is too large for D1 sync.',maxBytes:MAX_SYNC_BYTES},413);const now=Date.now(),old=await e.DB.prepare('SELECT revision FROM binder_snapshots WHERE user_id=?1').bind(u.id).first(),rev=Number(old?.revision||0)+1;await e.DB.prepare('INSERT INTO binder_snapshots(user_id,payload,encoding,updated_at,revision) VALUES(?1,?2,?3,?4,?5) ON CONFLICT(user_id) DO UPDATE SET payload=excluded.payload,encoding=excluded.encoding,updated_at=excluded.updated_at,revision=excluded.revision').bind(u.id,payload,encoding,now,rev).run();return json({ok:true,updatedAt:now,revision:rev})}return json({error:'Not found.'},404)}
+
+async function api(r,e){
+  const url=new URL(r.url),p=url.pathname;
+  if(p==='/api/config'&&r.method==='GET')return json({googleClientId:e.GOOGLE_CLIENT_ID||'',databaseReady:Boolean(e.DB),authReady:Boolean(e.DB&&e.GOOGLE_CLIENT_ID),syncVersion:2});
+  if(p==='/api/me'&&r.method==='GET'){const u=await sessionUser(r,e);return json({authenticated:Boolean(u),user:u})}
+
+  if(p==='/api/auth/google'&&r.method==='POST'){
+    if(!e.DB||!e.GOOGLE_CLIENT_ID)return json({error:'Cloud login setup is not complete yet.'},503);
+    if(!sameOrigin(r))return json({error:'Origin check failed.'},403);
+    let b;try{b=await r.json()}catch{return json({error:'Invalid request.'},400)}
+    try{
+      const c=await verifyGoogle(b.credential,e.GOOGLE_CLIENT_ID),now=Date.now();
+      let u=await e.DB.prepare('SELECT id,email,display_name,picture_url FROM users WHERE google_sub=?1').bind(c.sub).first();
+      if(!u){const id=crypto.randomUUID();await e.DB.prepare('INSERT INTO users(id,google_sub,email,display_name,picture_url,created_at,updated_at) VALUES(?1,?2,?3,?4,?5,?6,?6)').bind(id,c.sub,c.email||'',c.name||c.email||'Google User',c.picture||'',now).run();u={id}}
+      else await e.DB.prepare('UPDATE users SET email=?2,display_name=?3,picture_url=?4,updated_at=?5 WHERE id=?1').bind(u.id,c.email||'',c.name||c.email||'',c.picture||'',now).run();
+      const t=crypto.randomUUID().replaceAll('-','')+crypto.randomUUID().replaceAll('-',''),h=await sha(t),ex=now+SESSION_MAX_AGE*1000;
+      // Multi-device safety: expire only old sessions. Do not invalidate this user's other devices.
+      await e.DB.prepare('DELETE FROM sessions WHERE expires_at<=?1').bind(now).run();
+      await e.DB.prepare('INSERT INTO sessions(token_hash,user_id,created_at,expires_at) VALUES(?1,?2,?3,?4)').bind(h,u.id,now,ex).run();
+      return json({authenticated:true,user:{id:u.id,email:c.email||'',name:c.name||c.email||'Google User',picture:c.picture||''}},200,{'set-cookie':`${SESSION_COOKIE}=${encodeURIComponent(t)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_MAX_AGE}`});
+    }catch(x){return json({error:x?.message||'Google sign-in failed.'},401)}
+  }
+
+  if(p==='/api/logout'&&r.method==='POST'){
+    if(!sameOrigin(r))return json({error:'Origin check failed.'},403);
+    if(e.DB){const t=cookies(r)[SESSION_COOKIE];if(t)await e.DB.prepare('DELETE FROM sessions WHERE token_hash=?1').bind(await sha(t)).run()}
+    return json({ok:true},200,{'set-cookie':`${SESSION_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`});
+  }
+
+  if(p==='/api/sync'&&r.method==='GET'){
+    if(!e.DB)return json({error:'Cloud database is not connected.'},503);
+    const u=await sessionUser(r,e);if(!u)return json({error:'Sign in required.'},401);
+    if(url.searchParams.get('meta')==='1'){
+      const row=await e.DB.prepare('SELECT updated_at,revision FROM binder_snapshots WHERE user_id=?1').bind(u.id).first();
+      return json({snapshot:row?{updatedAt:row.updated_at,revision:row.revision}:null});
+    }
+    const row=await e.DB.prepare('SELECT payload,encoding,updated_at,revision FROM binder_snapshots WHERE user_id=?1').bind(u.id).first();
+    return json({snapshot:row?{payload:row.payload,encoding:row.encoding,updatedAt:row.updated_at,revision:row.revision}:null});
+  }
+
+  if(p==='/api/sync'&&r.method==='PUT'){
+    if(!e.DB)return json({error:'Cloud database is not connected.'},503);
+    if(!sameOrigin(r))return json({error:'Origin check failed.'},403);
+    const u=await sessionUser(r,e);if(!u)return json({error:'Sign in required.'},401);
+    let b;try{b=await r.json()}catch{return json({error:'Invalid sync payload.'},400)}
+    const payload=String(b.payload||''),encoding=b.encoding==='gzip-base64'?'gzip-base64':'json',size=new TextEncoder().encode(payload).byteLength;
+    if(!payload||size>MAX_SYNC_BYTES)return json({error:'Binder snapshot is too large for D1 sync.',maxBytes:MAX_SYNC_BYTES},413);
+    const old=await e.DB.prepare('SELECT revision,updated_at FROM binder_snapshots WHERE user_id=?1').bind(u.id).first();
+    const currentRevision=Number(old?.revision||0),baseRevision=Number.isFinite(Number(b.baseRevision))?Number(b.baseRevision):currentRevision;
+    if(baseRevision!==currentRevision)return json({error:'Cloud binder changed on another device.',code:'SYNC_CONFLICT',currentRevision,updatedAt:Number(old?.updated_at||0)},409);
+    const now=Date.now(),rev=currentRevision+1;
+    await e.DB.prepare('INSERT INTO binder_snapshots(user_id,payload,encoding,updated_at,revision) VALUES(?1,?2,?3,?4,?5) ON CONFLICT(user_id) DO UPDATE SET payload=excluded.payload,encoding=excluded.encoding,updated_at=excluded.updated_at,revision=excluded.revision').bind(u.id,payload,encoding,now,rev).run();
+    return json({ok:true,updatedAt:now,revision:rev});
+  }
+
+  return json({error:'Not found.'},404);
+}
+
 export default{async fetch(r,e){const u=new URL(r.url);try{if(u.pathname.startsWith('/api/'))return await api(r,e);if(e.ASSETS)return e.ASSETS.fetch(r);return new Response('Binder Studio assets binding is unavailable.',{status:503})}catch(x){console.error('Worker error',x);return u.pathname.startsWith('/api/')?json({error:'Server error.'},500):new Response('Binder Studio temporarily unavailable.',{status:500})}}};
