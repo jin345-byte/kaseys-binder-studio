@@ -2,7 +2,7 @@
    Production-safe only: no staging read-only guards, preview workers, or staging shims. */
 (function(){
   'use strict';
-  const BUILD='4.0.6-rc1';
+  const BUILD='4.0.6-rc2';
   const sameAsset=(node,url)=>{try{return new URL(node.href||node.src,location.href).pathname===new URL(url,location.href).pathname}catch{return false}};
   function loadStyle(href,id){
     const existing=document.getElementById(id)||[...document.querySelectorAll('link[rel="stylesheet"]')].find(x=>sameAsset(x,href));
@@ -15,9 +15,9 @@
     return new Promise((resolve,reject)=>{const s=document.createElement('script');s.id=id;s.src=src;s.onload=()=>resolve(s);s.onerror=()=>{s.remove();reject(new Error('Could not load '+src))};document.head.appendChild(s)});
   }
   function syncBuildIdentity(){
-    const version=document.querySelector('#versionLink');if(version)version.textContent='v4.0.6 RC';
+    const version=document.querySelector('#versionLink');if(version)version.textContent='v4.0.6 RC2';
     let meta=document.querySelector('meta[name="kbs-build"]');if(!meta){meta=document.createElement('meta');meta.name='kbs-build';document.head.appendChild(meta)}meta.content=BUILD;
-    const title=document.querySelector('#buildInfoTitle');if(title)title.textContent='Kasey’s Binder Studio v4.0.6 Release Candidate';
+    const title=document.querySelector('#buildInfoTitle');if(title)title.textContent='Kasey’s Binder Studio v4.0.6 Release Candidate 2';
   }
   syncBuildIdentity();
 
@@ -35,7 +35,8 @@
     ['styles/desktop-readability-pass.css?v=1.0.0','kbsDesktopReadabilityPassStyle'],
     ['styles/text-control-borderless.css?v=1.0.0','kbsTextControlBorderlessStyle'],
     ['styles/binder-grid-geometry-lock.css?v=1.2.0','kbsBinderGridGeometryLockStyle'],
-    ['styles/mobile-lab.css?v=4.0.5','kbsMobileLabStyle']
+    ['styles/mobile-lab.css?v=4.0.5','kbsMobileLabStyle'],
+    ['features/cloud-sync.css?v=4.0.6-rc2','kbsCloudSyncStyle']
   ].forEach(([href,id])=>loadStyle(href,id));
 
   loadScript('features/full-themes.js?v=4.0.5','kbsFullThemesScript').catch(console.warn);
@@ -46,6 +47,7 @@
   loadScript('features/viewer-legacy-layout-repair.js?v=1.0.0','kbsViewerLegacyLayoutRepairScript').catch(console.warn);
   loadScript('features/artwork-height-sync.js?v=2.9.0','kbsArtworkHeightSyncScript').catch(console.warn);
   loadScript('features/mobile-lab.js?v=2.9.0','kbsMobileLabScript').catch(console.warn);
+  loadScript('features/cloud-sync.js?v=4.0.6-rc2','kbsCloudSyncScript').catch(console.warn);
 
   let coverLoaded=false,coverLoading=null;
   async function loadCoverDesigner(){if(coverLoaded)return;if(coverLoading)return coverLoading;loadStyle('styles/binder-cover-designer.css?v=3.1.1','kbsBinderCoverDesignerStyle');coverLoading=loadScript('features/binder-cover-designer.js?v=3.1.1','kbsBinderCoverDesignerScript').then(()=>{coverLoaded=true}).catch(err=>{coverLoading=null;throw err});return coverLoading}
@@ -59,5 +61,5 @@
   const numbers=document.querySelector('#editorPageNumbers');
   if(numbers){const revealActive=()=>{const active=numbers.querySelector('.page-number.active,.page-number[aria-current="page"]');if(active)active.scrollIntoView({behavior:'auto',block:'center',inline:'nearest'})};new MutationObserver(()=>requestAnimationFrame(revealActive)).observe(numbers,{childList:true,subtree:true,attributes:true,attributeFilter:['class','aria-current']});numbers.addEventListener('click',()=>setTimeout(revealActive,20));document.querySelector('#editorPrev')?.addEventListener('click',()=>setTimeout(revealActive,40));document.querySelector('#editorNext')?.addEventListener('click',()=>setTimeout(revealActive,40));setTimeout(revealActive,150)}
 
-  globalThis.KBSReleaseBuild={version:BUILD,productionSafe:true,readOnlyCloud:false,stagingShim:false,lazy:{coverDesigner:true,artworkSources:true}};
+  globalThis.KBSReleaseBuild={version:BUILD,productionSafe:true,readOnlyCloud:false,stagingShim:false,cloudSyncVersion:2,lazy:{coverDesigner:true,artworkSources:true}};
 })();
