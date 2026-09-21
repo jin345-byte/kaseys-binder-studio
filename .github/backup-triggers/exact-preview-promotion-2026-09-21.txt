@@ -1,1 +1,1 @@
-Trigger production D1 backup before exact prod-db-compat-preview promotion.
+Production D1 backup completed successfully. Trigger exact prod-db-compat-preview UI production deployment.
