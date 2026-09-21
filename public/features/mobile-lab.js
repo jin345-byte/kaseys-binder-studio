@@ -3,8 +3,8 @@
   const FORCE_KEY='kbsMobileLabForcePreview';
   try{localStorage.removeItem(FORCE_KEY)}catch{}
 
-  const previewToggle=document.querySelector('#mobilePreviewToggle');
-  if(previewToggle)previewToggle.remove();
+  document.querySelector('#mobilePreviewToggle')?.remove();
+  document.querySelector('#mobileLabBottomNav')?.remove();
 
   function isMobileDevice(){
     try{
@@ -33,6 +33,7 @@
     document.body.classList.add('mobile-gate-ready');
     document.body.classList.remove('mobile-coming-soon','mobile-lab-enabled','mobile-lab-force-preview','mobile-lab-cards','mobile-lab-page','mobile-lab-art');
     document.querySelector('#mobileComingSoon')?.remove();
+    document.querySelector('#mobileLabBottomNav')?.remove();
   }
 
   if(isMobileDevice())showMobileGate();else enableDesktop();
