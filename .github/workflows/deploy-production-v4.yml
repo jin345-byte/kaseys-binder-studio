@@ -10,30 +10,31 @@ permissions:
 
 jobs:
   deploy:
-    if: github.event.head_commit.message == 'Deploy production startup performance hotfix'
+    if: github.event.head_commit.message == 'Deploy Lavender-only production theme'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout approved main
         uses: actions/checkout@v4
         with:
           ref: main
-      - name: Verify approved hotfix revision
+      - name: Verify approved Lavender-only revision
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "5f65922571b880c91b2a92c8fe0991a4d66dcb5e"
+          test "$(git rev-parse HEAD)" = "191cecb9d7507180480a17b0ae9ecf35f8f0505f"
           grep -q 'kaseys-binder-studio-db' wrangler.jsonc
           grep -q 'ea5aaa71-88e3-4bff-b997-7aa9bff3c24d' wrangler.jsonc
-          test -e public/catalog/manifest.json
-          test -e public/catalog/cards-008.json
-          test -e public/features/prebuilt-catalog-bootstrap.js
+          test -e public/features/lavender-only.js
           node --check src/worker.js
           node --check public/features/cloud-sync.js
           node --check public/features/production-v4.js
-          node --check public/features/prebuilt-catalog-bootstrap.js
+          node --check public/features/lavender-only.js
           grep -q 'syncVersion:2' src/worker.js
-          grep -q 'startupFastPath:true' public/features/production-v4.js
-          grep -q '4.0.6-hotfix2' public/features/production-v4.js
+          grep -q 'themeLocked:true' public/features/production-v4.js
+          grep -q "theme:'lavender'" public/features/production-v4.js
+          grep -q 'body data-theme="lavender"' public/index.html
+          ! grep -q "features/full-themes.js" public/features/production-v4.js
+          ! grep -q "features/theme-picker-fit.js" public/features/production-v4.js
       - name: Install Wrangler
         run: npm install --global wrangler@4
       - name: Deploy production Worker and assets
@@ -41,17 +42,18 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: wrangler deploy --config=wrangler.jsonc
-      - name: Verify production API and hotfix assets
+      - name: Verify production API and Lavender lock
         shell: bash
         run: |
           set -euo pipefail
           BASE='https://kaseys-binder-studio.jin345.workers.dev'
           for i in 1 2 3 4 5 6; do
             BODY="$(curl -fsS "$BASE/api/config" || true)"
+            INDEX="$(curl -fsS "$BASE/" || true)"
             LOADER="$(curl -fsS "$BASE/features/production-v4.js" || true)"
-            BOOTSTRAP="$(curl -fsS "$BASE/features/prebuilt-catalog-bootstrap.js" || true)"
-            if echo "$BODY" | grep -q '"syncVersion":2' && echo "$LOADER" | grep -q '4.0.6-hotfix2' && echo "$LOADER" | grep -q 'startupFastPath:true' && echo "$BOOTSTRAP" | grep -q 'inspectMaster'; then
-              echo 'Production startup hotfix verified.'
+            LOCK="$(curl -fsS "$BASE/features/lavender-only.js" || true)"
+            if echo "$BODY" | grep -q '"syncVersion":2' && echo "$INDEX" | grep -q 'body data-theme="lavender"' && echo "$LOADER" | grep -q 'themeLocked:true' && echo "$LOCK" | grep -q "const THEME='lavender'"; then
+              echo 'Production Lavender-only theme verified.'
               exit 0
             fi
             sleep 5
