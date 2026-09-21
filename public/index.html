@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=5,user-scalable=yes">
-<meta name="theme-color" content="#111820">
+<meta name="theme-color" content="#272038">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Kasey's Binder Studio">
@@ -12,10 +12,14 @@
 <link rel="stylesheet" href="styles/v2-visual.css">
 <link rel="stylesheet" href="features/feature-lab.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap">
-  <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#f5d52f">
+<link rel="manifest" href="manifest.webmanifest">
+<style id="lavenderBootTheme">
+  html{background:#171323;color-scheme:dark}
+  body{--bg:#171323;--surface:#272038;--surface2:#342b49;--line:#685b83;--text:#fbf7ff;--muted:#c8bdd8;--accent:#b792d9;--accent2:#e0c7ff;background:#171323!important;color:#fbf7ff}
+</style>
+<script src="features/lavender-only.js?v=1.0.0"></script>
 </head>
-<body data-theme="jolteon">
+<body data-theme="lavender">
 <div class="theme-scene" aria-hidden="true">
   <span class="theme-orb orb-a"></span>
   <span class="theme-orb orb-b"></span>
@@ -179,11 +183,11 @@
       <button class="btn build-info-close" id="buildInfoClose" type="button">×</button>
     </div>
     <div class="build-info-content">
-      <section><strong>v2.2.0 Feature Lab — TEST BUILD</strong><p>A dedicated test branch containing the next major workflow and visual features before they are considered stable.</p></section>
-      <section><strong>Card workflow</strong><p>The interface now launches the fixed Gardevoir walkthrough directly from a glowing Guided Tour button. The old Help Center and visible theme selector were removed; the Jolteon theme remains fixed.</p></section>
-      <section><strong>Binder workflow</strong><p>Animated page changes, binder overview upgrades, duplicate pages and drag-to-reorder pages. Undo/Redo and Templates were removed from this test branch.</p></section>
-      <section><strong>Theme workflow</strong><p>Jolteon · Voltage Lab is now the only active theme for this test branch. The other Eeveelution themes have been removed temporarily.</p></section>
-      <section><strong>Architecture</strong><p>Experimental functionality is isolated into Cards, Catalog and Binder modules so the core editor remains easier to audit.</p></section>
+      <section><strong>Kasey’s Binder Studio</strong><p>Production build with cloud sync, binder tools, artwork tools, and the unified card catalog.</p></section>
+      <section><strong>Card workflow</strong><p>Search the local-first card catalog, filter by set and artist, and inspect card details.</p></section>
+      <section><strong>Binder workflow</strong><p>Build, save, view, print, and sync binder pages across supported devices.</p></section>
+      <section><strong>Appearance</strong><p>Lavender is the permanent application theme. Alternate app themes have been removed from the production runtime.</p></section>
+      <section><strong>Architecture</strong><p>Card, catalog, binder, artwork, and cloud-sync modules remain isolated so the editor stays easier to audit.</p></section>
     </div>
   </div>
 </div>
@@ -196,7 +200,7 @@
 <script src="features/cards-lab.js"></script>
 <script src="features/catalog-lab.js"></script>
 <script src="features/binder-lab.js"></script>
-<script src="features/production-v4.js?v=4.0.6-rc4"></script>
+<script src="features/production-v4.js?v=4.0.6-lavender-only"></script>
 
 <div class="guided-demo" id="guidedDemo" hidden aria-hidden="true">
   <div class="guided-demo-shade"></div>
@@ -212,5 +216,5 @@
 </div>
 
 <script src="features/help-lab.js"></script>
-  <script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(console.error));}</script>
+<script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(console.error));}</script>
 </body></html>
