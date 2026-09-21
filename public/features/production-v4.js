@@ -2,8 +2,7 @@
    Production-safe only: no staging read-only guards, preview workers, or staging shims. */
 (function(){
   'use strict';
-  const BUILD='4.0.6-hotfix2';
-  const THEME_IDS=new Set(['jolteon','pokedex','game-boy','neo-genesis','team-rocket','lavender','cyberpunk','cozy-sakura','dark-academia','e-ink','retro-card-shop']);
+  const BUILD='4.0.6-lavender-only';
   const sameAsset=(node,url)=>{try{return new URL(node.href||node.src,location.href).pathname===new URL(url,location.href).pathname}catch{return false}};
   function loadStyle(href,id){
     const existing=document.getElementById(id)||[...document.querySelectorAll('link[rel="stylesheet"]')].find(x=>sameAsset(x,href));
@@ -15,21 +14,11 @@
     if(existing){if(id&&!existing.id)existing.id=id;return Promise.resolve(existing)}
     return new Promise((resolve,reject)=>{const s=document.createElement('script');s.id=id;s.src=src;s.onload=()=>resolve(s);s.onerror=()=>{s.remove();reject(new Error('Could not load '+src))};document.head.appendChild(s)});
   }
-  function preferredTheme(){
-    try{
-      const direct=localStorage.getItem('kbsThemePreference')||'';
-      if(THEME_IDS.has(direct))return direct;
-      const saved=JSON.parse(localStorage.getItem('michiStandaloneState')||'{}')||{};
-      if(THEME_IDS.has(saved.theme))return saved.theme;
-    }catch{}
-    return 'lavender';
-  }
   function applyBootTheme(){
-    const id=preferredTheme();
-    document.body.dataset.theme=id;
+    if(document.body)document.body.dataset.theme='lavender';
     const meta=document.querySelector('meta[name="theme-color"]');
-    const colors={lavender:'#272038',jolteon:'#111820',pokedex:'#3a1016','game-boy':'#39452a','neo-genesis':'#27203b','team-rocket':'#111319',cyberpunk:'#0d1020','cozy-sakura':'#fff8f5','dark-academia':'#241d17','e-ink':'#f2f0e9','retro-card-shop':'#f0d6a7'};
-    if(meta)meta.setAttribute('content',colors[id]||colors.lavender);
+    if(meta)meta.setAttribute('content','#272038');
+    document.documentElement.style.colorScheme='dark';
   }
   function installStartupFastPath(){
     const original=globalThis.loadMasterFromDb;
@@ -68,7 +57,6 @@
   [
     ['styles/appearance-cleanup.css?v=2.9.7','kbsAppearanceCleanupStyle'],
     ['styles/full-themes.css?v=3.0.5','kbsFullThemesStyle'],
-    ['styles/theme-picker-fit.css?v=3.0.2','kbsThemePickerFitStyle'],
     ['styles/responsive-button-fit.css?v=4.0.5','kbsResponsiveButtonFitStyle'],
     ['styles/ui-readability-fixes.css?v=3.5.5','kbsUiReadabilityFixesStyle'],
     ['styles/layout-overlap-fixes.css?v=4.0.3.1','kbsLayoutOverlapFixesStyle'],
@@ -84,8 +72,7 @@
   ].forEach(([href,id])=>loadStyle(href,id));
 
   scheduleCatalogBootstrap();
-  loadScript('features/full-themes.js?v=4.0.6-hotfix2','kbsFullThemesScript').catch(console.warn);
-  loadScript('features/theme-picker-fit.js?v=3.0.2','kbsThemePickerFitScript').catch(console.warn);
+  loadScript('features/lavender-only.js?v=1.0.0','kbsLavenderOnlyScript').catch(console.warn);
   loadScript('features/typography-picker.js?v=4.0.6','kbsTypographyPickerScript').catch(console.warn);
   loadScript('features/focus-presentation-mode.js?v=4.0.5','kbsFocusPresentationScript').catch(console.warn);
   loadScript('features/artwork-legacy-repair.js?v=2.9.1','kbsArtworkLegacyRepairScript').catch(console.warn);
@@ -106,5 +93,5 @@
   const numbers=document.querySelector('#editorPageNumbers');
   if(numbers){const revealActive=()=>{const active=numbers.querySelector('.page-number.active,.page-number[aria-current="page"]');if(active)active.scrollIntoView({behavior:'auto',block:'center',inline:'nearest'})};new MutationObserver(()=>requestAnimationFrame(revealActive)).observe(numbers,{childList:true,subtree:true,attributes:true,attributeFilter:['class','aria-current']});numbers.addEventListener('click',()=>setTimeout(revealActive,20));document.querySelector('#editorPrev')?.addEventListener('click',()=>setTimeout(revealActive,40));document.querySelector('#editorNext')?.addEventListener('click',()=>setTimeout(revealActive,40));setTimeout(revealActive,150)}
 
-  globalThis.KBSReleaseBuild={version:BUILD,productionSafe:true,readOnlyCloud:false,stagingShim:false,cloudSyncVersion:2,catalogBootstrap:true,startupFastPath:true,lazy:{coverDesigner:true,artworkSources:true}};
+  globalThis.KBSReleaseBuild={version:BUILD,productionSafe:true,readOnlyCloud:false,stagingShim:false,cloudSyncVersion:2,catalogBootstrap:true,startupFastPath:true,theme:'lavender',themeLocked:true,lazy:{coverDesigner:true,artworkSources:true}};
 })();
