@@ -1,1 +1,1 @@
-Trigger production deployment for binder cover Art of Pokemon proxy hotfix.
+Trigger production deployment for desktop-only mobile gate.
