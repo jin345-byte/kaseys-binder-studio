@@ -7,12 +7,12 @@
     const brand=document.querySelector('.brand');
     if(brand){
       brand.classList.add('brand-image-lock');
-      brand.innerHTML='<img class="brand-logo-image" src="branding/kaseys-binder-studio-logo.svg?v=2" alt="Kasey\'s Binder Studio">';
+      brand.innerHTML='<img class="brand-logo-image" src="branding/kaseys-binder-studio-logo.svg?v=3" alt="Kasey\'s Binder Studio">';
     }
     if(!document.querySelector('#kbsBrandLogoStyle')){
       const style=document.createElement('style');
       style.id='kbsBrandLogoStyle';
-      style.textContent='.brand-image-lock{display:flex!important;align-items:center!important;min-width:0!important}.brand-image-lock .brand-logo-image{display:block;width:min(560px,48vw);height:auto;max-height:82px;object-fit:contain;object-position:left center}.brand-image-lock .k-logo,.brand-image-lock .brand-copy{display:none!important}@media(max-width:1180px){.brand-image-lock .brand-logo-image{width:min(430px,44vw);max-height:72px}}';
+      style.textContent='.brand-image-lock{display:flex!important;align-items:center!important;min-width:0!important;overflow:visible!important;flex:1 1 auto!important}.brand-image-lock .brand-logo-image{display:block!important;width:min(860px,62vw)!important;height:auto!important;max-height:94px!important;object-fit:contain!important;object-position:left center!important;overflow:visible!important;flex-shrink:1!important}.brand-image-lock .k-logo,.brand-image-lock .brand-copy{display:none!important}.top{overflow:visible!important}@media(max-width:1360px){.brand-image-lock .brand-logo-image{width:min(720px,58vw)!important;max-height:88px!important}}@media(max-width:1180px){.brand-image-lock .brand-logo-image{width:min(620px,54vw)!important;max-height:80px!important}}';
       document.head.appendChild(style);
     }
     document.querySelectorAll('link[rel="icon"],link[rel="shortcut icon"]').forEach(x=>x.remove());
