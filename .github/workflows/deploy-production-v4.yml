@@ -10,26 +10,25 @@ permissions:
 
 jobs:
   deploy:
-    if: github.event.head_commit.message == 'Deploy full glimmer Binder Studio logo'
+    if: github.event.head_commit.message == 'Deploy logo spacing fix'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout approved main
         uses: actions/checkout@v4
         with:
           ref: main
-      - name: Verify approved glimmer-logo revision
+      - name: Verify approved logo spacing revision
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "c8ad3a2d12f500eceac53f1a43001250d0887009"
+          test "$(git rev-parse HEAD)" = "31588adbf6587646dc1f6f2f3fb94ccd00de3726"
           grep -q 'kaseys-binder-studio-db' wrangler.jsonc
           grep -q 'ea5aaa71-88e3-4bff-b997-7aa9bff3c24d' wrangler.jsonc
           node --check src/worker.js
           node --check public/features/mobile-lab.js
-          grep -q 'branding/kaseys-binder-studio-logo.svg?v=3' public/features/mobile-lab.js
-          grep -q 'viewBox="0 0 1800 300"' public/branding/kaseys-binder-studio-logo.svg
-          grep -q 'Binder Studio</text>' public/branding/kaseys-binder-studio-logo.svg
-          grep -q '<animate attributeName="opacity"' public/branding/kaseys-binder-studio-logo.svg
+          grep -q 'logo.svg?v=4' public/features/mobile-lab.js
+          grep -q 'viewBox="0 0 1840 300"' public/branding/kaseys-binder-studio-logo.svg
+          grep -q '<text x="805" y="183"' public/branding/kaseys-binder-studio-logo.svg
           grep -q 'syncVersion:2' src/worker.js
       - name: Install Wrangler
         run: npm install --global wrangler@4
@@ -38,7 +37,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: wrangler deploy --config=wrangler.jsonc
-      - name: Verify production glimmer logo
+      - name: Verify production logo spacing fix
         shell: bash
         run: |
           set -euo pipefail
@@ -46,9 +45,9 @@ jobs:
           for i in 1 2 3 4 5 6; do
             BODY="$(curl -fsS "$BASE/api/config" || true)"
             MOBILE="$(curl -fsS "$BASE/features/mobile-lab.js" || true)"
-            LOGO="$(curl -fsS "$BASE/branding/kaseys-binder-studio-logo.svg?v=3" || true)"
-            if echo "$BODY" | grep -q '"syncVersion":2' && echo "$MOBILE" | grep -q 'logo.svg?v=3' && echo "$LOGO" | grep -q 'viewBox="0 0 1800 300"' && echo "$LOGO" | grep -q 'Binder Studio</text>' && echo "$LOGO" | grep -q '<animate attributeName="opacity"'; then
-              echo 'Production full glimmer logo verified.'
+            LOGO="$(curl -fsS "$BASE/branding/kaseys-binder-studio-logo.svg?v=4" || true)"
+            if echo "$BODY" | grep -q '"syncVersion":2' && echo "$MOBILE" | grep -q 'logo.svg?v=4' && echo "$LOGO" | grep -q 'viewBox="0 0 1840 300"' && echo "$LOGO" | grep -q '<text x="805" y="183"'; then
+              echo 'Production logo spacing verified.'
               exit 0
             fi
             sleep 5
