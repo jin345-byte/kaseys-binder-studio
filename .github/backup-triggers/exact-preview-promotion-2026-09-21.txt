@@ -1,1 +1,1 @@
-Trigger production deployment for obsolete mobile page action cleanup.
+Trigger production deployment for new Binder Studio branding.
