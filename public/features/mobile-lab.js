@@ -7,7 +7,7 @@
     const brand=document.querySelector('.brand');
     if(brand){
       brand.classList.add('brand-image-lock');
-      brand.innerHTML='<img class="brand-logo-image" src="branding/kaseys-binder-studio-logo.svg?v=3" alt="Kasey\'s Binder Studio">';
+      brand.innerHTML='<img class="brand-logo-image" src="branding/kaseys-binder-studio-logo.svg?v=4" alt="Kasey\'s Binder Studio">';
     }
     if(!document.querySelector('#kbsBrandLogoStyle')){
       const style=document.createElement('style');
