@@ -150,3 +150,58 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});
   else init();
 })();
+
+/* Result-count guard: keep browsing responsive while preserving the true match count. */
+(()=>{
+  'use strict';
+  const DISPLAY_LIMIT=250;
+
+  function setCount(total,shown){
+    const count=document.querySelector('#count');
+    if(!count)return;
+    const safeTotal=Math.max(0,Number(total)||0);
+    const safeShown=Math.max(0,Number(shown)||0);
+    count.textContent=safeTotal>DISPLAY_LIMIT?`${safeTotal.toLocaleString()} total`:safeTotal.toLocaleString();
+    count.title=safeTotal>safeShown?`Showing ${safeShown.toLocaleString()} of ${safeTotal.toLocaleString()} matching cards`:`${safeTotal.toLocaleString()} matching cards`;
+  }
+
+  function localTotal(){
+    try{
+      if(typeof localMasterMatches==='function')return localMasterMatches().length;
+    }catch(e){console.warn('Could not calculate local card total',e)}
+    return 0;
+  }
+
+  function capCurrentResults(totalHint=0){
+    try{
+      if(typeof cards==='undefined'||!Array.isArray(cards))return;
+      const total=Math.max(Number(totalHint)||0,cards.length);
+      if(cards.length>DISPLAY_LIMIT){
+        cards=cards.slice(0,DISPLAY_LIMIT);
+        if(typeof renderCards==='function')renderCards();
+      }
+      setCount(total,cards.length);
+    }catch(e){console.warn('Could not apply Binder Studio result limit',e)}
+  }
+
+  function install(){
+    if(typeof runCardSearch!=='function'||runCardSearch.__kbsCountWrapped)return;
+    const original=runCardSearch;
+    const wrapped=async function(...args){
+      const totalBefore=localTotal();
+      const result=await original.apply(this,args);
+      const totalAfter=localTotal();
+      capCurrentResults(Math.max(totalBefore,totalAfter));
+      return result;
+    };
+    wrapped.__kbsCountWrapped=true;
+    runCardSearch=wrapped;
+
+    const refresh=()=>setTimeout(()=>capCurrentResults(localTotal()),0);
+    document.querySelector('#setFilter')?.addEventListener('change',refresh);
+    document.querySelector('#artistFilter')?.addEventListener('change',refresh);
+  }
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
+  else install();
+})();
