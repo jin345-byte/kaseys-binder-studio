@@ -1,1 +1,1 @@
-Trigger production deployment for full glimmer Binder Studio logo.
+Trigger production deployment for logo spacing fix.
