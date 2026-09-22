@@ -1,1 +1,1 @@
-Trigger production deployment for page numbering and obsolete mobile navigation cleanup.
+Trigger production deployment for obsolete mobile page action cleanup.
