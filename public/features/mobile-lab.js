@@ -3,8 +3,10 @@
   const FORCE_KEY='kbsMobileLabForcePreview';
   try{localStorage.removeItem(FORCE_KEY)}catch{}
 
+  /* Old mobile controls are retired while the mobile experience is disabled. */
   document.querySelector('#mobilePreviewToggle')?.remove();
   document.querySelector('#mobileLabBottomNav')?.remove();
+  document.querySelector('#mobilePageActions')?.remove();
 
   function isMobileDevice(){
     try{
@@ -17,10 +19,16 @@
     }catch{return false}
   }
 
+  function removeRetiredMobileControls(){
+    document.querySelector('#mobilePreviewToggle')?.remove();
+    document.querySelector('#mobileLabBottomNav')?.remove();
+    document.querySelector('#mobilePageActions')?.remove();
+  }
+
   function showMobileGate(){
     document.body.classList.remove('mobile-lab-enabled','mobile-lab-force-preview','mobile-lab-cards','mobile-lab-page','mobile-lab-art');
     document.body.classList.add('mobile-coming-soon','mobile-gate-ready');
-    document.querySelector('#mobileLabBottomNav')?.remove();
+    removeRetiredMobileControls();
     if(document.querySelector('#mobileComingSoon'))return;
     const gate=document.createElement('main');
     gate.id='mobileComingSoon';
@@ -33,7 +41,7 @@
     document.body.classList.add('mobile-gate-ready');
     document.body.classList.remove('mobile-coming-soon','mobile-lab-enabled','mobile-lab-force-preview','mobile-lab-cards','mobile-lab-page','mobile-lab-art');
     document.querySelector('#mobileComingSoon')?.remove();
-    document.querySelector('#mobileLabBottomNav')?.remove();
+    removeRetiredMobileControls();
   }
 
   if(isMobileDevice())showMobileGate();else enableDesktop();
