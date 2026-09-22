@@ -10,27 +10,28 @@ permissions:
 
 jobs:
   deploy:
-    if: github.event.head_commit.message == 'Deploy new Binder Studio branding'
+    if: github.event.head_commit.message == 'Deploy repaired Binder Studio branding'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout approved main
         uses: actions/checkout@v4
         with:
           ref: main
-      - name: Verify approved branding revision
+      - name: Verify repaired branding revision
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "efda5c533634aa2b3707f8e95d8320e1a5fb045c"
+          test "$(git rev-parse HEAD)" = "43572dd7a6b299688fab7953dcbd37dfc4ceabfa"
           grep -q 'kaseys-binder-studio-db' wrangler.jsonc
           grep -q 'ea5aaa71-88e3-4bff-b997-7aa9bff3c24d' wrangler.jsonc
           node --check src/worker.js
           node --check public/features/mobile-lab.js
           test -f public/branding/kaseys-binder-studio-logo.svg
           test -f public/branding/kbs-favicon.svg
-          grep -q 'brand-logo-image' public/features/mobile-lab.js
-          grep -q 'branding/kbs-favicon.svg' public/features/mobile-lab.js
-          grep -q 'branding/kbs-favicon.svg' public/manifest.webmanifest
+          grep -q 'branding/kaseys-binder-studio-logo.svg?v=2' public/features/mobile-lab.js
+          grep -q 'branding/kbs-favicon.svg?v=2' public/features/mobile-lab.js
+          ! grep -q 'data:image/webp' public/branding/kaseys-binder-studio-logo.svg
+          ! grep -q 'data:image/webp' public/branding/kbs-favicon.svg
           grep -q 'syncVersion:2' src/worker.js
       - name: Install Wrangler
         run: npm install --global wrangler@4
@@ -39,7 +40,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: wrangler deploy --config=wrangler.jsonc
-      - name: Verify production branding
+      - name: Verify repaired production branding
         shell: bash
         run: |
           set -euo pipefail
@@ -47,11 +48,10 @@ jobs:
           for i in 1 2 3 4 5 6; do
             BODY="$(curl -fsS "$BASE/api/config" || true)"
             MOBILE="$(curl -fsS "$BASE/features/mobile-lab.js" || true)"
-            LOGO="$(curl -fsS "$BASE/branding/kaseys-binder-studio-logo.svg" || true)"
-            ICON="$(curl -fsS "$BASE/branding/kbs-favicon.svg" || true)"
-            MANIFEST="$(curl -fsS "$BASE/manifest.webmanifest" || true)"
-            if echo "$BODY" | grep -q '"syncVersion":2' && echo "$MOBILE" | grep -q 'brand-logo-image' && echo "$LOGO" | grep -q '<svg' && echo "$ICON" | grep -q '<svg' && echo "$MANIFEST" | grep -q 'branding/kbs-favicon.svg'; then
-              echo 'Production Binder Studio branding verified.'
+            LOGO="$(curl -fsS "$BASE/branding/kaseys-binder-studio-logo.svg?v=2" || true)"
+            ICON="$(curl -fsS "$BASE/branding/kbs-favicon.svg?v=2" || true)"
+            if echo "$BODY" | grep -q '"syncVersion":2' && echo "$MOBILE" | grep -q 'logo.svg?v=2' && echo "$LOGO" | grep -q '<text x="290"' && echo "$ICON" | grep -q '<path d="M38 39h14'; then
+              echo 'Production repaired branding verified.'
               exit 0
             fi
             sleep 5
