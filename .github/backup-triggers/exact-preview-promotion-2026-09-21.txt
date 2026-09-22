@@ -1,1 +1,1 @@
-Trigger production deployment for repaired Binder Studio branding.
+Trigger production deployment for full glimmer Binder Studio logo.
