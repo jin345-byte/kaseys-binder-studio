@@ -39,6 +39,10 @@
     catch{return[]}
   }
   function cardItems(){return pocketItems().filter(x=>x?.kind!=='art')}
+  function selectedCard(){
+    try{return typeof selected!=='undefined'&&selected&&selected.kind!=='art'?selected:null}
+    catch{return null}
+  }
 
   function itemImage(item){
     const direct=item?.imageHigh||item?.imageLow||item?.image||item?.images?.large||item?.images?.small||'';
@@ -110,19 +114,40 @@
       });
       if(typeof save==='function')save();
       if(typeof renderGrid==='function')renderGrid();
-      if(typeof toast==='function')toast(`Page colors matched to ${item?.name||'your first card'}`);
-    }catch(e){console.warn('First-card palette could not be applied',e)}
+      if(typeof toast==='function')toast(`Page colors matched to ${item?.name||'your card'}`);
+    }catch(e){console.warn('Card palette could not be applied',e)}
+  }
+
+  async function paletteForCard(item){
+    const sampled=await sampleImage(itemImage(item));
+    return paletteFrom(sampled||fallbackColor(item));
   }
 
   async function themeFromCard(item,pageKey){
     if(busy)return;busy=true;
     try{
-      const sampled=await sampleImage(itemImage(item));
+      const palette=await paletteForCard(item);
       if(currentPageKey()!==pageKey)return;
       const items=cardItems();
       if(items.length!==1||items[0]!==item)return;
-      applyPalette(paletteFrom(sampled||fallbackColor(item)),item);
+      applyPalette(palette,item);
     }finally{busy=false}
+  }
+
+  async function rematchColors(){
+    if(busy)return;
+    const item=selectedCard()||cardItems()[0];
+    if(!item){if(typeof toast==='function')toast('Select a card or place a card on this page first');return}
+    busy=true;
+    const btn=document.getElementById('rematchColors');
+    const old=btn?.textContent;
+    try{
+      if(btn){btn.disabled=true;btn.textContent='Matching…'}
+      applyPalette(await paletteForCard(item),item);
+    }finally{
+      busy=false;
+      if(btn){btn.disabled=false;btn.textContent=old||'Rematch colors'}
+    }
   }
 
   function check(){
@@ -138,6 +163,7 @@
 
   function start(){
     check();
+    document.getElementById('rematchColors')?.addEventListener('click',rematchColors);
     const grid=document.getElementById('grid');
     if(grid)new MutationObserver(()=>queueMicrotask(check)).observe(grid,{childList:true,subtree:true,attributes:true,attributeFilter:['class','src']});
     document.addEventListener('pointerup',()=>setTimeout(check,0),true);
