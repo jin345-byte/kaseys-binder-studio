@@ -150,6 +150,24 @@
     }
   }
 
+  function ensureRematchButton(){
+    if(document.getElementById('rematchColors'))return;
+    const appearance=document.querySelector('.appearance-module');
+    if(!appearance)return;
+    const btn=document.createElement('button');
+    btn.id='rematchColors';
+    btn.type='button';
+    btn.className='btn ghost rematch-colors';
+    btn.textContent='Rematch colors';
+    btn.title='Match binder, page, and sleeve colors to the selected card';
+    btn.setAttribute('aria-label','Rematch binder colors to selected card');
+    btn.style.gridColumn='1 / -1';
+    btn.style.width='100%';
+    btn.style.marginTop='4px';
+    appearance.appendChild(btn);
+    btn.addEventListener('click',rematchColors);
+  }
+
   function check(){
     const pageKey=currentPageKey(),items=pocketItems(),itemCount=items.length;
     if(!initialized){initialized=true;lastPageKey=pageKey;lastCount=itemCount;return}
@@ -162,8 +180,8 @@
   }
 
   function start(){
+    ensureRematchButton();
     check();
-    document.getElementById('rematchColors')?.addEventListener('click',rematchColors);
     const grid=document.getElementById('grid');
     if(grid)new MutationObserver(()=>queueMicrotask(check)).observe(grid,{childList:true,subtree:true,attributes:true,attributeFilter:['class','src']});
     document.addEventListener('pointerup',()=>setTimeout(check,0),true);
