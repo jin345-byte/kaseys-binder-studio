@@ -29,11 +29,13 @@
   function saturation(c){const max=Math.max(c.r,c.g,c.b),min=Math.min(c.r,c.g,c.b);return max===0?0:(max-min)/max}
 
   function currentPageKey(){
-    try{return String(globalThis.activePageId||localStorage.getItem('michiActivePageId')||'standalone')}
-    catch{return 'standalone'}
+    try{
+      if(typeof activePageId!=='undefined'&&activePageId)return String(activePageId);
+      return String(localStorage.getItem('michiActivePageId')||'standalone');
+    }catch{return 'standalone'}
   }
   function pocketItems(){
-    try{return Array.isArray(globalThis.state?.pockets)?globalThis.state.pockets.filter(Boolean):[]}
+    try{return typeof state!=='undefined'&&Array.isArray(state?.pockets)?state.pockets.filter(Boolean):[]}
     catch{return[]}
   }
   function cardItems(){return pocketItems().filter(x=>x?.kind!=='art')}
@@ -99,16 +101,16 @@
 
   function applyPalette(palette,item){
     try{
-      if(!globalThis.state)return;
-      globalThis.state.binderColor=palette.binder;
-      globalThis.state.pageColor=palette.page;
-      globalThis.state.sleeveColor=palette.sleeve;
+      if(typeof state==='undefined')return;
+      state.binderColor=palette.binder;
+      state.pageColor=palette.page;
+      state.sleeveColor=palette.sleeve;
       [['binderColor',palette.binder],['pageColor',palette.page],['sleeveColor',palette.sleeve]].forEach(([id,value])=>{
         const input=document.getElementById(id);if(input)input.value=value;
       });
-      if(typeof globalThis.save==='function')globalThis.save();
-      if(typeof globalThis.renderGrid==='function')globalThis.renderGrid();
-      if(typeof globalThis.toast==='function')globalThis.toast(`Page colors matched to ${item?.name||'your first card'}`);
+      if(typeof save==='function')save();
+      if(typeof renderGrid==='function')renderGrid();
+      if(typeof toast==='function')toast(`Page colors matched to ${item?.name||'your first card'}`);
     }catch(e){console.warn('First-card palette could not be applied',e)}
   }
 
@@ -124,14 +126,14 @@
   }
 
   function check(){
-    const pageKey=currentPageKey(),items=pocketItems(),count=items.length;
-    if(!initialized){initialized=true;lastPageKey=pageKey;lastCount=count;return}
-    if(pageKey!==lastPageKey){lastPageKey=pageKey;lastCount=count;return}
-    if(lastCount===0&&count===1){
+    const pageKey=currentPageKey(),items=pocketItems(),itemCount=items.length;
+    if(!initialized){initialized=true;lastPageKey=pageKey;lastCount=itemCount;return}
+    if(pageKey!==lastPageKey){lastPageKey=pageKey;lastCount=itemCount;return}
+    if(lastCount===0&&itemCount===1){
       const first=items[0];
       if(first?.kind!=='art')themeFromCard(first,pageKey);
     }
-    lastCount=count;
+    lastCount=itemCount;
   }
 
   function start(){
