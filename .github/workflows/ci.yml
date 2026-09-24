@@ -1,0 +1,127 @@
+name: Binder Studio CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: binder-studio-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sanity:
+    name: Sanity checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Check browser JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            echo "Checking $file"
+            node --check "$file"
+          done < <(find public -type f -name '*.js' -print0)
+
+      - name: Check Worker JavaScript module syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            echo "Checking $file"
+            node --input-type=module --check < "$file"
+          done < <(find src -type f -name '*.js' -print0)
+
+      - name: Validate production HTML asset references
+        shell: bash
+        run: |
+          node <<'JS'
+          const fs = require('fs');
+          const path = require('path');
+          const html = fs.readFileSync('public/index.html', 'utf8');
+          const refs = [...html.matchAll(/(?:src|href)=["']([^"']+)["']/g)].map(m => m[1]);
+          const missing = [];
+          for (const raw of refs) {
+            if (/^(?:https?:|data:|blob:|#|mailto:|tel:)/i.test(raw)) continue;
+            const clean = raw.split(/[?#]/, 1)[0].replace(/^\//, '');
+            if (!clean) continue;
+            const full = path.join('public', clean);
+            if (!fs.existsSync(full)) missing.push(`${raw} -> ${full}`);
+          }
+          if (missing.length) {
+            console.error('Missing local assets referenced by public/index.html:');
+            for (const item of missing) console.error(' - ' + item);
+            process.exit(1);
+          }
+          console.log(`Validated ${refs.length} HTML asset references.`);
+          JS
+
+      - name: Validate critical production hooks
+        shell: bash
+        run: |
+          node <<'JS'
+          const fs = require('fs');
+          const html = fs.readFileSync('public/index.html', 'utf8');
+          const loader = fs.readFileSync('public/features/production-v405.js', 'utf8');
+          const theme = fs.readFileSync('public/features/first-card-auto-theme.js', 'utf8');
+          const requirements = [
+            ['index #grid', html.includes('id="grid"')],
+            ['index binderColor', html.includes('id="binderColor"')],
+            ['index pageColor', html.includes('id="pageColor"')],
+            ['index sleeveColor', html.includes('id="sleeveColor"')],
+            ['production API routing', html.includes('features/api-routing.js')],
+            ['production polish', html.includes('features/production-polish.js')],
+            ['first-card theme loader', loader.includes('features/first-card-auto-theme.js')],
+            ['rematch feature', theme.includes('rematchColors')],
+            ['theme save path', theme.includes("typeof save==='function'")],
+          ];
+          const failed = requirements.filter(([, ok]) => !ok);
+          if (failed.length) {
+            for (const [name] of failed) console.error('Missing critical hook: ' + name);
+            process.exit(1);
+          }
+          console.log('Critical production hooks are present.');
+          JS
+
+      - name: Reject retired production staging asset references
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -E -n 'features/staging-fetch-shim\.js|features/staging-polish\.js|styles/staging-polish\.css|styles/staging-signoff\.css' public/index.html public/features/production-v405.js; then
+            echo 'Retired staging-named assets are referenced by the production entrypoint.' >&2
+            exit 1
+          fi
+          echo 'No retired staging-named production asset references found.'
+
+      - name: Validate Wrangler configuration
+        shell: bash
+        run: |
+          python - <<'PY'
+          import pathlib, tomllib
+          p = pathlib.Path('wrangler.toml')
+          if not p.exists():
+              raise SystemExit('wrangler.toml is missing')
+          data = tomllib.loads(p.read_text(encoding='utf-8'))
+          main = data.get('main')
+          if main != 'src/worker.js':
+              raise SystemExit(f'Unexpected Wrangler entrypoint: {main!r}')
+          assets = data.get('assets') or {}
+          if assets.get('directory') != './public':
+              raise SystemExit(f'Unexpected assets directory: {assets.get("directory")!r}')
+          print('Wrangler production entrypoint and assets directory are valid.')
+          PY
