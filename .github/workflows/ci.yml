@@ -111,17 +111,37 @@ jobs:
       - name: Validate Wrangler configuration
         shell: bash
         run: |
-          python - <<'PY'
-          import pathlib, tomllib
-          p = pathlib.Path('wrangler.toml')
-          if not p.exists():
-              raise SystemExit('wrangler.toml is missing')
-          data = tomllib.loads(p.read_text(encoding='utf-8'))
-          main = data.get('main')
-          if main != 'src/worker.js':
-              raise SystemExit(f'Unexpected Wrangler entrypoint: {main!r}')
-          assets = data.get('assets') or {}
-          if assets.get('directory') != './public':
-              raise SystemExit(f'Unexpected assets directory: {assets.get("directory")!r}')
-          print('Wrangler production entrypoint and assets directory are valid.')
-          PY
+          node <<'JS'
+          const fs = require('fs');
+          const file = 'wrangler.jsonc';
+          if (!fs.existsSync(file)) {
+            console.error('wrangler.jsonc is missing');
+            process.exit(1);
+          }
+          let raw = fs.readFileSync(file, 'utf8');
+          raw = raw.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/,\s*([}\]])/g, '$1');
+          let data;
+          try { data = JSON.parse(raw); }
+          catch (error) {
+            console.error('wrangler.jsonc could not be parsed:', error.message);
+            process.exit(1);
+          }
+          if (data.main !== 'src/worker.js') {
+            console.error(`Unexpected Wrangler entrypoint: ${JSON.stringify(data.main)}`);
+            process.exit(1);
+          }
+          if (data.assets?.directory !== './public') {
+            console.error(`Unexpected assets directory: ${JSON.stringify(data.assets?.directory)}`);
+            process.exit(1);
+          }
+          if (data.assets?.binding !== 'ASSETS') {
+            console.error(`Unexpected assets binding: ${JSON.stringify(data.assets?.binding)}`);
+            process.exit(1);
+          }
+          const db = Array.isArray(data.d1_databases) ? data.d1_databases.find(x => x?.binding === 'DB') : null;
+          if (!db?.database_name || !db?.database_id) {
+            console.error('Production D1 DB binding is missing or incomplete.');
+            process.exit(1);
+          }
+          console.log('Wrangler production entrypoint, assets, and D1 binding are valid.');
+          JS
