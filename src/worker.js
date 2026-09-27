@@ -59,7 +59,7 @@ async function api(r,e){
       else await e.DB.prepare('UPDATE users SET email=?2,display_name=?3,picture_url=?4,updated_at=?5 WHERE id=?1').bind(u.id,c.email||'',c.name||c.email||'',c.picture||'',now).run();
       const t=crypto.randomUUID().replaceAll('-','')+crypto.randomUUID().replaceAll('-',''),h=await sha(t),ex=now+SESSION_MAX_AGE*1000;
       await e.DB.prepare('DELETE FROM sessions WHERE expires_at<=?1').bind(now).run();
-      await e.DB.prepare('INSERT INTO sessions(token_hash,user_id,created_at,expires_at) VALUES(?1,?2,?3,?4,?5)'.replace(',?5','')).bind(h,u.id,now,ex).run();
+      await e.DB.prepare('INSERT INTO sessions(token_hash,user_id,created_at,expires_at) VALUES(?1,?2,?3,?4)').bind(h,u.id,now,ex).run();
       return json({authenticated:true,user:{id:u.id,email:c.email||'',name:c.name||c.email||'Google User',picture:c.picture||''}},200,{'set-cookie':`${SESSION_COOKIE}=${encodeURIComponent(t)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_MAX_AGE}`});
     }catch(x){return json({error:x?.message||'Google sign-in failed.'},401)}
   }
