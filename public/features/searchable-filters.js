@@ -151,7 +151,7 @@
   else init();
 })();
 
-/* Result-count guard: keep browsing responsive while preserving the true match count. */
+/* Result-count guard: keep broad browsing responsive while full-set mode remains uncapped. */
 (()=>{
   'use strict';
   const DISPLAY_LIMIT=250;
@@ -175,6 +175,11 @@
   function capCurrentResults(totalHint=0){
     try{
       if(typeof cards==='undefined'||!Array.isArray(cards))return;
+      const fullSet=Boolean(document.querySelector('#setFilter')?.value);
+      if(fullSet){
+        setCount(cards.length,cards.length);
+        return;
+      }
       const total=Math.max(Number(totalHint)||0,cards.length);
       if(cards.length>DISPLAY_LIMIT){
         cards=cards.slice(0,DISPLAY_LIMIT);
