@@ -66,4 +66,13 @@
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flush()},{passive:true});
   addEventListener('pagehide',flush,{passive:true});
   globalThis.KBSDataSafety={flush,wrapSave};
+
+  /* Load the focused set-browser fixes after core app/search modules have initialized. */
+  if(!document.getElementById('kbsSetSearchFixes')){
+    const script=document.createElement('script');
+    script.id='kbsSetSearchFixes';
+    script.src='features/set-search-fixes.js?v=1.0.0';
+    script.onerror=()=>{script.remove();console.warn('Set search fixes could not be loaded')};
+    document.head.appendChild(script);
+  }
 })();
