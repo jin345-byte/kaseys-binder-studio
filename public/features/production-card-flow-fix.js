@@ -1,6 +1,6 @@
 /* Binder Studio production card-flow fixes.
    - Selected sets render the complete local set in collector-number order.
-   - Card drops preserve the Matching Cards panel scroll position.
+   - Card drops preserve both Matching Cards scroll containers and their exact position.
    - Card images from newer providers use stable fallbacks.
    - 30th Celebration cards prefer official Pokemon.com numbered card scans.
    - Existing binder cards with older direct image URLs are repaired at render time.
@@ -26,6 +26,7 @@
   ];
 
   let supplementPersisted=false;
+  let pendingCardScrollSnapshot=null;
 
   function unique(values){return [...new Set(values.filter(Boolean).map(String))]}
   function proxiedCardImage(raw){
@@ -346,19 +347,67 @@
     return stabilizeCardImages(snapshot);
   }
 
+  function captureCardBrowserScroll(){
+    const entries=['#cardsViewport','#cards'].map(selector=>{
+      const node=document.querySelector(selector);
+      if(!node)return null;
+      return {selector,top:node.scrollTop,left:node.scrollLeft};
+    }).filter(Boolean);
+    return {entries,createdAt:Date.now()};
+  }
+
+  function restoreCardBrowserScroll(snapshot){
+    if(!snapshot?.entries?.length)return;
+    for(const entry of snapshot.entries){
+      const node=document.querySelector(entry.selector);
+      if(!node)continue;
+      if(node.scrollTop!==entry.top)node.scrollTop=entry.top;
+      if(node.scrollLeft!==entry.left)node.scrollLeft=entry.left;
+    }
+  }
+
+  function scheduleCardBrowserScrollRestore(snapshot){
+    if(!snapshot)return;
+    const restore=()=>restoreCardBrowserScroll(snapshot);
+    restore();
+    queueMicrotask(restore);
+    requestAnimationFrame(()=>{restore();requestAnimationFrame(restore)});
+    setTimeout(restore,40);
+    setTimeout(restore,100);
+    setTimeout(restore,180);
+    setTimeout(restore,320);
+  }
+
+  function installCardDragScrollCapture(){
+    if(document.documentElement.dataset.kbsCardScrollCapture==='1')return;
+    document.documentElement.dataset.kbsCardScrollCapture='1';
+    document.addEventListener('dragstart',event=>{
+      const card=event.target?.closest?.('#cards .item,#cards .card-item');
+      if(!card)return;
+      pendingCardScrollSnapshot=captureCardBrowserScroll();
+    },true);
+    document.addEventListener('dragend',event=>{
+      const card=event.target?.closest?.('#cards .item,#cards .card-item');
+      if(!card||!pendingCardScrollSnapshot)return;
+      const snapshot=pendingCardScrollSnapshot;
+      scheduleCardBrowserScrollRestore(snapshot);
+      setTimeout(()=>{if(pendingCardScrollSnapshot===snapshot)pendingCardScrollSnapshot=null},380);
+    },true);
+  }
+
   function installPlacementGuard(){
     if(typeof place!=='function'||place.__kbsProductionPlacementGuard)return;
     const original=place;
     const wrapped=function(index,item,source=null){
-      const viewport=document.getElementById('cardsViewport');
-      const scrollTop=viewport?.scrollTop??null;
+      const dragSnapshot=pendingCardScrollSnapshot&&Date.now()-pendingCardScrollSnapshot.createdAt<15000
+        ?pendingCardScrollSnapshot
+        :null;
+      const scrollSnapshot=dragSnapshot||captureCardBrowserScroll();
       const normalized=item?.kind==='art'?item:safeCardSnapshot(item);
       const result=original.call(this,index,normalized,source);
-      if(viewport&&scrollTop!=null){
-        const restore=()=>{viewport.scrollTop=scrollTop};
-        requestAnimationFrame(()=>{restore();requestAnimationFrame(restore)});
-        setTimeout(restore,60);
-        setTimeout(restore,180);
+      scheduleCardBrowserScrollRestore(scrollSnapshot);
+      if(dragSnapshot){
+        setTimeout(()=>{if(pendingCardScrollSnapshot===dragSnapshot)pendingCardScrollSnapshot=null},420);
       }
       return result;
     };
@@ -370,6 +419,7 @@
     ensureEnergySupplement();
     installCardImageRepair();
     installSetSearch();
+    installCardDragScrollCapture();
     installPlacementGuard();
     try{if(typeof renderGrid==='function')renderGrid()}catch(e){console.warn('Could not refresh binder images after card image repair',e)}
     let attempts=0;
@@ -378,6 +428,7 @@
       ensureEnergySupplement();
       installCardImageRepair();
       installSetSearch();
+      installCardDragScrollCapture();
       installPlacementGuard();
       if(attempts>=12)clearInterval(timer);
     },1000);
