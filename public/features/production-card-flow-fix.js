@@ -1,13 +1,15 @@
 /* Binder Studio production card-flow fixes.
    - Selected sets render the complete local set in collector-number order.
    - Card drops preserve the Matching Cards panel scroll position.
-   - Tray cards are normalized before being saved into binder page state.
+   - Card images from newer providers use a same-origin production proxy with direct fallbacks.
+   - Existing binder cards with older direct image URLs are repaired at render time.
    - Adds the missing MEE 009-016 30th Celebration Basic Energy cards. */
 (()=>{
   'use strict';
 
   const ENERGY_SET_ID='mee';
   const ENERGY_SET_LABEL='Mega Evolution Energies · 30th Celebration';
+  const CARD_PROXY_HOSTS=new Set(['images.scrydex.com']);
   const ENERGY_DEFS=[
     ['009','Basic Grass Energy','grass'],
     ['010','Basic Fire Energy','fire'],
@@ -20,6 +22,55 @@
   ];
 
   let supplementPersisted=false;
+
+  function unique(values){return [...new Set(values.filter(Boolean).map(String))]}
+  function proxiedCardImage(raw){
+    const value=String(raw||'').trim();
+    if(!value)return '';
+    if(value.startsWith('/api/card-image?'))return value;
+    try{
+      const url=new URL(value,location.href);
+      if(url.protocol==='https:'&&CARD_PROXY_HOSTS.has(url.hostname.toLowerCase()))return `/api/card-image?url=${encodeURIComponent(url.href)}`;
+    }catch{}
+    return value;
+  }
+  function imageCandidates(item){
+    const fallbacks=Array.isArray(item?.imageFallbacks)?item.imageFallbacks:[];
+    const raw=unique([item?.imageHigh,item?.images?.large,item?.imageLarge,item?.image,item?.imageLow,item?.images?.small,item?.imageSmall,...fallbacks]);
+    const out=[];
+    for(const value of raw){
+      const proxy=proxiedCardImage(value);
+      if(proxy&&proxy!==value)out.push(proxy);
+      out.push(value);
+    }
+    return unique(out);
+  }
+  function stabilizeCardImages(item){
+    if(!item||item.kind==='art')return item;
+    const highRaw=String(item.imageHigh||item.images?.large||item.imageLarge||item.image||item.imageLow||item.imageFallbacks?.[0]||'');
+    const lowRaw=String(item.imageLow||item.images?.small||item.imageSmall||item.image||highRaw||item.imageFallbacks?.[1]||'');
+    const high=proxiedCardImage(highRaw);
+    const low=proxiedCardImage(lowRaw);
+    const candidates=unique([high,low,...imageCandidates(item)]);
+    item.imageHigh=high||low||candidates[0]||'';
+    item.imageLow=low||high||candidates[0]||'';
+    item.image=item.imageHigh||item.imageLow||'';
+    item.imageFallbacks=candidates;
+    return item;
+  }
+  function attachImageFallback(img,item){
+    if(!img||!item)return;
+    const list=imageCandidates(item);
+    if(!list.length)return;
+    const current=img.getAttribute('src')||'';
+    let index=Math.max(0,list.indexOf(current));
+    img.onerror=()=>{
+      index++;
+      if(index<list.length){img.src=list[index];return}
+      img.onerror=null;
+      img.classList.add('image-unavailable');
+    };
+  }
 
   function energyRows(){
     return ENERGY_DEFS.map(([number,name,energyType])=>{
@@ -58,10 +109,11 @@
           `https://images.scrydex.com/pokemon/mee-${compact}/large`,
           `https://images.scrydex.com/pokemon/mee-${compact}/small`
         ],
-        imageSource:'Scrydex CDN',
+        imageSource:'Scrydex CDN via Binder Studio proxy',
         kind:'card',
         celebrationEnergy:true
       };
+      stabilizeCardImages(row);
       try{return typeof withSearchKeys==='function'?withSearchKeys(row):row}catch{return row}
     });
   }
@@ -112,7 +164,7 @@
       .filter(c=>c&&(c.setId===setId||c.rawSetId===setId))
       .slice()
       .sort(collectorSort)
-      .map(c=>({...c,kind:c.kind||'card'}));
+      .map(c=>stabilizeCardImages({...c,kind:c.kind||'card'}));
   }
 
   function showFullSet(setId){
@@ -142,12 +194,55 @@
     runCardSearch=wrapped;
   }
 
+  function installCardImageRepair(){
+    if(typeof renderCards==='function'&&!renderCards.__kbsStableCardImages){
+      const original=renderCards;
+      const wrapped=function(...args){
+        try{if(typeof cards!=='undefined'&&Array.isArray(cards))cards.forEach(stabilizeCardImages)}catch(e){console.warn('Could not stabilize card tray images',e)}
+        return original.apply(this,args);
+      };
+      wrapped.__kbsStableCardImages=true;
+      renderCards=wrapped;
+    }
+    if(typeof renderAllCardsStable==='function'&&!renderAllCardsStable.__kbsStableCardImages){
+      const original=renderAllCardsStable;
+      const wrapped=function(...args){
+        try{if(typeof cards!=='undefined'&&Array.isArray(cards))cards.forEach(stabilizeCardImages)}catch(e){console.warn('Could not stabilize card tray images',e)}
+        return original.apply(this,args);
+      };
+      wrapped.__kbsStableCardImages=true;
+      renderAllCardsStable=wrapped;
+    }
+    if(typeof renderGrid==='function'&&!renderGrid.__kbsStableCardImages){
+      const original=renderGrid;
+      const wrapped=function(...args){
+        try{
+          if(typeof state!=='undefined'&&Array.isArray(state?.pockets))state.pockets.forEach(item=>{if(item?.kind!=='art')stabilizeCardImages(item)});
+        }catch(e){console.warn('Could not stabilize binder card images',e)}
+        const result=original.apply(this,args);
+        try{
+          document.querySelectorAll('#grid [data-pocket] img').forEach(img=>{
+            const pocket=img.closest('[data-pocket]');
+            const index=Number(pocket?.dataset?.pocket);
+            if(!Number.isInteger(index))return;
+            const item=state?.pockets?.[index];
+            if(item?.kind!=='art')attachImageFallback(img,item);
+          });
+        }catch(e){console.warn('Could not attach binder image fallback',e)}
+        return result;
+      };
+      wrapped.__kbsStableCardImages=true;
+      renderGrid=wrapped;
+    }
+  }
+
   function safeCardSnapshot(item){
     if(!item||item.kind==='art')return item;
+    stabilizeCardImages(item);
     const fallbacks=Array.isArray(item.imageFallbacks)?item.imageFallbacks.filter(Boolean):[];
-    const high=String(item.imageHigh||item.images?.large||item.image||item.imageLow||fallbacks[0]||'');
-    const low=String(item.imageLow||item.images?.small||item.image||high||fallbacks[1]||'');
-    return {
+    const high=String(item.imageHigh||item.images?.large||item.imageLarge||item.image||item.imageLow||fallbacks[0]||'');
+    const low=String(item.imageLow||item.images?.small||item.imageSmall||item.image||high||fallbacks[1]||'');
+    const snapshot={
       id:String(item.id||item.primaryId||item.sourceKey||`card-${Date.now()}`),
       primaryId:item.primaryId||'',
       tcgdexId:item.tcgdexId||'',
@@ -183,6 +278,7 @@
       kind:'card',
       celebrationEnergy:Boolean(item.celebrationEnergy)
     };
+    return stabilizeCardImages(snapshot);
   }
 
   function installPlacementGuard(){
@@ -207,12 +303,15 @@
 
   function start(){
     ensureEnergySupplement();
+    installCardImageRepair();
     installSetSearch();
     installPlacementGuard();
+    try{if(typeof renderGrid==='function')renderGrid()}catch(e){console.warn('Could not refresh binder images after card image repair',e)}
     let attempts=0;
     const timer=setInterval(()=>{
       attempts++;
       ensureEnergySupplement();
+      installCardImageRepair();
       installSetSearch();
       installPlacementGuard();
       if(attempts>=12)clearInterval(timer);
