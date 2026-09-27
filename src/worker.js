@@ -4,6 +4,7 @@ const SESSION_COOKIE='kbs_session';
 const SESSION_MAX_AGE=2592000;
 const MAX_SYNC_BYTES=1850000;
 const SAFE_PREVIEW_GET_APIS=new Set(['/api/art-image','/api/art-feed','/api/art-feed-v2','/api/art-feed-v3','/api/card-search']);
+const CARD_IMAGE_HOSTS=new Set(['images.scrydex.com','images.pokemontcg.io']);
 
 const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
 function cookies(r){const o={};for(const p of(r.headers.get('cookie')||'').split(';')){const i=p.indexOf('=');if(i>-1)o[p.slice(0,i).trim()]=decodeURIComponent(p.slice(i+1).trim())}return o}
@@ -14,6 +15,33 @@ async function jwks(){const c=caches.default,k=new Request('https://kbs.internal
 async function verifyGoogle(t,aud){if(!t||!aud)throw new Error('Google login is not configured');const p=t.split('.');if(p.length!==3)throw new Error('Invalid Google credential');const h=jwtPart(p[0]),cl=jwtPart(p[1]);if(h.alg!=='RS256'||!h.kid)throw new Error('Unsupported Google credential');const j=(await jwks()).keys?.find(k=>k.kid===h.kid);if(!j)throw new Error('Google signing key was not found');const key=await crypto.subtle.importKey('jwk',j,{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['verify']);const ok=await crypto.subtle.verify('RSASSA-PKCS1-v1_5',key,b64u(p[2]),new TextEncoder().encode(`${p[0]}.${p[1]}`));const now=Math.floor(Date.now()/1000),iss=cl.iss==='https://accounts.google.com'||cl.iss==='accounts.google.com',a=Array.isArray(cl.aud)?cl.aud.includes(aud):cl.aud===aud;if(!ok||!iss||!a||Number(cl.exp||0)<=now||Number(cl.iat||0)>now+120)throw new Error('Google credential verification failed');if(cl.email&&cl.email_verified===false)throw new Error('Google email is not verified');return cl}
 function sameOrigin(r){const o=r.headers.get('origin');return!o||o===new URL(r.url).origin}
 async function sessionUser(r,e){if(!e.DB)return null;const t=cookies(r)[SESSION_COOKIE];if(!t)return null;const h=await sha(t),row=await e.DB.prepare('SELECT u.id,u.email,u.display_name,u.picture_url,s.expires_at FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=?1').bind(h).first();if(!row)return null;if(Number(row.expires_at)<=Date.now()){await e.DB.prepare('DELETE FROM sessions WHERE token_hash=?1').bind(h).run();return null}return{id:row.id,email:row.email,name:row.display_name,picture:row.picture_url}}
+
+function allowedCardImageUrl(raw){let u;try{u=new URL(String(raw||''))}catch{return null}return u.protocol==='https:'&&CARD_IMAGE_HOSTS.has(u.hostname.toLowerCase())?u:null}
+function cardImageHeaders(hostname){const host=String(hostname||'').toLowerCase();const headers={accept:'image/avif,image/webp,image/apng,image/png,image/jpeg,image/*,*/*;q=0.8','user-agent':'Mozilla/5.0 Kaseys-Binder-Studio/4.0'};if(host==='images.scrydex.com')headers.referer='https://scrydex.com/';else if(host==='images.pokemontcg.io')headers.referer='https://pokemontcg.io/';return headers}
+async function cardImage(r){
+  const source=new URL(r.url).searchParams.get('url')||'';
+  let target=allowedCardImageUrl(source);
+  if(!target)return new Response('Card image host not allowed',{status:403});
+  try{
+    for(let redirects=0;redirects<=3;redirects++){
+      const upstream=await fetch(target.href,{headers:cardImageHeaders(target.hostname),redirect:'manual',cf:{cacheEverything:true,cacheTtl:86400}});
+      if(upstream.status>=300&&upstream.status<400){
+        const location=upstream.headers.get('location');
+        try{await upstream.body?.cancel()}catch{}
+        if(!location)return new Response('Card image redirect had no destination',{status:502});
+        const next=allowedCardImageUrl(new URL(location,target).href);
+        if(!next)return new Response('Card image redirect was not approved',{status:502});
+        target=next;continue;
+      }
+      if(!upstream.ok)return new Response(`Card image upstream ${upstream.status}`,{status:502});
+      const type=upstream.headers.get('content-type')||'';
+      if(!type.toLowerCase().startsWith('image/'))return new Response('Card image upstream was not an image',{status:502});
+      const headers=new Headers({'content-type':type,'cache-control':'public, max-age=86400, stale-while-revalidate=604800','access-control-allow-origin':'*','x-content-type-options':'nosniff','x-kbs-card-image':'proxy','x-kbs-card-image-source':target.hostname.toLowerCase()});
+      return new Response(upstream.body,{status:200,headers});
+    }
+    return new Response('Too many card image redirects',{status:502});
+  }catch(x){console.error('Card image proxy failed',source,x);return new Response('Card image unavailable',{status:502})}
+}
 
 async function api(r,e){
   const url=new URL(r.url),p=url.pathname;
@@ -31,7 +59,7 @@ async function api(r,e){
       else await e.DB.prepare('UPDATE users SET email=?2,display_name=?3,picture_url=?4,updated_at=?5 WHERE id=?1').bind(u.id,c.email||'',c.name||c.email||'',c.picture||'',now).run();
       const t=crypto.randomUUID().replaceAll('-','')+crypto.randomUUID().replaceAll('-',''),h=await sha(t),ex=now+SESSION_MAX_AGE*1000;
       await e.DB.prepare('DELETE FROM sessions WHERE expires_at<=?1').bind(now).run();
-      await e.DB.prepare('INSERT INTO sessions(token_hash,user_id,created_at,expires_at) VALUES(?1,?2,?3,?4)').bind(h,u.id,now,ex).run();
+      await e.DB.prepare('INSERT INTO sessions(token_hash,user_id,created_at,expires_at) VALUES(?1,?2,?3,?4,?5)'.replace(',?5','')).bind(h,u.id,now,ex).run();
       return json({authenticated:true,user:{id:u.id,email:c.email||'',name:c.name||c.email||'Google User',picture:c.picture||''}},200,{'set-cookie':`${SESSION_COOKIE}=${encodeURIComponent(t)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_MAX_AGE}`});
     }catch(x){return json({error:x?.message||'Google sign-in failed.'},401)}
   }
@@ -72,6 +100,7 @@ async function api(r,e){
 }
 
 export default{async fetch(r,e,ctx){const u=new URL(r.url);try{
+  if(r.method==='GET'&&u.pathname==='/api/card-image')return cardImage(r);
   if(r.method==='GET'&&SAFE_PREVIEW_GET_APIS.has(u.pathname))return previewWorker.fetch(r,e,ctx);
   if(u.pathname.startsWith('/api/'))return await api(r,e);
   if(e.ASSETS)return e.ASSETS.fetch(r);
