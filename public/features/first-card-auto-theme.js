@@ -112,8 +112,13 @@
       [['binderColor',palette.binder],['pageColor',palette.page],['sleeveColor',palette.sleeve]].forEach(([id,value])=>{
         const input=document.getElementById(id);if(input)input.value=value;
       });
+      const grid=document.getElementById('grid');
+      if(grid){
+        grid.style.setProperty('--binder',palette.binder);
+        grid.style.setProperty('--page',palette.page);
+        grid.style.setProperty('--sleeve',palette.sleeve);
+      }
       if(typeof save==='function')save();
-      if(typeof renderGrid==='function')renderGrid();
       if(typeof toast==='function')toast(`Page colors matched to ${item?.name||'your card'}`);
     }catch(e){console.warn('Card palette could not be applied',e)}
   }
