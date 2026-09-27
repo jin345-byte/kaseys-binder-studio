@@ -1,0 +1,21 @@
+/* Matching Card Variants: one scroll owner only.
+   The inner #cards grid must never become a second scrolling surface because
+   it is re-rendered during card interactions, which can snap its own scrollTop
+   back to zero. The stable outer #cardsViewport owns scrolling instead. */
+
+@media (min-width: 821px) {
+  #cardsViewport {
+    overflow: auto !important;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    min-height: 0 !important;
+  }
+
+  #cardsViewport > #cards {
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    overscroll-behavior: auto !important;
+    scrollbar-gutter: auto !important;
+  }
+}
