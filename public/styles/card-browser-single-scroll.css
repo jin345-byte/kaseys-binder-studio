@@ -1,12 +1,14 @@
 /* Matching Card Variants: one scroll owner only.
-   The inner #cards grid must never become a second scrolling surface because
-   it is re-rendered during card interactions, which can snap its own scrollTop
-   back to zero. The stable outer #cardsViewport owns scrolling instead. */
+   The stable outer #cardsViewport owns scrolling. The inner #cards grid must
+   never become a second scrolling surface because it is re-rendered during
+   card interactions and would otherwise reset its own scrollTop to zero. */
 
 @media (min-width: 821px) {
   #cardsViewport {
     overflow: auto !important;
-    overscroll-behavior: contain;
+    overscroll-behavior: none !important;
+    overflow-anchor: none !important;
+    scroll-behavior: auto !important;
     scrollbar-gutter: stable;
     min-height: 0 !important;
   }
@@ -15,7 +17,17 @@
     max-height: none !important;
     height: auto !important;
     overflow: visible !important;
-    overscroll-behavior: auto !important;
+    overscroll-behavior: none !important;
+    overflow-anchor: none !important;
     scrollbar-gutter: auto !important;
+  }
+
+  /* Chrome/Edge can native-auto-scroll a scroll container while an HTML5
+     draggable leaves it. Freeze the viewport while the source card is held;
+     releasing the mouse restores normal scrolling at the exact same offset. */
+  #cardsViewport:has(#cards .item:active),
+  #cardsViewport:has(#cards .card-item:active) {
+    overflow-y: hidden !important;
+    overflow-x: hidden !important;
   }
 }
