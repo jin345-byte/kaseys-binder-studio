@@ -1,14 +1,18 @@
 /* Binder Studio production card-flow fixes.
    - Selected sets render the complete local set in collector-number order.
    - Card drops preserve the Matching Cards panel scroll position.
-   - Card images from newer providers use a same-origin production proxy with direct fallbacks.
+   - Card images from newer providers use stable fallbacks.
+   - 30th Celebration cards prefer official Pokemon.com numbered card scans.
    - Existing binder cards with older direct image URLs are repaired at render time.
-   - Adds the missing MEE 009-016 30th Celebration Basic Energy cards. */
+   - Adds the missing MEE 009-016 30th Celebration Holofoil Basic Energy cards.
+   - 30th Celebration set browsing includes those eight holo Energies after the main set. */
 (()=>{
   'use strict';
 
+  const ANNIVERSARY_SET_ID='me55';
   const ENERGY_SET_ID='mee';
   const ENERGY_SET_LABEL='Mega Evolution Energies · 30th Celebration';
+  const OFFICIAL_30TH_BASE='https://assets.pokemon.com/static-assets/content-assets/cms2/img/cards/web/30TH';
   const CARD_PROXY_HOSTS=new Set(['images.scrydex.com']);
   const ENERGY_DEFS=[
     ['009','Basic Grass Energy','grass'],
@@ -34,9 +38,20 @@
     }catch{}
     return value;
   }
+  function official30thImage(item){
+    if(!item)return '';
+    const setId=String(item.setId||item.rawSetId||'').toLowerCase();
+    if(setId!==ANNIVERSARY_SET_ID)return '';
+    const raw=String(item.localId??'').trim();
+    if(!/^\d{1,3}$/.test(raw))return '';
+    const number=Number(raw);
+    if(!Number.isInteger(number)||number<1||number>999)return '';
+    return `${OFFICIAL_30TH_BASE}/30TH_EN_${number}.png`;
+  }
   function imageCandidates(item){
     const fallbacks=Array.isArray(item?.imageFallbacks)?item.imageFallbacks:[];
-    const raw=unique([item?.imageHigh,item?.images?.large,item?.imageLarge,item?.image,item?.imageLow,item?.images?.small,item?.imageSmall,...fallbacks]);
+    const official=official30thImage(item);
+    const raw=unique([official,item?.imageHigh,item?.images?.large,item?.imageLarge,item?.image,item?.imageLow,item?.images?.small,item?.imageSmall,...fallbacks]);
     const out=[];
     for(const value of raw){
       const proxy=proxiedCardImage(value);
@@ -47,8 +62,9 @@
   }
   function stabilizeCardImages(item){
     if(!item||item.kind==='art')return item;
-    const highRaw=String(item.imageHigh||item.images?.large||item.imageLarge||item.image||item.imageLow||item.imageFallbacks?.[0]||'');
-    const lowRaw=String(item.imageLow||item.images?.small||item.imageSmall||item.image||highRaw||item.imageFallbacks?.[1]||'');
+    const official=official30thImage(item);
+    const highRaw=String(official||item.imageHigh||item.images?.large||item.imageLarge||item.image||item.imageLow||item.imageFallbacks?.[0]||'');
+    const lowRaw=String(official||item.imageLow||item.images?.small||item.imageSmall||item.image||highRaw||item.imageFallbacks?.[1]||'');
     const high=proxiedCardImage(highRaw);
     const low=proxiedCardImage(lowRaw);
     const candidates=unique([high,low,...imageCandidates(item)]);
@@ -56,6 +72,7 @@
     item.imageLow=low||high||candidates[0]||'';
     item.image=item.imageHigh||item.imageLow||'';
     item.imageFallbacks=candidates;
+    if(official)item.imageSource='Official Pokémon TCG card database';
     return item;
   }
   function attachImageFallback(img,item){
@@ -63,7 +80,8 @@
     const list=imageCandidates(item);
     if(!list.length)return;
     const current=img.getAttribute('src')||'';
-    let index=Math.max(0,list.indexOf(current));
+    let index=list.indexOf(current);
+    if(index<0)index=-1;
     img.onerror=()=>{
       index++;
       if(index<list.length){img.src=list[index];return}
@@ -92,16 +110,18 @@
         setId:ENERGY_SET_ID,
         rawSetId:ENERGY_SET_ID,
         setName:ENERGY_SET_LABEL,
-        associatedExpansion:'me55',
+        associatedExpansion:ANNIVERSARY_SET_ID,
         series:'Mega Evolution',
         releaseDate:'2026/09/16',
         illustrator:'YOSHIROTTEN',
         artist:'YOSHIROTTEN',
-        rarity:'Common',
+        rarity:'Holofoil',
         supertype:'Energy',
         subtypes:['Basic'],
         types:[energyType],
         energyType,
+        availableVariants:['Holofoil'],
+        variant:'Holofoil',
         pokedexNumbers:[],
         imageHigh:`https://images.scrydex.com/pokemon/mee-${compact}/large`,
         imageLow:`https://images.scrydex.com/pokemon/mee-${compact}/small`,
@@ -128,6 +148,15 @@
           if(typeof masterCardIndex!=='undefined'&&masterCardIndex instanceof Map)masterCardIndex.set(row.id,masterCards.length);
           masterCards.push(row);
         }
+      }
+
+      // Upgrade any already-cached supplement rows to the holo metadata/image behavior.
+      const freshById=new Map(energyRows().map(row=>[row.id,row]));
+      for(let i=0;i<masterCards.length;i++){
+        const current=masterCards[i],fresh=freshById.get(current?.id);
+        if(!fresh)continue;
+        Object.assign(current,fresh);
+        stabilizeCardImages(current);
       }
 
       if(typeof masterSetOptions!=='undefined'&&Array.isArray(masterSetOptions)){
@@ -160,11 +189,22 @@
 
   function setRows(setId){
     if(typeof masterCards==='undefined'||!Array.isArray(masterCards))return [];
-    return masterCards
+    const main=masterCards
       .filter(c=>c&&(c.setId===setId||c.rawSetId===setId))
       .slice()
       .sort(collectorSort)
       .map(c=>stabilizeCardImages({...c,kind:c.kind||'card'}));
+    if(String(setId).toLowerCase()!==ANNIVERSARY_SET_ID)return main;
+
+    // 30th Celebration includes its special holo Basic Energy sequence in the same browse view.
+    const seen=new Set();
+    const energy=masterCards
+      .filter(c=>c&&(c.celebrationEnergy===true||(String(c.setId||c.rawSetId||'').toLowerCase()===ENERGY_SET_ID&&String(c.associatedExpansion||'').toLowerCase()===ANNIVERSARY_SET_ID)))
+      .slice()
+      .sort(collectorSort)
+      .filter(c=>{const key=c.id||`${c.setId}:${c.localId}:${c.name}`;if(seen.has(key))return false;seen.add(key);return true})
+      .map(c=>stabilizeCardImages({...c,kind:'card',rarity:'Holofoil',variant:'Holofoil',celebrationEnergy:true}));
+    return [...main,...energy];
   }
 
   function showFullSet(setId){
@@ -174,9 +214,16 @@
       cards=rows;
       if(typeof renderCards==='function')renderCards();
       const count=document.getElementById('count');
-      if(count){count.textContent=rows.length.toLocaleString();count.title=`Showing all ${rows.length.toLocaleString()} cards in this set`}
+      if(count){
+        count.textContent=rows.length.toLocaleString();
+        count.title=String(setId).toLowerCase()===ANNIVERSARY_SET_ID
+          ?`Showing the complete 30th Celebration set plus ${ENERGY_DEFS.length} Holofoil Basic Energies`
+          :`Showing all ${rows.length.toLocaleString()} cards in this set`;
+      }
       const health=document.getElementById('masterLibraryHealth');
-      if(health)health.textContent=`${rows.length.toLocaleString()} cards · full set · collector-number order`;
+      if(health)health.textContent=String(setId).toLowerCase()===ANNIVERSARY_SET_ID
+        ?`${rows.length.toLocaleString()} cards · complete 30th Celebration + holo Energies`
+        :`${rows.length.toLocaleString()} cards · full set · collector-number order`;
     }catch(e){console.error('Could not render complete set',e)}
     return rows;
   }
@@ -199,7 +246,15 @@
       const original=renderCards;
       const wrapped=function(...args){
         try{if(typeof cards!=='undefined'&&Array.isArray(cards))cards.forEach(stabilizeCardImages)}catch(e){console.warn('Could not stabilize card tray images',e)}
-        return original.apply(this,args);
+        const result=original.apply(this,args);
+        try{
+          document.querySelectorAll('#cards .card-item').forEach(el=>{
+            const id=el.dataset.id;
+            const item=cards.find(c=>c?.id===id);
+            if(item)attachImageFallback(el.querySelector('.card-image-wrap img'),item);
+          });
+        }catch(e){console.warn('Could not attach card tray image fallbacks',e)}
+        return result;
       };
       wrapped.__kbsStableCardImages=true;
       renderCards=wrapped;
@@ -208,7 +263,15 @@
       const original=renderAllCardsStable;
       const wrapped=function(...args){
         try{if(typeof cards!=='undefined'&&Array.isArray(cards))cards.forEach(stabilizeCardImages)}catch(e){console.warn('Could not stabilize card tray images',e)}
-        return original.apply(this,args);
+        const result=original.apply(this,args);
+        try{
+          document.querySelectorAll('#cards .card-item').forEach(el=>{
+            const id=el.dataset.id;
+            const item=cards.find(c=>c?.id===id);
+            if(item)attachImageFallback(el.querySelector('.card-image-wrap img'),item);
+          });
+        }catch(e){console.warn('Could not attach stable card tray fallbacks',e)}
+        return result;
       };
       wrapped.__kbsStableCardImages=true;
       renderAllCardsStable=wrapped;
@@ -276,7 +339,9 @@
       imageFallbacks:[...new Set([high,low,...fallbacks].filter(Boolean))],
       imageSource:item.imageSource||'',
       kind:'card',
-      celebrationEnergy:Boolean(item.celebrationEnergy)
+      celebrationEnergy:Boolean(item.celebrationEnergy),
+      variant:item.variant||'',
+      availableVariants:Array.isArray(item.availableVariants)?[...item.availableVariants]:[]
     };
     return stabilizeCardImages(snapshot);
   }
