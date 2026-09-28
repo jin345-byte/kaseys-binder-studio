@@ -7,7 +7,7 @@
   if(globalThis.KBSCardBrowserPointerDrag?.installed)return;
 
   const CARD_SELECTOR='#cards .item[data-kind="card"], #cards .card-item';
-  const IGNORE_SELECTOR='button,select,input,a,[data-remove-art],[data-size],.card-info,.card-feature-actions';
+  const IGNORE_SELECTOR='select,input,a,[data-remove-art],[data-size],.card-info,.card-feature-actions';
   const THRESHOLD=6;
   let active=null;
   let suppressClickUntil=0;
@@ -58,10 +58,17 @@
     ghost.style.top=`${y}px`;
   }
 
+  function setPocketHover(clientX,clientY){
+    document.querySelectorAll('#grid .kbs-pointer-drop-target').forEach(el=>el.classList.remove('kbs-pointer-drop-target'));
+    const target=document.elementFromPoint(clientX,clientY);
+    target?.closest?.('#grid [data-pocket]')?.classList.add('kbs-pointer-drop-target');
+  }
+
   function cleanup(){
     if(!active)return;
     active.ghost?.remove();
     active.source?.classList.remove('kbs-pointer-dragging');
+    document.querySelectorAll('#grid .kbs-pointer-drop-target').forEach(el=>el.classList.remove('kbs-pointer-drop-target'));
     document.documentElement.classList.remove('kbs-card-pointer-drag-active');
     document.body.style.removeProperty('user-select');
     document.body.style.removeProperty('-webkit-user-select');
@@ -88,6 +95,7 @@
     if(!active.dragging)return;
     event.preventDefault();
     moveGhost(active.ghost,event.clientX,event.clientY);
+    setPocketHover(event.clientX,event.clientY);
     restoreViewport(active.scroll);
   }
 
@@ -120,7 +128,6 @@
     if(!source||event.target?.closest?.(IGNORE_SELECTOR))return;
     const card=cardFromElement(source);
     if(!card)return;
-    // Disable the browser's native draggable path for card-browser cards.
     source.draggable=false;
     active={
       pointerId:event.pointerId,
@@ -155,5 +162,5 @@
   const cardsRoot=document.getElementById('cards');
   if(cardsRoot)new MutationObserver(()=>disableNativeDrag(cardsRoot)).observe(cardsRoot,{childList:true,subtree:true});
 
-  globalThis.KBSCardBrowserPointerDrag={version:'1.0.0',installed:true};
+  globalThis.KBSCardBrowserPointerDrag={version:'1.0.1',installed:true};
 })();
