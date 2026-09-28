@@ -210,3 +210,13 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
   else install();
 })();
+
+/* Load the card-browser DOM stability guard after the core browser/search modules. */
+(()=>{
+  if(document.getElementById('kbsCardBrowserRenderStabilityScript'))return;
+  const script=document.createElement('script');
+  script.id='kbsCardBrowserRenderStabilityScript';
+  script.src='features/card-browser-render-stability.js?v=1.0.0';
+  script.onerror=()=>{script.remove();console.warn('Could not load card-browser render stability guard')};
+  document.head.appendChild(script);
+})();
