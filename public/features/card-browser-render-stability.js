@@ -74,9 +74,6 @@
       const sameQuery=nextQuery===lastQueryKey;
       const sameResults=nextSignature===lastSignature;
 
-      // The card-browser DOM is workspace state. If nothing about the query or
-      // rendered cards changed, leave it completely untouched so its scroll,
-      // focus, hover state, and loaded images stay exactly where they are.
       if(sameQuery&&sameResults&&gridHasCards()){
         updateCountOnly();
         return;
@@ -98,19 +95,16 @@
         updateCountOnly();
         return;
       }
-      // Use the current lower-level renderer so direct and indirect card renders
-      // share the same guard even if older feature modules wrapped renderCards.
       return renderAllCardsStable.apply(this,args);
     };
     renderCards.__kbsStableBrowserDom=true;
     renderCards.__kbsCountWrapped=originalRender.__kbsCountWrapped||false;
     renderCards.__kbsProductionFullSet=originalRender.__kbsProductionFullSet||false;
 
-    // Prime the cache from whatever is already visible without rebuilding it.
     lastQueryKey=queryKey();
     lastSignature=resultSignature();
     installed=true;
-    globalThis.KBSCardBrowserRenderStability={version:'1.0.0',installed:true};
+    globalThis.KBSCardBrowserRenderStability={version:'1.1.0',installed:true};
     return true;
   }
 
@@ -121,4 +115,17 @@
       if(install()||attempts>=20)clearInterval(timer);
     },250);
   }
+})();
+
+/* Native HTML5 card dragging can auto-scroll the card browser even when its DOM
+   remains stable. Load the pointer-based drag implementation so card-browser
+   cards never enter the native drag path. */
+(()=>{
+  if(globalThis.KBSCardBrowserPointerDrag?.installed)return;
+  if(document.getElementById('kbsCardBrowserPointerDragScript'))return;
+  const script=document.createElement('script');
+  script.id='kbsCardBrowserPointerDragScript';
+  script.src='features/card-browser-pointer-drag.js?v=1.0.0';
+  script.onerror=()=>{script.remove();console.warn('Could not load pointer card drag')};
+  document.head.appendChild(script);
 })();
