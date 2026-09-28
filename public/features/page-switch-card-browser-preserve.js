@@ -57,6 +57,10 @@
     const prev=document.getElementById('editorPrev');
     const next=document.getElementById('editorNext');
     wrap.querySelectorAll('[data-editor-page]').forEach(button=>{
+      // Production v4.0.5 still has a legacy observer that calls scrollIntoView
+      // when aria-current/class changes. Make that call local to this horizontal
+      // rail so it can never recenter the document vertically.
+      button.scrollIntoView=()=>horizontalReveal(wrap,button);
       button.onclick=()=>{
         const pageId=button.dataset.editorPage;
         if(pageId&&pageId!==activePageId)loadPageIntoEditor(pageId,{closeLibrary:false}).catch(error=>{
@@ -101,7 +105,7 @@
     }
 
     wirePageNav(wrap,pages,idx);
-    const active=wrap.querySelector(`[data-editor-page="${CSS.escape(activePageId)}"]`);
+    const active=[...wrap.querySelectorAll('[data-editor-page]')].find(button=>button.dataset.editorPage===activePageId);
     requestAnimationFrame(()=>horizontalReveal(wrap,active));
   }
 
@@ -115,7 +119,11 @@
   }
 
   async function performPageSwitch(pageId,{closeLibrary=true}={}){
-    if(!pageId||pageId===activePageId)return;
+    if(!pageId)return;
+    if(pageId===activePageId){
+      if(closeLibrary&&typeof closeBinderLibrary==='function')closeBinderLibrary();
+      return;
+    }
 
     const previousBinderId=activeBinderId;
     const pagePromise=dbGet('pages',pageId);
