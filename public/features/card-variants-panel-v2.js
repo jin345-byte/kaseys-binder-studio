@@ -42,9 +42,7 @@
       ||null;
   }
 
-  function imageList(card){
-    return [card?.imageLow,card?.imageHigh,card?.image,...(card?.imageFallbacks||[])].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i);
-  }
+  function imageList(card){return [card?.imageLow,card?.imageHigh,card?.image,...(card?.imageFallbacks||[])].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i)}
 
   function cardMarkup(card,index){
     const id=stableId(card),images=imageList(card),src=images[0]||'';
@@ -91,33 +89,22 @@
     const v=viewport();if(v)v.scrollTop=keepTop;
   }
 
-  function selectCard(id){
-    const card=cardById(id);if(!card)return;
-    selected=card;renderSelected();
-  }
-
-  function makeGhost(source,x,y){
-    const ghost=document.createElement('div');ghost.className='kbs-variant-drag-ghost';
-    const img=source.querySelector('img');if(img)ghost.appendChild(img.cloneNode(true));
-    document.body.appendChild(ghost);moveGhost(ghost,x,y);return ghost;
-  }
+  function selectCard(id){const card=cardById(id);if(!card)return;selected=card;renderSelected()}
+  function makeGhost(source,x,y){const ghost=document.createElement('div');ghost.className='kbs-variant-drag-ghost';const img=source.querySelector('img');if(img)ghost.appendChild(img.cloneNode(true));document.body.appendChild(ghost);moveGhost(ghost,x,y);return ghost}
   function moveGhost(ghost,x,y){if(ghost){ghost.style.left=`${x}px`;ghost.style.top=`${y}px`}}
   function clearDropTarget(){document.querySelectorAll('#grid .kbs-variant-drop-target').forEach(x=>x.classList.remove('kbs-variant-drop-target'))}
   function markDropTarget(x,y){clearDropTarget();document.elementFromPoint(x,y)?.closest?.('#grid [data-pocket]')?.classList.add('kbs-variant-drop-target')}
   function cleanupDrag(){if(!ui.drag)return;ui.drag.ghost?.remove();ui.drag.source?.classList.remove('kbs-variant-dragging');clearDropTarget();ui.drag=null}
 
   function onPointerDown(e){
-    if(e.button!==0||e.pointerType==='touch')return;
-    if(e.target.closest('.kbs-variant-info'))return;
+    if(e.button!==0||e.pointerType==='touch'||e.target.closest('.kbs-variant-info'))return;
     const source=e.target.closest('.kbs-variant-card');if(!source||!pane.contains(source))return;
     const card=cardById(source.dataset.id);if(!card)return;
     ui.drag={pointerId:e.pointerId,source,card,startX:e.clientX,startY:e.clientY,dragging:false,ghost:null};
   }
   function onPointerMove(e){
     const d=ui.drag;if(!d||e.pointerId!==d.pointerId)return;
-    if(!d.dragging&&Math.hypot(e.clientX-d.startX,e.clientY-d.startY)>=6){
-      d.dragging=true;ui.suppressClickUntil=Date.now()+500;d.source.classList.add('kbs-variant-dragging');d.ghost=makeGhost(d.source,e.clientX,e.clientY);
-    }
+    if(!d.dragging&&Math.hypot(e.clientX-d.startX,e.clientY-d.startY)>=6){d.dragging=true;ui.suppressClickUntil=Date.now()+500;d.source.classList.add('kbs-variant-dragging');d.ghost=makeGhost(d.source,e.clientX,e.clientY)}
     if(!d.dragging)return;
     e.preventDefault();moveGhost(d.ghost,e.clientX,e.clientY);markDropTarget(e.clientX,e.clientY);
   }
@@ -131,23 +118,20 @@
   }
 
   pane.addEventListener('click',e=>{
-    const info=e.target.closest('[data-info-card]');if(info){e.preventDefault();e.stopPropagation();globalThis.KBSCardLab?.openDetails?.(info.dataset.infoCard);return;}
-    const pick=e.target.closest('[data-select]');if(!pick||Date.now()<ui.suppressClickUntil)return;
-    selectCard(pick.dataset.select);
+    const info=e.target.closest('[data-info-card]');if(info){e.preventDefault();e.stopPropagation();globalThis.KBSCardLab?.openDetails?.(info.dataset.infoCard);return}
+    const pick=e.target.closest('[data-select]');if(!pick||Date.now()<ui.suppressClickUntil)return;selectCard(pick.dataset.select);
   });
   document.addEventListener('pointerdown',onPointerDown,true);
   document.addEventListener('pointermove',onPointerMove,{capture:true,passive:false});
   document.addEventListener('pointerup',e=>onPointerEnd(e,false),true);
   document.addEventListener('pointercancel',e=>onPointerEnd(e,true),true);
 
-  const originalRenderCards=typeof renderCards==='function'?renderCards:null;
-  renderCards=function(){renderResults();};
-  renderAllCardsStable=function(){renderResults();};
+  renderCards=function(){renderResults()};
+  renderAllCardsStable=function(){renderResults()};
 
   const originalSearch=typeof search==='function'?search:null;
   search=async function(){
-    const before=criteriaKey();
-    const changed=ui.criteriaKey!==before;
+    const changed=ui.criteriaKey!==criteriaKey();
     if(changed&&viewport())viewport().scrollTop=0;
     if(typeof runCardSearch==='function')return runCardSearch();
     return originalSearch?.apply(this,arguments);
@@ -155,13 +139,16 @@
 
   document.getElementById('setFilter').addEventListener('change',()=>search().catch(console.error));
   document.getElementById('artistFilter').addEventListener('change',()=>search().catch(console.error));
-  document.getElementById('clearArtist').addEventListener('click',()=>{
-    document.getElementById('setFilter').value='';document.getElementById('artistFilter').value='';search().catch(console.error);
-  });
+  document.getElementById('clearArtist').addEventListener('click',()=>{document.getElementById('setFilter').value='';document.getElementById('artistFilter').value='';search().catch(console.error)});
 
   try{renderSetFilter()}catch{}
   Promise.resolve(typeof loadArtists==='function'?loadArtists():null).catch(()=>{});
   renderResults({force:true});
 
-  globalThis.KBSCardVariantsV2={installed:true,version:'2.0.0',render:renderResults,get state(){return{criteriaKey:ui.criteriaKey,resultKey:ui.resultKey,scrollTop:viewport()?.scrollTop||0}}};
+  // Production card-flow keeps full-set/image repair, but its legacy scroll
+  // capture/placement wrappers must not attach to this isolated component.
+  document.documentElement.dataset.kbsCardScrollCapture='2';
+  if(typeof place==='function')place.__kbsProductionPlacementGuard=true;
+
+  globalThis.KBSCardVariantsV2={installed:true,version:'2.0.1',render:renderResults,get state(){return{criteriaKey:ui.criteriaKey,resultKey:ui.resultKey,scrollTop:viewport()?.scrollTop||0}}};
 })();
