@@ -16,6 +16,7 @@
 <link rel="stylesheet" href="styles/production-polish.css?v=4.0.5">
 <link rel="stylesheet" href="styles/card-browser-single-scroll.css?v=1.0.0">
 <link rel="stylesheet" href="styles/card-variants-panel-v2.css?v=2.0.0">
+<link rel="stylesheet" href="styles/card-tile-print-scope.css?v=1.0.0">
 <link rel="stylesheet" href="styles/mobile-lab.css?v=4.0.5">
 <link rel="stylesheet" href="styles/appearance-cleanup.css?v=2.9.0">
 <link rel="stylesheet" href="features/cloud-sync.css?v=2.9.0" data-kbs-cloud="1">
@@ -34,7 +35,7 @@
   <section class="controls panel command-deck">
     <label><span>Pokémon or Trainer</span><div class="searchrow"><input id="subject" type="search" placeholder="Try Gardevoir, Pikachu, or Lillie"><button class="btn" id="searchBtn">Search</button></div></label>
     <label><span>Binder layout</span><select id="layout"><option value="2x2">4-pocket · 2×2</option><option value="3x3" selected>9-pocket · 3×3</option><option value="4x3">12-pocket · 4×3</option></select></label>
-    <button class="btn libraryBtn" id="openBinders">My binders</button><div class="print-control"><button class="btn" id="print">Print inserts</button><label class="include-cards theme-button" title="Include Pokémon/Trainer cards in the regular insert print sheet"><input id="includeCards" type="checkbox"><span>Cards</span></label></div><button class="btn tileprint" id="printTiles" title="Split artwork inserts into standard-card-sized tiles">Print card tiles</button><button class="btn ghost" id="clear">Clear page</button>
+    <button class="btn libraryBtn" id="openBinders">My binders</button><div class="print-control"><button class="btn" id="print">Print inserts</button><label class="include-cards theme-button" title="Include Pokémon/Trainer cards in the regular insert print sheet"><input id="includeCards" type="checkbox"><span>Cards</span></label></div><div class="tile-print-split"><button class="btn tileprint" id="printTiles" title="Print artwork card tiles from the current binder page">Current page tiles</button><button class="btn tileprint tileprint-all" id="printTilesAll" title="Print artwork card tiles from every page in the active binder">All pages tiles</button></div><button class="btn ghost" id="clear">Clear page</button>
   </section>
   <div class="workspace">
     <aside class="library panel">
@@ -81,6 +82,7 @@
 <script src="features/api-routing.js?v=4.0.5"></script>
 <script src="app.js?v=2.9.0"></script>
 <script src="features/artwork-l-shapes.js?v=4.0.0"></script>
+<script src="features/card-tile-print-scope.js?v=1.0.0"></script>
 <script src="features/performance-core.js?v=4.0.3"></script>
 <script src="features/cards-lab.js?v=2.9.0"></script>
 <script src="features/catalog-lab.js?v=2.9.0"></script>
