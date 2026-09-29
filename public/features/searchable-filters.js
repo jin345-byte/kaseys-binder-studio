@@ -38,177 +38,32 @@
     if(!select||select.dataset.searchableEnhanced==='1')return;
     select.dataset.searchableEnhanced='1';
     select.classList.add('kbs-searchable-native');
-
-    const wrap=document.createElement('div');
-    wrap.className='kbs-searchable-filter';
-    const input=document.createElement('input');
-    input.type='search';
-    input.className='kbs-searchable-filter-input';
-    input.placeholder=placeholder;
-    input.autocomplete='off';
-    input.setAttribute('role','combobox');
-    input.setAttribute('aria-autocomplete','list');
-    input.setAttribute('aria-expanded','false');
-    input.setAttribute('aria-label',placeholder.replace('…',''));
-
-    const chevron=document.createElement('span');
-    chevron.className='kbs-searchable-filter-chevron';
-    chevron.textContent='⌄';
-
-    const list=document.createElement('div');
-    list.className='kbs-searchable-filter-list';
-    list.hidden=true;
-    list.setAttribute('role','listbox');
-
-    select.parentNode.insertBefore(wrap,select);
-    wrap.append(input,chevron,list,select);
-
+    const wrap=document.createElement('div');wrap.className='kbs-searchable-filter';
+    const input=document.createElement('input');input.type='search';input.className='kbs-searchable-filter-input';input.placeholder=placeholder;input.autocomplete='off';input.setAttribute('role','combobox');input.setAttribute('aria-autocomplete','list');input.setAttribute('aria-expanded','false');input.setAttribute('aria-label',placeholder.replace('…',''));
+    const chevron=document.createElement('span');chevron.className='kbs-searchable-filter-chevron';chevron.textContent='⌄';
+    const list=document.createElement('div');list.className='kbs-searchable-filter-list';list.hidden=true;list.setAttribute('role','listbox');
+    select.parentNode.insertBefore(wrap,select);wrap.append(input,chevron,list,select);
     let active=-1;
-
-    function currentLabel(){
-      const option=select.options[select.selectedIndex];
-      return select.value ? (option?.textContent.trim()||'') : '';
-    }
-
-    function render(query=''){
-      const q=String(query).trim().toLocaleLowerCase();
-      const options=sortedOptions(select,allLabel);
-      const matches=options.filter((x,i)=>i===0||!q||x.text.toLocaleLowerCase().includes(q));
-      list.innerHTML='';
-      active=-1;
-      if(!matches.length){
-        const empty=document.createElement('div');
-        empty.className='kbs-searchable-filter-empty';
-        empty.textContent='No matches';
-        list.appendChild(empty);
-      }else{
-        matches.forEach(item=>{
-          const btn=document.createElement('button');
-          btn.type='button';
-          btn.className='kbs-searchable-filter-option';
-          btn.dataset.value=item.value;
-          btn.setAttribute('role','option');
-          btn.textContent=item.text;
-          btn.addEventListener('mousedown',e=>e.preventDefault());
-          btn.addEventListener('click',()=>choose(item.value,item.text));
-          list.appendChild(btn);
-        });
-      }
-      list.hidden=false;
-      input.setAttribute('aria-expanded','true');
-    }
-
-    function close(){
-      list.hidden=true;
-      input.setAttribute('aria-expanded','false');
-      active=-1;
-    }
-
-    function choose(value,text){
-      select.value=value;
-      input.value=value ? text : '';
-      close();
-      select.dispatchEvent(new Event('change',{bubbles:true}));
-    }
-
-    function move(delta){
-      const buttons=[...list.querySelectorAll('.kbs-searchable-filter-option')];
-      if(!buttons.length)return;
-      active=Math.max(0,Math.min(buttons.length-1,active+delta));
-      buttons.forEach((b,i)=>b.classList.toggle('is-active',i===active));
-      buttons[active].scrollIntoView({block:'nearest'});
-    }
-
-    input.addEventListener('focus',()=>{input.select();render(input.value)});
-    input.addEventListener('input',()=>render(input.value));
-    input.addEventListener('keydown',e=>{
-      if(e.key==='ArrowDown'){e.preventDefault();if(list.hidden)render(input.value);move(1)}
-      else if(e.key==='ArrowUp'){e.preventDefault();if(list.hidden)render(input.value);move(-1)}
-      else if(e.key==='Enter'){
-        const buttons=[...list.querySelectorAll('.kbs-searchable-filter-option')];
-        if(!list.hidden&&buttons.length){e.preventDefault();(buttons[Math.max(0,active)]||buttons[0]).click()}
-      }else if(e.key==='Escape'){close();input.value=currentLabel()}
-    });
-    input.addEventListener('blur',()=>setTimeout(close,100));
-    document.addEventListener('pointerdown',e=>{if(!wrap.contains(e.target))close()});
-
-    select.addEventListener('change',()=>{input.value=currentLabel()});
-
-    const observer=new MutationObserver(()=>{
-      if(document.activeElement!==input)input.value=currentLabel();
-    });
-    observer.observe(select,{childList:true,subtree:true,characterData:true});
-
-    input.value=currentLabel();
+    function currentLabel(){const option=select.options[select.selectedIndex];return select.value?(option?.textContent.trim()||''):''}
+    function render(query=''){const q=String(query).trim().toLocaleLowerCase();const options=sortedOptions(select,allLabel);const matches=options.filter((x,i)=>i===0||!q||x.text.toLocaleLowerCase().includes(q));list.innerHTML='';active=-1;if(!matches.length){const empty=document.createElement('div');empty.className='kbs-searchable-filter-empty';empty.textContent='No matches';list.appendChild(empty)}else{matches.forEach(item=>{const btn=document.createElement('button');btn.type='button';btn.className='kbs-searchable-filter-option';btn.dataset.value=item.value;btn.setAttribute('role','option');btn.textContent=item.text;btn.addEventListener('mousedown',e=>e.preventDefault());btn.addEventListener('click',()=>choose(item.value,item.text));list.appendChild(btn)})}list.hidden=false;input.setAttribute('aria-expanded','true')}
+    function close(){list.hidden=true;input.setAttribute('aria-expanded','false');active=-1}
+    function choose(value,text){select.value=value;input.value=value?text:'';close();select.dispatchEvent(new Event('change',{bubbles:true}))}
+    function move(delta){const buttons=[...list.querySelectorAll('.kbs-searchable-filter-option')];if(!buttons.length)return;active=Math.max(0,Math.min(buttons.length-1,active+delta));buttons.forEach((b,i)=>b.classList.toggle('is-active',i===active));buttons[active].scrollIntoView({block:'nearest'})}
+    input.addEventListener('focus',()=>{input.select();render(input.value)});input.addEventListener('input',()=>render(input.value));input.addEventListener('keydown',e=>{if(e.key==='ArrowDown'){e.preventDefault();if(list.hidden)render(input.value);move(1)}else if(e.key==='ArrowUp'){e.preventDefault();if(list.hidden)render(input.value);move(-1)}else if(e.key==='Enter'){const buttons=[...list.querySelectorAll('.kbs-searchable-filter-option')];if(!list.hidden&&buttons.length){e.preventDefault();(buttons[Math.max(0,active)]||buttons[0]).click()}}else if(e.key==='Escape'){close();input.value=currentLabel()}});input.addEventListener('blur',()=>setTimeout(close,100));document.addEventListener('pointerdown',e=>{if(!wrap.contains(e.target))close()});select.addEventListener('change',()=>{input.value=currentLabel()});new MutationObserver(()=>{if(document.activeElement!==input)input.value=currentLabel()}).observe(select,{childList:true,subtree:true,characterData:true});input.value=currentLabel();
   }
-
-  function init(){
-    injectStyles();
-    CONFIG.forEach(enhance);
-  }
-
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});
-  else init();
+  function init(){injectStyles();CONFIG.forEach(enhance)}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
 
 /* Result-count guard: keep broad browsing responsive while full-set mode remains uncapped. */
 (()=>{
   'use strict';
   const DISPLAY_LIMIT=250;
-
-  function setCount(total,shown){
-    const count=document.querySelector('#count');
-    if(!count)return;
-    const safeTotal=Math.max(0,Number(total)||0);
-    const safeShown=Math.max(0,Number(shown)||0);
-    count.textContent=safeTotal>DISPLAY_LIMIT?`${safeTotal.toLocaleString()} total`:safeTotal.toLocaleString();
-    count.title=safeTotal>safeShown?`Showing ${safeShown.toLocaleString()} of ${safeTotal.toLocaleString()} matching cards`:`${safeTotal.toLocaleString()} matching cards`;
-  }
-
-  function localTotal(){
-    try{
-      if(typeof localMasterMatches==='function')return localMasterMatches().length;
-    }catch(e){console.warn('Could not calculate local card total',e)}
-    return 0;
-  }
-
-  function capCurrentResults(totalHint=0){
-    try{
-      if(typeof cards==='undefined'||!Array.isArray(cards))return;
-      const fullSet=Boolean(document.querySelector('#setFilter')?.value);
-      if(fullSet){
-        setCount(cards.length,cards.length);
-        return;
-      }
-      const total=Math.max(Number(totalHint)||0,cards.length);
-      if(cards.length>DISPLAY_LIMIT){
-        cards=cards.slice(0,DISPLAY_LIMIT);
-        if(typeof renderCards==='function')renderCards();
-      }
-      setCount(total,cards.length);
-    }catch(e){console.warn('Could not apply Binder Studio result limit',e)}
-  }
-
-  function install(){
-    if(typeof runCardSearch!=='function'||runCardSearch.__kbsCountWrapped)return;
-    const original=runCardSearch;
-    const wrapped=async function(...args){
-      const totalBefore=localTotal();
-      const result=await original.apply(this,args);
-      const totalAfter=localTotal();
-      capCurrentResults(Math.max(totalBefore,totalAfter));
-      return result;
-    };
-    wrapped.__kbsCountWrapped=true;
-    runCardSearch=wrapped;
-
-    const refresh=()=>setTimeout(()=>capCurrentResults(localTotal()),0);
-    document.querySelector('#setFilter')?.addEventListener('change',refresh);
-    document.querySelector('#artistFilter')?.addEventListener('change',refresh);
-  }
-
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
-  else install();
+  function setCount(total,shown){const count=document.querySelector('#count');if(!count)return;const safeTotal=Math.max(0,Number(total)||0),safeShown=Math.max(0,Number(shown)||0);count.textContent=safeTotal>DISPLAY_LIMIT?`${safeTotal.toLocaleString()} total`:safeTotal.toLocaleString();count.title=safeTotal>safeShown?`Showing ${safeShown.toLocaleString()} of ${safeTotal.toLocaleString()} matching cards`:`${safeTotal.toLocaleString()} matching cards`}
+  function localTotal(){try{if(typeof localMasterMatches==='function')return localMasterMatches().length}catch(e){console.warn('Could not calculate local card total',e)}return 0}
+  function capCurrentResults(totalHint=0){try{if(typeof cards==='undefined'||!Array.isArray(cards))return;const fullSet=Boolean(document.querySelector('#setFilter')?.value);if(fullSet){setCount(cards.length,cards.length);return}const total=Math.max(Number(totalHint)||0,cards.length);if(cards.length>DISPLAY_LIMIT){cards=cards.slice(0,DISPLAY_LIMIT);if(typeof renderCards==='function')renderCards()}setCount(total,cards.length)}catch(e){console.warn('Could not apply Binder Studio result limit',e)}}
+  function install(){if(typeof runCardSearch!=='function'||runCardSearch.__kbsCountWrapped)return;const original=runCardSearch;const wrapped=async function(...args){const totalBefore=localTotal();const result=await original.apply(this,args);const totalAfter=localTotal();capCurrentResults(Math.max(totalBefore,totalAfter));return result};wrapped.__kbsCountWrapped=true;runCardSearch=wrapped;const refresh=()=>setTimeout(()=>capCurrentResults(localTotal()),0);document.querySelector('#setFilter')?.addEventListener('change',refresh);document.querySelector('#artistFilter')?.addEventListener('change',refresh)}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
 
 /* Load the card-browser DOM stability guard after the core browser/search modules. */
@@ -216,7 +71,7 @@
   if(document.getElementById('kbsCardBrowserRenderStabilityScript'))return;
   const script=document.createElement('script');
   script.id='kbsCardBrowserRenderStabilityScript';
-  script.src='features/card-browser-render-stability.js?v=1.1.0';
+  script.src='features/card-browser-render-stability.js?v=1.2.0';
   script.onerror=()=>{script.remove();console.warn('Could not load card-browser render stability guard')};
   document.head.appendChild(script);
 })();
