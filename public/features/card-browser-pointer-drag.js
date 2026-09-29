@@ -1,6 +1,6 @@
-/* Stable drag/drop and scroll ownership for Matching Card Variants.
-   Cards keep drag/drop behavior while the browser workspace remains at the exact
-   same position through placement, save, image repair, and same-query reruns. */
+/* Stable drag/drop and persistent scroll memory for Matching Card Variants.
+   The variants panel owns its scroll position. Binder placement, focus changes,
+   late renders, and same-query reruns must not move it. */
 (()=>{
   'use strict';
 
@@ -11,13 +11,11 @@
   const THRESHOLD=6;
   let active=null;
   let suppressClickUntil=0;
-  let lastSearchKey='';
+  let restoring=false;
+  let memory={key:'',top:0,left:0};
 
-  function cardFromElement(el){
-    const id=el?.dataset?.id||el?.querySelector?.('[data-select]')?.dataset?.select||'';
-    if(!id||typeof cards==='undefined'||!Array.isArray(cards))return null;
-    return cards.find(card=>String(card?.id)===String(id))||null;
-  }
+  const viewport=()=>document.getElementById('cardsViewport');
+  const variants=()=>document.querySelector('.variant-pane');
 
   function queryKey(){
     return [
@@ -27,86 +25,50 @@
     ].map(v=>String(v)).join('\u241f');
   }
 
-  function canScroll(node){
-    if(!node||node===document.body||node===document.documentElement)return false;
+  function remember(){
+    if(restoring)return;
+    const v=viewport();if(!v)return;
+    memory={key:queryKey(),top:v.scrollTop,left:v.scrollLeft};
+  }
+
+  function restore(saved=memory){
+    const v=viewport();
+    if(!v||!saved||saved.key!==queryKey())return;
+    restoring=true;
     try{
-      const style=getComputedStyle(node);
-      const oy=style.overflowY,ox=style.overflowX;
-      return ((/(auto|scroll|overlay)/).test(oy)&&node.scrollHeight>node.clientHeight+1)
-        ||((/(auto|scroll|overlay)/).test(ox)&&node.scrollWidth>node.clientWidth+1);
-    }catch{return false}
+      if(v.scrollTop!==saved.top)v.scrollTop=saved.top;
+      if(v.scrollLeft!==saved.left)v.scrollLeft=saved.left;
+    }finally{restoring=false}
   }
 
-  function captureScrollWorkspace(source=document.getElementById('cards')){
-    const nodes=new Set();
-    ['#cardsViewport','#cards','.variant-pane','.library'].forEach(selector=>{
-      const node=document.querySelector(selector);if(node)nodes.add(node);
-    });
-    let node=source;
-    while(node&&node!==document.body){if(canScroll(node))nodes.add(node);node=node.parentElement}
-    const entries=[...nodes].map(node=>({node,top:node.scrollTop,left:node.scrollLeft}));
-    const viewport=document.getElementById('cardsViewport');
-    return {
-      entries,
-      viewportTop:viewport?.scrollTop||0,
-      viewportLeft:viewport?.scrollLeft||0,
-      windowX:window.scrollX,
-      windowY:window.scrollY,
-      createdAt:Date.now()
-    };
+  function restoreAfter(saved=memory){
+    if(!saved||saved.key!==queryKey())return;
+    const run=()=>restore(saved);
+    queueMicrotask(run);
+    requestAnimationFrame(()=>{run();requestAnimationFrame(run)});
+    [40,120,300,700,1500,3000].forEach(ms=>setTimeout(run,ms));
   }
 
-  function restoreScrollWorkspace(snapshot,{restoreWindow=false}={}){
-    if(!snapshot)return;
-    for(const entry of snapshot.entries||[]){
-      const node=entry.node;
-      if(!node?.isConnected)continue;
-      if(node.scrollTop!==entry.top)node.scrollTop=entry.top;
-      if(node.scrollLeft!==entry.left)node.scrollLeft=entry.left;
-    }
-    const viewport=document.getElementById('cardsViewport');
-    if(viewport){
-      if(viewport.scrollTop!==snapshot.viewportTop)viewport.scrollTop=snapshot.viewportTop;
-      if(viewport.scrollLeft!==snapshot.viewportLeft)viewport.scrollLeft=snapshot.viewportLeft;
-    }
-    if(restoreWindow&&(window.scrollX!==snapshot.windowX||window.scrollY!==snapshot.windowY))window.scrollTo(snapshot.windowX,snapshot.windowY);
+  function cardFromElement(el){
+    const id=el?.dataset?.id||el?.querySelector?.('[data-select]')?.dataset?.select||'';
+    if(!id||typeof cards==='undefined'||!Array.isArray(cards))return null;
+    return cards.find(card=>String(card?.id)===String(id))||null;
   }
 
-  function stabilizeWorkspace(snapshot,duration=1800){
-    if(!snapshot)return;
-    const started=performance.now();
-    const tick=now=>{
-      restoreScrollWorkspace(snapshot,{restoreWindow:true});
-      if(now-started<duration)requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-    [0,40,120,240,450,800,1200,1750].forEach(ms=>setTimeout(()=>restoreScrollWorkspace(snapshot,{restoreWindow:true}),ms));
-  }
-
-  function makeGhost(source,clientX,clientY){
+  function makeGhost(source,x,y){
     const img=source.querySelector('img');
     const ghost=document.createElement('div');
-    ghost.id='kbsCardPointerGhost';
-    ghost.setAttribute('aria-hidden','true');
-    Object.assign(ghost.style,{
-      position:'fixed',left:'0',top:'0',zIndex:'2147483646',pointerEvents:'none',
-      width:'112px',padding:'5px',borderRadius:'10px',background:'rgba(35,28,55,.94)',
-      border:'1px solid rgba(196,181,253,.58)',boxShadow:'0 16px 40px rgba(0,0,0,.42)',
-      transform:'translate(-50%,-50%) rotate(2deg)',opacity:'.96'
-    });
-    if(img){
-      const clone=img.cloneNode(true);clone.removeAttribute('id');
-      Object.assign(clone.style,{display:'block',width:'100%',height:'auto',borderRadius:'7px'});
-      ghost.appendChild(clone);
-    }
-    document.body.appendChild(ghost);moveGhost(ghost,clientX,clientY);return ghost;
+    ghost.id='kbsCardPointerGhost';ghost.setAttribute('aria-hidden','true');
+    Object.assign(ghost.style,{position:'fixed',left:'0',top:'0',zIndex:'2147483646',pointerEvents:'none',width:'112px',padding:'5px',borderRadius:'10px',background:'rgba(35,28,55,.94)',border:'1px solid rgba(196,181,253,.58)',boxShadow:'0 16px 40px rgba(0,0,0,.42)',transform:'translate(-50%,-50%) rotate(2deg)',opacity:'.96'});
+    if(img){const clone=img.cloneNode(true);clone.removeAttribute('id');Object.assign(clone.style,{display:'block',width:'100%',height:'auto',borderRadius:'7px'});ghost.appendChild(clone)}
+    document.body.appendChild(ghost);moveGhost(ghost,x,y);return ghost;
   }
 
   function moveGhost(ghost,x,y){if(ghost){ghost.style.left=`${x}px`;ghost.style.top=`${y}px`}}
 
-  function setPocketHover(clientX,clientY){
+  function setPocketHover(x,y){
     document.querySelectorAll('#grid .kbs-pointer-drop-target').forEach(el=>el.classList.remove('kbs-pointer-drop-target'));
-    document.elementFromPoint(clientX,clientY)?.closest?.('#grid [data-pocket]')?.classList.add('kbs-pointer-drop-target');
+    document.elementFromPoint(x,y)?.closest?.('#grid [data-pocket]')?.classList.add('kbs-pointer-drop-target');
   }
 
   function cleanup(){
@@ -114,15 +76,18 @@
     active.ghost?.remove();active.source?.classList.remove('kbs-pointer-dragging');
     document.querySelectorAll('#grid .kbs-pointer-drop-target').forEach(el=>el.classList.remove('kbs-pointer-drop-target'));
     document.documentElement.classList.remove('kbs-card-pointer-drag-active');
-    document.body.style.removeProperty('user-select');document.body.style.removeProperty('-webkit-user-select');active=null;
+    document.body.style.removeProperty('user-select');document.body.style.removeProperty('-webkit-user-select');
+    active=null;
   }
 
   function beginDrag(event){
     if(!active||active.dragging)return;
     active.dragging=true;suppressClickUntil=Date.now()+600;
-    active.source.classList.add('kbs-pointer-dragging');document.documentElement.classList.add('kbs-card-pointer-drag-active');
+    active.source.classList.add('kbs-pointer-dragging');
+    document.documentElement.classList.add('kbs-card-pointer-drag-active');
     document.body.style.userSelect='none';document.body.style.webkitUserSelect='none';
-    active.ghost=makeGhost(active.source,event.clientX,event.clientY);restoreScrollWorkspace(active.scroll,{restoreWindow:true});
+    active.ghost=makeGhost(active.source,event.clientX,event.clientY);
+    restore(active.scroll);
   }
 
   function onPointerMove(event){
@@ -130,21 +95,23 @@
     const dx=event.clientX-active.startX,dy=event.clientY-active.startY;
     if(!active.dragging&&Math.hypot(dx,dy)>=THRESHOLD)beginDrag(event);
     if(!active.dragging)return;
-    event.preventDefault();moveGhost(active.ghost,event.clientX,event.clientY);setPocketHover(event.clientX,event.clientY);
-    restoreScrollWorkspace(active.scroll,{restoreWindow:true});
+    event.preventDefault();
+    moveGhost(active.ghost,event.clientX,event.clientY);setPocketHover(event.clientX,event.clientY);
+    restore(active.scroll);
   }
 
   function finishPointer(event,cancelled=false){
     if(!active||event.pointerId!==active.pointerId)return;
     const session=active;
     if(session.dragging){
-      event.preventDefault();restoreScrollWorkspace(session.scroll,{restoreWindow:true});
+      event.preventDefault();restore(session.scroll);
       if(!cancelled){
         const target=document.elementFromPoint(event.clientX,event.clientY);
         const pocket=target?.closest?.('#grid [data-pocket]');const index=Number(pocket?.dataset?.pocket);
         if(pocket&&Number.isInteger(index)&&session.card&&typeof place==='function')place(index,session.card,null);
       }
-      stabilizeWorkspace(session.scroll,1800);
+      memory=session.scroll;
+      restoreAfter(session.scroll);
     }
     cleanup();
   }
@@ -154,35 +121,53 @@
     const source=event.target?.closest?.(CARD_SELECTOR);
     if(!source||event.target?.closest?.(IGNORE_SELECTOR))return;
     const card=cardFromElement(source);if(!card)return;
-    source.draggable=false;
-    active={pointerId:event.pointerId,source,card,startX:event.clientX,startY:event.clientY,scroll:captureScrollWorkspace(source),dragging:false,ghost:null};
+    source.draggable=false;remember();
+    active={pointerId:event.pointerId,source,card,startX:event.clientX,startY:event.clientY,scroll:{...memory},dragging:false,ghost:null};
   }
 
   function disableNativeDrag(root=document){root.querySelectorAll?.(CARD_SELECTOR).forEach(el=>{el.draggable=false;el.removeAttribute('draggable')})}
 
   function installSameQuerySearchGuard(){
-    if(typeof search!=='function'||search.__kbsSameQueryScrollGuard)return;
+    if(typeof search!=='function'||search.__kbsPersistentVariantScroll)return;
     const original=search;
-    lastSearchKey=queryKey();
     const wrapped=async function(...args){
       const key=queryKey();
-      if(key===lastSearchKey&&typeof runCardSearch==='function'){
-        const snapshot=captureScrollWorkspace();
+      const same=key===memory.key;
+      if(same&&typeof runCardSearch==='function'){
+        const saved={...memory};
         const result=await runCardSearch.apply(this,args);
-        stabilizeWorkspace(snapshot,700);
+        restoreAfter(saved);
         return result;
       }
-      lastSearchKey=key;
+      memory={key,top:0,left:0};
       return original.apply(this,args);
     };
-    wrapped.__kbsSameQueryScrollGuard=true;wrapped.__kbsOriginal=original;search=wrapped;
+    wrapped.__kbsPersistentVariantScroll=true;wrapped.__kbsOriginal=original;search=wrapped;
+  }
 
-    const remember=()=>queueMicrotask(()=>{lastSearchKey=queryKey()});
-    document.querySelector('#searchBtn')?.addEventListener('click',remember);
-    document.querySelector('#setFilter')?.addEventListener('change',remember);
-    document.querySelector('#artistFilter')?.addEventListener('change',remember);
-    document.querySelector('#clearArtist')?.addEventListener('click',remember);
-    document.querySelector('#subject')?.addEventListener('keydown',event=>{if(event.key==='Enter')remember()});
+  function installPersistentMemory(){
+    const v=viewport(),pane=variants(),root=document.getElementById('cards');
+    if(!v)return;
+    memory={key:queryKey(),top:v.scrollTop,left:v.scrollLeft};
+    v.addEventListener('scroll',remember,{passive:true});
+
+    // Clicking/focusing elsewhere must not discard the card-browser workspace.
+    document.addEventListener('pointerdown',event=>{
+      if(pane?.contains(event.target))return;
+      const saved={...memory};
+      queueMicrotask(()=>restore(saved));
+      requestAnimationFrame(()=>restore(saved));
+      setTimeout(()=>restore(saved),80);
+    },true);
+    pane?.addEventListener('focusout',()=>restoreAfter({...memory}),true);
+
+    // Late card decorators/image repair may mutate the grid after placement.
+    // Preserve the user's row whenever the query itself did not change.
+    if(root)new MutationObserver(()=>{
+      disableNativeDrag(root);
+      const saved={...memory};
+      if(saved.key===queryKey())restoreAfter(saved);
+    }).observe(root,{childList:true,subtree:true});
   }
 
   document.addEventListener('pointerdown',onPointerDown,true);
@@ -193,10 +178,9 @@
   document.addEventListener('click',event=>{if(Date.now()<suppressClickUntil&&event.target?.closest?.(CARD_SELECTOR)){event.preventDefault();event.stopImmediatePropagation()}},true);
 
   disableNativeDrag();
-  const cardsRoot=document.getElementById('cards');
-  if(cardsRoot)new MutationObserver(()=>disableNativeDrag(cardsRoot)).observe(cardsRoot,{childList:true,subtree:true});
+  installPersistentMemory();
   installSameQuerySearchGuard();
   setTimeout(installSameQuerySearchGuard,500);
 
-  globalThis.KBSCardBrowserPointerDrag={version:'1.1.0',installed:true,captureScrollWorkspace};
+  globalThis.KBSCardBrowserPointerDrag={version:'1.2.0',installed:true,getScrollMemory:()=>({...memory})};
 })();
