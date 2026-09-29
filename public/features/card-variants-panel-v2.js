@@ -49,9 +49,9 @@
     const number=card?.localId?`#${html(card.localId)}`:'';
     const artist=html(card?.illustrator||card?.artist||'');
     const badge=card?.catalog==='pocket'?'TCG Pocket':card?.catalog==='union-arena'?'Union Arena':'';
-    return `<article class="item card-item kbs-variant-card" data-kind="card" data-id="${html(id)}" style="--card-index:${index}">
-      <button class="pick kbs-variant-pick" type="button" data-select="${html(id)}" aria-label="Select ${html(card?.name||'card')}">
-        <span class="card-image-wrap"><img src="${html(src)}" alt="${html(card?.name||'Card')}" loading="lazy" decoding="async" data-card-image="${html(id)}"></span>
+    return `<article class="item card-item kbs-variant-card" data-kind="card" data-id="${html(id)}" draggable="false" style="--card-index:${index}">
+      <button class="pick kbs-variant-pick" type="button" data-select="${html(id)}" aria-label="Select ${html(card?.name||'card')}" draggable="false">
+        <span class="card-image-wrap"><img src="${html(src)}" alt="${html(card?.name||'Card')}" loading="lazy" decoding="async" data-card-image="${html(id)}" draggable="false"></span>
         <span class="item-copy"><strong>${html(card?.name||'Unknown card')}</strong><small class="card-detail-row"><span class="card-number">${number}</span>${artist?`<span class="card-artist">${artist}</span>`:''}</small>${badge?`<small class="kbs-variant-source">${badge}</small>`:''}</span>
       </button>
       <button type="button" class="card-info kbs-variant-info" data-info-card="${html(id)}" aria-label="Card details">ⓘ</button>
@@ -60,6 +60,7 @@
 
   function bindImages(){
     grid()?.querySelectorAll('[data-card-image]').forEach(img=>{
+      img.draggable=false;
       const card=cardById(img.dataset.cardImage),list=imageList(card);let at=Math.max(0,list.indexOf(img.getAttribute('src')));
       img.onerror=()=>{at++;if(at<list.length)img.src=list[at];else{img.onerror=null;img.classList.add('image-unavailable')}};
     });
@@ -90,16 +91,21 @@
   }
 
   function selectCard(id){const card=cardById(id);if(!card)return;selected=card;renderSelected()}
-  function makeGhost(source,x,y){const ghost=document.createElement('div');ghost.className='kbs-variant-drag-ghost';const img=source.querySelector('img');if(img)ghost.appendChild(img.cloneNode(true));document.body.appendChild(ghost);moveGhost(ghost,x,y);return ghost}
+  function makeGhost(source,x,y){const ghost=document.createElement('div');ghost.className='kbs-variant-drag-ghost';const img=source.querySelector('img');if(img){const clone=img.cloneNode(true);clone.draggable=false;ghost.appendChild(clone)}document.body.appendChild(ghost);moveGhost(ghost,x,y);return ghost}
   function moveGhost(ghost,x,y){if(ghost){ghost.style.left=`${x}px`;ghost.style.top=`${y}px`}}
   function clearDropTarget(){document.querySelectorAll('#grid .kbs-variant-drop-target').forEach(x=>x.classList.remove('kbs-variant-drop-target'))}
   function markDropTarget(x,y){clearDropTarget();document.elementFromPoint(x,y)?.closest?.('#grid [data-pocket]')?.classList.add('kbs-variant-drop-target')}
-  function cleanupDrag(){if(!ui.drag)return;ui.drag.ghost?.remove();ui.drag.source?.classList.remove('kbs-variant-dragging');clearDropTarget();ui.drag=null}
+  function cleanupDrag(){
+    if(!ui.drag)return;
+    try{if(ui.drag.source?.hasPointerCapture?.(ui.drag.pointerId))ui.drag.source.releasePointerCapture(ui.drag.pointerId)}catch{}
+    ui.drag.ghost?.remove();ui.drag.source?.classList.remove('kbs-variant-dragging');clearDropTarget();ui.drag=null;
+  }
 
   function onPointerDown(e){
     if(e.button!==0||e.pointerType==='touch'||e.target.closest('.kbs-variant-info'))return;
     const source=e.target.closest('.kbs-variant-card');if(!source||!pane.contains(source))return;
     const card=cardById(source.dataset.id);if(!card)return;
+    try{source.setPointerCapture?.(e.pointerId)}catch{}
     ui.drag={pointerId:e.pointerId,source,card,startX:e.clientX,startY:e.clientY,dragging:false,ghost:null};
   }
   function onPointerMove(e){
@@ -117,6 +123,7 @@
     cleanupDrag();
   }
 
+  pane.addEventListener('dragstart',e=>{if(e.target.closest('.kbs-variant-card')){e.preventDefault();e.stopPropagation()}},true);
   pane.addEventListener('click',e=>{
     const info=e.target.closest('[data-info-card]');if(info){e.preventDefault();e.stopPropagation();globalThis.KBSCardLab?.openDetails?.(info.dataset.infoCard);return}
     const pick=e.target.closest('[data-select]');if(!pick||Date.now()<ui.suppressClickUntil)return;selectCard(pick.dataset.select);
@@ -150,5 +157,5 @@
   document.documentElement.dataset.kbsCardScrollCapture='2';
   if(typeof place==='function')place.__kbsProductionPlacementGuard=true;
 
-  globalThis.KBSCardVariantsV2={installed:true,version:'2.0.1',render:renderResults,get state(){return{criteriaKey:ui.criteriaKey,resultKey:ui.resultKey,scrollTop:viewport()?.scrollTop||0}}};
+  globalThis.KBSCardVariantsV2={installed:true,version:'2.0.2',render:renderResults,get state(){return{criteriaKey:ui.criteriaKey,resultKey:ui.resultKey,scrollTop:viewport()?.scrollTop||0}}};
 })();
