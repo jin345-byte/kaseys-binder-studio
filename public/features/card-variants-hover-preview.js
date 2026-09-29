@@ -10,6 +10,18 @@
   const preview=document.getElementById('hoverCardPreview');
   if(!pane||!preview)return;
 
+  const style=document.createElement('style');
+  style.id='kbsCardVariantsHoverPreviewStyle';
+  style.textContent=`
+    #hoverCardPreview.kbs-variant-hover-open{position:fixed!important;z-index:2147483645!important;display:grid!important;grid-template-rows:auto auto!important;width:min(320px,32vw)!important;max-width:320px!important;pointer-events:none!important;padding:8px!important;border-radius:16px!important;background:color-mix(in srgb,var(--surface) 94%,transparent)!important;border:1px solid color-mix(in srgb,var(--accent) 38%,var(--line))!important;box-shadow:0 22px 60px rgba(0,0,0,.46)!important;backdrop-filter:blur(16px)!important}
+    #hoverCardPreview.kbs-variant-hover-open img{display:block!important;width:100%!important;height:auto!important;max-height:70vh!important;object-fit:contain!important;border-radius:11px!important;background:#0001!important}
+    #hoverCardPreview .kbs-variant-hover-meta{display:grid!important;gap:2px!important;padding:8px 4px 2px!important;min-width:0!important}
+    #hoverCardPreview .kbs-variant-hover-meta strong{font-size:13px!important;line-height:1.2!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+    #hoverCardPreview .kbs-variant-hover-meta small{color:var(--muted)!important;font-size:10px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+    @media(max-width:900px){#hoverCardPreview{display:none!important}}
+  `;
+  document.head.appendChild(style);
+
   let activeId='';
   let showTimer=0;
   let lastX=0,lastY=0;
@@ -85,12 +97,11 @@
     hide();
   });
 
-  // Hover preview must never compete with drag/drop.
   document.addEventListener('pointerdown',event=>{
     if(event.target.closest?.('.kbs-variant-card'))hide();
   },true);
   document.addEventListener('scroll',hide,true);
   window.addEventListener('blur',hide);
 
-  globalThis.KBSCardVariantsHoverPreview={installed:true,version:'1.0.0',hide};
+  globalThis.KBSCardVariantsHoverPreview={installed:true,version:'1.1.0',hide};
 })();
