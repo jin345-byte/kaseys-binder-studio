@@ -16,20 +16,21 @@
       document.querySelector('#artistFilter')?.value||''
     ].map(text).join('\u241f');
   }
+
+  // IMPORTANT: this signature must use immutable card identity only.
+  // Image URLs, fallbacks, rarity labels and other presentation fields may be
+  // repaired/mutated asynchronously and must never make the tray look "new".
   function resultSignature(){
     if(typeof cards==='undefined'||!Array.isArray(cards))return '';
-    return cards.map(card=>[
-      card?.id||card?.primaryId||card?.sourceKey||'',
-      card?.name||'',
-      card?.localId||'',
+    return cards.map((card,index)=>[
+      card?.id||card?.primaryId||card?.sourceKey||`row-${index}`,
       card?.setId||card?.rawSetId||'',
-      card?.artist||card?.illustrator||'',
-      card?.rarity||'',
-      card?.variant||'',
-      card?.imageHigh||card?.image||'',
-      card?.imageLow||''
+      card?.localId||'',
+      card?.language||'',
+      card?.catalog||''
     ].map(text).join('\u241e')).join('\u241d');
   }
+
   function snapshotScroll(){
     const viewport=document.querySelector('#cardsViewport');
     return viewport?{top:viewport.scrollTop,left:viewport.scrollLeft}:null;
@@ -49,6 +50,8 @@
     requestAnimationFrame(()=>{restore();requestAnimationFrame(restore)});
     setTimeout(restore,40);
     setTimeout(restore,120);
+    setTimeout(restore,260);
+    setTimeout(restore,600);
   }
   function updateCountOnly(){
     try{
@@ -74,6 +77,8 @@
       const sameQuery=nextQuery===lastQueryKey;
       const sameResults=nextSignature===lastSignature;
 
+      // If the actual result identities are unchanged, never touch #cards.
+      // This keeps scroll position, focus, loaded images and drag state intact.
       if(sameQuery&&sameResults&&gridHasCards()){
         updateCountOnly();
         return;
@@ -104,7 +109,7 @@
     lastQueryKey=queryKey();
     lastSignature=resultSignature();
     installed=true;
-    globalThis.KBSCardBrowserRenderStability={version:'1.1.0',installed:true};
+    globalThis.KBSCardBrowserRenderStability={version:'1.2.0',installed:true};
     return true;
   }
 
@@ -115,17 +120,4 @@
       if(install()||attempts>=20)clearInterval(timer);
     },250);
   }
-})();
-
-/* Native HTML5 card dragging can auto-scroll the card browser even when its DOM
-   remains stable. Load the pointer-based drag implementation so card-browser
-   cards never enter the native drag path. */
-(()=>{
-  if(globalThis.KBSCardBrowserPointerDrag?.installed)return;
-  if(document.getElementById('kbsCardBrowserPointerDragScript'))return;
-  const script=document.createElement('script');
-  script.id='kbsCardBrowserPointerDragScript';
-  script.src='features/card-browser-pointer-drag.js?v=1.0.0';
-  script.onerror=()=>{script.remove();console.warn('Could not load pointer card drag')};
-  document.head.appendChild(script);
 })();
