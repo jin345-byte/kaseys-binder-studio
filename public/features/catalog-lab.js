@@ -169,9 +169,46 @@ const KBSCatalogLab=(()=>{
     const setId=document.querySelector('#setFilter')?.value||'';
     const artist=document.querySelector('#artistFilter')?.value||'';
     const hasFullEnglish=pokemonCards().length>5000;
+    const localMatches=()=>localMasterMatches().map(c=>({...c}));
 
-    if(hasFullEnglish || setId.startsWith('pocket:') || setId.startsWith('union-arena:')){
-      cards=localMasterMatches().slice(0,MASTER_PAGE_SIZE).map(c=>({...c}));
+    // Full-set browsing must never be truncated. Later production wrappers may
+    // add set-specific supplements, but this layer preserves every local row.
+    if(setId){
+      cards=localMatches();
+      renderCards();
+      const h=document.querySelector('#masterLibraryHealth');
+      if(h)h.textContent=`${masterCards.length.toLocaleString()} unified cards · ${cards.length.toLocaleString()} in selected set`;
+      return;
+    }
+
+    if(hasFullEnglish){
+      const local=localMatches();
+
+      // Specific name searches return every cached printing and then merge fresh
+      // English TCG results so a stale prebuilt catalog cannot hide new cards.
+      if(name.length>=2){
+        let live=[];
+        try{
+          const result=await fetchPokemonNameMatches(name,{page:1,signal:activeSearchController?.signal||null});
+          live=Array.isArray(result?.rows)?result.rows:[];
+          if(artist){
+            const a=normText(artist);
+            live=live.filter(c=>normText(c.illustrator||c.artist||'')===a);
+          }
+          if(live.length)await upsertMasterRows(live).catch(console.warn);
+        }catch(e){
+          if(e?.name!=='AbortError')console.warn('Live card refresh failed; using complete local matches',e);
+        }
+        cards=mergeUniqueRows(local,live);
+        renderCards();
+        const h=document.querySelector('#masterLibraryHealth');
+        if(h)h.textContent=`${masterCards.length.toLocaleString()} unified cards · ${cards.length.toLocaleString()} matching printings`;
+        return;
+      }
+
+      // Artist-only and unfiltered browsing can be enormous. Keep the UI guard
+      // here, but never apply it to real name or set searches.
+      cards=local.slice(0,MASTER_PAGE_SIZE);
       renderCards();
       const h=document.querySelector('#masterLibraryHealth');
       if(h)h.textContent=`${masterCards.length.toLocaleString()} unified cards · ${cards.length.toLocaleString()} shown`;
@@ -179,9 +216,9 @@ const KBSCatalogLab=(()=>{
     }
 
     await coreRunCardSearch.apply(this,arguments);
-    if(pocketCards.length&&(name.length>=2||setId||artist)){
+    if(pocketCards.length&&(name.length>=2||artist)){
       const pocketMatches=localMasterMatches().filter(c=>c.catalog==='pocket');
-      cards=mergeUniqueRows(cards,pocketMatches).slice(0,MASTER_PAGE_SIZE);
+      cards=mergeUniqueRows(cards,pocketMatches);
       renderCards();
     }
   };
