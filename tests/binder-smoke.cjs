@@ -44,7 +44,7 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
       if(q.includes('newmon')){totalCount=262;data=makeApi('Newmon',number===1?1:251,number===1?250:12);}
       await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({data,totalCount,page:number,pageSize:250})});
     });
-    await page.route(/^https?:\/\/(?!127\.0\.0\.1)/,route=>route.fulfill({status:200,contentType:'application/json',body:'{}'}));
+    await page.route(/^https?:\/\/(?!127\.0\.0\.1)(?!api\.pokemontcg\.io)/,route=>route.fulfill({status:200,contentType:'application/json',body:'{}'}));
     await page.goto(origin,{waitUntil:'domcontentloaded',timeout:30000});
     await page.waitForFunction(()=>Boolean(globalThis.KBSCardVariantsV2?.installed&&globalThis.KBSArtworkLShapes?.installed&&typeof renderGrid==='function'),{timeout:30000});
     await page.waitForTimeout(900); // Let asynchronous empty-library initialization settle.
