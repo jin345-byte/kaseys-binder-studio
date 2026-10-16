@@ -249,6 +249,22 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
       });
       if(geometry.scrollWidth>geometry.width+12||geometry.overlap||geometry.viewportOverflows||geometry.activeHover)
         throw new Error('LAYOUT_COLLISION '+JSON.stringify(geometry));
+      if(width===390){
+        const diag=await page.evaluate(()=>{
+          const rect=e=>{const r=e.getBoundingClientRect();return{x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),h:Math.round(r.height)}};
+          const relevant=[...document.querySelectorAll('body *')].filter(e=>{
+            const s=getComputedStyle(e),r=e.getBoundingClientRect();
+            return r.width>140&&r.height>135&&(
+              s.position==='fixed'||s.position==='absolute'||
+              e.classList.contains('kbs-l-art-overlay')||
+              (e.parentElement?.id==='grid')
+            );
+          }).slice(0,60).map(e=>({tag:e.tagName,id:e.id,class:e.className?.toString()?.slice(0,120),hidden:e.hidden,rect:rect(e),position:getComputedStyle(e).position,display:getComputedStyle(e).display,bg:getComputedStyle(e).backgroundColor,transform:getComputedStyle(e).transform}));
+          const h=document.querySelector('#hoverCardPreview');
+          return {scrollY,grid:rect(document.querySelector('#grid')),hover:{hidden:h.hidden,class:h.className,display:getComputedStyle(h).display,rect:rect(h)},relevant};
+        });
+        console.log('MOBILE_LAYER_DIAG',JSON.stringify(diag,null,2));
+      }
       await page.screenshot({path:'audit-artifacts/layout-'+width+'x'+height+'.png',fullPage:true});
       console.log('PASS responsive geometry '+width+'x'+height);
     }
