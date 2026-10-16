@@ -70,12 +70,11 @@
     return `<figure class="tile" data-source-page="${t.sourcePage}"><div class="cutline"></div><div class="card"><div class="composite" style="width:${t.cols*63}mm;height:${t.rows*88}mm;left:${-t.x*63}mm;top:${-t.y*88}mm"><img src="${esc(t.im)}" style="object-position:${cropX}% ${cropY}%"></div></div></figure>`;
   }
 
-  function openCombinedTilePrint(tiles,binderName='Binder'){
+  function openCombinedTilePrint(tiles,binderName='Binder',p){
     const sheets=[];
     for(let i=0;i<tiles.length;i+=9)sheets.push(tiles.slice(i,i+9));
     const sheetMarkup=sheets.map((sheet,i)=>`<section class="sheet">${sheet.map(tileMarkup).join('')}<span class="pageNo">${i+1}/${sheets.length}</span></section>`).join('');
-    const p=window.open('','_blank');
-    if(!p)return toast('Allow pop-ups once to open the card-tile print sheet');
+    if(!p||p.closed)return toast('Allow pop-ups once to open the card-tile print sheet');
     p.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(binderName)} · all page card tiles</title><style>
       @page{size:letter portrait;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;background:white;font-family:system-ui,sans-serif}.help{max-width:900px;margin:14px auto;padding:12px 14px;border-radius:10px;background:#171b24;color:#fff;font-size:14px;line-height:1.45}.help button{float:right;margin-left:12px;padding:9px 14px;font:inherit;font-weight:800;cursor:pointer}.help button:disabled{opacity:.6;cursor:wait}.sheet{position:relative;width:215.9mm;height:279.4mm;margin:0 auto;display:grid;grid-template-columns:repeat(3,63mm);grid-auto-rows:88mm;gap:3mm;align-content:center;justify-content:center;page-break-after:always;background:#fff}.sheet:last-of-type{page-break-after:auto}.tile{position:relative;width:63mm;height:88mm;margin:0;overflow:visible}.card{position:absolute;inset:0;width:63mm;height:88mm;overflow:hidden;border-radius:3mm;background:#fff}.composite{position:absolute;overflow:hidden}.composite img{display:block;width:100%;height:100%;object-fit:cover}.cutline{position:absolute;inset:-.7mm;border:.18mm dashed #202020;border-radius:3.7mm;pointer-events:none;z-index:5}.pageNo{position:absolute;right:4mm;bottom:2mm;font-size:8pt;color:#777}@media screen{body{padding:0 12px 24px;background:#222833}.sheet{margin:12px auto;box-shadow:0 8px 35px #0008}}@media print{.help{display:none}.sheet{margin:0;box-shadow:none}.pageNo{display:none}}
     </style></head><body><div class="help"><button id="doPrint">Print / Save PDF</button><strong>All binder pages · card tiles</strong><br>${tiles.length} artwork tile${tiles.length===1?'':'s'} collected from the active binder. Tiles remain 63 × 88mm with the saved artwork crop preserved. Print at <strong>100% / Actual size</strong> with scaling disabled. Up to nine tiles are placed on each US Letter sheet.</div>${sheetMarkup}</body></html>`);
@@ -87,23 +86,27 @@
 
   async function printAllBinderTiles(){
     if(allBtn.disabled)return;
+    if(!binderLayerReady||!activeBinderId||typeof pagesForBinder!=='function'){
+      toast('Open or create a binder before printing all pages');return;
+    }
+    // Reserve the print window synchronously within the user's click.
+    // Opening it after awaited IndexedDB work is blocked by popup blockers.
+    const printWindow=window.open('','_blank');
+    if(!printWindow)return toast('Allow pop-ups once to print all binder pages');
     const original=allBtn.textContent;
     allBtn.disabled=true;
     allBtn.textContent='Preparing…';
     try{
-      if(typeof saveActivePageSnapshot==='function')await saveActivePageSnapshot().catch(()=>{});
-      if(!binderLayerReady||!activeBinderId||typeof pagesForBinder!=='function'){
-        toast('Open or create a binder before printing all pages');
-        return;
-      }
+      if(typeof saveActivePageSnapshot==='function')await saveActivePageSnapshot();
       const pages=await pagesForBinder(activeBinderId);
       const tiles=pages.flatMap((page,i)=>collectPageTiles(page,i+1));
-      if(!tiles.length){toast('No artwork tiles were found in this binder');return}
+      if(!tiles.length){printWindow.close();toast('No artwork tiles were found in this binder');return}
       let binderName='Binder';
       try{const b=typeof dbGet==='function'?await dbGet('binders',activeBinderId):null;if(b?.name)binderName=b.name}catch{}
-      openCombinedTilePrint(tiles,binderName);
+      openCombinedTilePrint(tiles,binderName,printWindow);
     }catch(e){
       console.error('All-pages tile print failed',e);
+      if(!printWindow.closed)printWindow.close();
       toast('Could not prepare all binder pages for printing');
     }finally{
       allBtn.disabled=false;
