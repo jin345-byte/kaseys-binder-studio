@@ -52,12 +52,13 @@
     gap:8px!important;
     align-items:end!important;
   }
-  .controls.command-deck>label:first-child{grid-column:span 9!important}
-  .controls.command-deck>label:nth-child(2){grid-column:span 3!important}
-  .controls.command-deck>#openBinders{grid-column:span 3!important}
-  .controls.command-deck>.print-control{grid-column:span 4!important}
-  .controls.command-deck>.tile-print-split{grid-column:span 3!important}
-  .controls.command-deck>#clear{grid-column:span 2!important}
+  .controls.command-deck>label:first-child{grid-column:1/span 9!important;grid-row:1!important}
+  .controls.command-deck>label:nth-child(2){grid-column:10/span 3!important;grid-row:1!important}
+  .controls.command-deck>#openBinders{grid-column:1/span 4!important;grid-row:2!important}
+  .controls.command-deck>button:not(#openBinders):not(#clear){grid-column:span 4!important;grid-row:2!important}
+  .controls.command-deck>.print-control{grid-column:1/span 5!important;grid-row:3!important}
+  .controls.command-deck>.tile-print-split{grid-column:6/span 5!important;grid-row:3!important}
+  .controls.command-deck>#clear{grid-column:11/span 2!important;grid-row:3!important}
   .controls.command-deck>.tile-print-split .btn{font-size:12px!important;padding:9px 7px!important}
   .controls.command-deck>.print-control #print{font-size:12px!important;white-space:normal!important}
 }
