@@ -40,7 +40,7 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
   page.on('requestfailed',req=>failedRequests.push(req.url()+': '+(req.failure()?.errorText||'')));
 
   try{
-    await page.route(/^https:\/\/api\.pokemontcg\.io\/v2\/cards/,async route=>{
+    await page.route(/\/api\/card-search\?/,async route=>{
       const u=new URL(route.request().url()),q=(u.searchParams.get('q')||'').toLowerCase(),number=Number(u.searchParams.get('page')||'1');
       if(q.includes('lagmon'))await new Promise(r=>setTimeout(r,900));
       let data=[],totalCount=0;
