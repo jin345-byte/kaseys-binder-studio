@@ -26,3 +26,14 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Exercise isolated binder workflows
         run: node tests/binder-smoke.cjs
+      - name: Read-only published website smoke
+        if: always()
+        continue-on-error: true
+        run: node tests/production-readonly.cjs
+      - name: Upload guest website screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binder-studio-guest-smoke
+          path: audit-artifacts/
+          if-no-files-found: ignore
