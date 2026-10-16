@@ -9,8 +9,9 @@ const SITE='https://binderstudio.cc';
   const browser=await chromium.launch({headless:true});
   const context=await browser.newContext({viewport:{width:1440,height:1000}});
   const page=await context.newPage();
-  const errors=[],failures=[];
+  const errors=[],failures=[],relevantResponses=[];
   page.on('pageerror',e=>errors.push(e.message));
+  page.on('response',r=>{if(/\/api\/card-search|\/catalog\/cards-|\/catalog\/manifest/.test(r.url()))relevantResponses.push({url:r.url().slice(0,220),status:r.status()})});
   page.on('requestfailed',r=>failures.push((r.failure()?.errorText||'')+' '+r.url()));
   try{
     const response=await page.goto(SITE,{waitUntil:'domcontentloaded',timeout:45000});
@@ -36,7 +37,36 @@ const SITE='https://binderstudio.cc';
     }))));
     await page.fill('#subject','Pikachu');
     await page.click('#searchBtn');
-    await page.waitForFunction(()=>document.querySelectorAll('#cards .kbs-variant-card').length>0,null,{timeout:65000});
+    try{
+      await page.waitForFunction(()=>document.querySelectorAll('#cards .kbs-variant-card').length>0,null,{timeout:28000});
+    }catch(error){
+      const diag=await page.evaluate(()=>({
+        query:document.querySelector('#subject')?.value||'',
+        set:document.querySelector('#setFilter')?.value||'',
+        artist:document.querySelector('#artistFilter')?.value||'',
+        master:typeof masterCards!=='undefined'?masterCards.length:-1,
+        local:typeof localMasterMatches==='function'?localMasterMatches().length:-1,
+        searchResults:typeof cards!=='undefined'?cards.length:-1,
+        rendered:document.querySelectorAll('#cards .kbs-variant-card').length,
+        catalogVersion:localStorage.getItem('kbsPrebuiltCatalogVersion'),
+        catalogStatus:document.querySelector('#masterLibraryStatus')?.textContent||'',
+        catalogProgress:document.querySelector('#libraryProgressText')?.textContent||'',
+        runtimeError:document.querySelector('#runtimeErrorText')?.textContent||'',
+        searchIndex:globalThis.KBSModules?.search?.size||0,
+        indexReady:globalThis.KBSModules?.search?.ready||false,
+        matchedName:(typeof masterCards!=='undefined'?masterCards.filter(c=>String(c?.name||'').toLowerCase().includes('pikachu')).length:0),
+        cardHTML:document.querySelector('#cards')?.textContent?.slice(0,220)||''
+      }));
+      let apiCheck={status:null,body:''};
+      try{
+        const r=await context.request.get(SITE+'/api/card-search?q='+encodeURIComponent('name:"Pikachu"')+'&page=1&pageSize=250',{timeout:12000});
+        apiCheck={status:r.status(),body:(await r.text()).slice(0,350)};
+      }catch(e){apiCheck={error:String(e).slice(0,350)}}
+      fs.mkdirSync('audit-artifacts',{recursive:true});
+      await page.screenshot({path:'audit-artifacts/live-guest-search-failure.png',fullPage:true}).catch(()=>{});
+      console.error('LIVE_SEARCH_DIAG',JSON.stringify({diag,apiCheck,relevantResponses:relevantResponses.slice(-18),errors,failures:failures.slice(0,15)},null,2));
+      throw error;
+    }
     const count=await page.locator('#cards .kbs-variant-card').count();
     console.log('PASS PUBLISHED_CARD_SEARCH',count);
     assert.ok(count>0);
