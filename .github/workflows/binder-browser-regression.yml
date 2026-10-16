@@ -26,6 +26,8 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Exercise isolated binder workflows
         run: node tests/binder-smoke.cjs
+      - name: Fresh browser prebuilt-catalog regression
+        run: node tests/prebuilt-catalog-smoke.cjs
       - name: Read-only published website smoke
         if: always()
         continue-on-error: true
