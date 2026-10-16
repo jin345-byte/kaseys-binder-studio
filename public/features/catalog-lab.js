@@ -193,7 +193,7 @@ const KBSCatalogLab=(()=>{
     const setId=document.querySelector('#setFilter')?.value||'';
     const artist=document.querySelector('#artistFilter')?.value||'';
     const localMatches=()=>localMasterMatches().map(c=>({...c}));
-    const stillCurrent=()=>sequence===unifiedSearchSequence&&!controller.signal.aborted;
+    const stillCurrent=()=>sequence===unifiedSearchSequence&&!controller.signal.aborted&&(document.querySelector('#subject')?.value.trim()||'')===name&&(document.querySelector('#setFilter')?.value||'')===setId&&(document.querySelector('#artistFilter')?.value||'')===artist;
 
     // Sets, including Pocket and Union Arena, must not be capped by a
     // generic pagination constant. Production's set supplement runs later.
