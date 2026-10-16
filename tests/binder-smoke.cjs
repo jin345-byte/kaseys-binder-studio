@@ -86,7 +86,18 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
     },img);
     await page.fill('#subject','Auditmon');
     await page.click('#searchBtn');
-    await page.waitForFunction(()=>document.querySelectorAll('#cards .kbs-variant-card').length===300,{timeout:15000});
+    console.log('SEARCH_DIAG',JSON.stringify(await page.evaluate(()=>({
+      query:document.querySelector('#subject')?.value,
+      selectedSet:document.querySelector('#setFilter')?.value,
+      master:masterCards.length,
+      hasFullEnglish:masterCards.filter(c=>c?.game==='pokemon').length,
+      local:localMasterMatches().length,
+      dataCards:cards.length,
+      rendered:document.querySelectorAll('#cards .kbs-variant-card').length,
+      status:document.querySelector('#variantStatus')?.textContent,
+      errors:document.querySelector('#runtimeErrorText')?.textContent
+    }))));
+    await page.waitForFunction(()=>document.querySelectorAll('#cards .kbs-variant-card').length===300,null,{timeout:12000});
     console.log('PASS 300 named card variants are visible without truncation');
 
     await page.fill('#subject','');
@@ -94,7 +105,7 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
       const el=document.querySelector('#setFilter');el.value='auditset';
       el.dispatchEvent(new Event('change',{bubbles:true}));
     });
-    await page.waitForFunction(()=>document.querySelectorAll('#cards .kbs-variant-card').length===300,{timeout:15000});
+    await page.waitForFunction(()=>document.querySelectorAll('#cards .kbs-variant-card').length===300,null,{timeout:12000});
     console.log('PASS full selected set remains uncapped');
 
     await page.evaluate(()=>{
@@ -103,7 +114,7 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
     });
     await page.fill('#subject','Newmon');
     await page.click('#searchBtn');
-    await page.waitForFunction(()=>document.querySelectorAll('#cards .kbs-variant-card').length===262,{timeout:20000});
+    await page.waitForFunction(()=>document.querySelectorAll('#cards .kbs-variant-card').length===262,null,{timeout:16000});
     console.log('PASS all 262 live card printings loaded across two API pages');
 
     await page.fill('#subject','Lagmon');
