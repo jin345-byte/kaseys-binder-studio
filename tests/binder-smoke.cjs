@@ -83,7 +83,9 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
       masterSetOptions=[{id:'auditset',name:'Audit Set'},{id:'filler',name:'Audit Filler'}];
       renderSetFilter();
       loadArtists();
+      KBSModules.search.rebuild(masterCards);
     },img);
+    await page.waitForFunction(()=>KBSModules.search.ready&&KBSModules.search.size===5400,null,{timeout:30000});
     await page.fill('#subject','Auditmon');
     await page.click('#searchBtn');
     console.log('SEARCH_DIAG',JSON.stringify(await page.evaluate(()=>({
