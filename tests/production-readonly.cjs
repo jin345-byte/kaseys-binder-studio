@@ -35,6 +35,16 @@ const SITE='https://binderstudio.cc';
       lShapes:globalThis.KBSArtworkLShapes?.version||'pending',
       cardsPanel:globalThis.KBSCardVariantsV2?.version||'pending'
     }))));
+    const preflight=await context.request.get(SITE+'/api/card-search?q='+encodeURIComponent('name:"Pikachu"')+'&page=1&pageSize=10',{timeout:15000}).then(async r=>({status:r.status(),body:(await r.text()).slice(0,600)})).catch(e=>({error:String(e).slice(0,240)}));
+    console.log('PUBLISHED_API_PREFLIGHT',JSON.stringify(preflight));
+    await page.waitForTimeout(3500);
+    console.log('PUBLISHED_PRESEARCH',JSON.stringify(await page.evaluate(()=>({
+      master:typeof masterCards==='undefined'?null:masterCards.length,
+      catalogVersion:localStorage.getItem('kbsPrebuiltCatalogVersion'),
+      status:document.querySelector('#masterLibraryStatus')?.textContent||'',
+      progress:document.querySelector('#libraryProgressText')?.textContent||'',
+      indexSize:globalThis.KBSModules?.search?.size||0
+    }))));
     await page.fill('#subject','Pikachu');
     await page.click('#searchBtn');
     try{
