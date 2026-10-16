@@ -120,8 +120,12 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
 
 
     // Previously fragile interactions: card zoom and pointer drag/placement.
-    await page.locator('#cards .kbs-variant-card').nth(2).hover();
-    await page.waitForFunction(()=>!document.querySelector('#hoverCardPreview')?.hidden,null,{timeout:3500});
+    await page.mouse.move(6,6);
+    const hoverTarget=page.locator('#cards .kbs-variant-card').nth(2);
+    await hoverTarget.hover();
+    const hoverBounds=await hoverTarget.boundingBox();
+    await page.mouse.move(hoverBounds.x+hoverBounds.width*.68,hoverBounds.y+hoverBounds.height*.42,{steps:4});
+    await page.waitForFunction(()=>!document.querySelector('#hoverCardPreview')?.hidden,null,{timeout:4500});
     console.log('PASS enlarged card hover preview appears');
 
     const cardBox=await page.locator('#cards .kbs-variant-card').nth(2).locator('img').boundingBox();
