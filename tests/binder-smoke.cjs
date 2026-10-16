@@ -112,6 +112,16 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
       const el=document.querySelector('#setFilter');el.value='auditset';
       el.dispatchEvent(new Event('change',{bubbles:true}));
     });
+    await page.waitForTimeout(400);
+    console.log('SET_DIAG',JSON.stringify(await page.evaluate(()=>({
+      set:document.querySelector('#setFilter')?.value,
+      subject:document.querySelector('#subject')?.value,
+      options:[...document.querySelector('#setFilter').options].slice(0,5).map(x=>x.value),
+      local:localMasterMatches().length, cards:cards.length,
+      rendered:document.querySelectorAll('#cards .kbs-variant-card').length,
+      selectedSetWrapper:Boolean(runCardSearch.__kbsProductionFullSet),
+      errors:document.querySelector('#runtimeErrorText')?.textContent||''
+    }))));
     await page.waitForFunction(()=>document.querySelectorAll('#cards .kbs-variant-card').length===300,null,{timeout:12000});
     console.log('PASS full selected set remains uncapped');
 
