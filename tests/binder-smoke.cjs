@@ -107,6 +107,23 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
     await page.waitForFunction(()=>document.querySelectorAll('#cards .kbs-variant-card').length===300,null,{timeout:12000});
     console.log('PASS 300 named card variants are visible without truncation');
 
+    // Previously fragile interactions: card zoom and pointer drag/placement.
+    await page.locator('#cards .kbs-variant-card').nth(2).hover();
+    await page.waitForFunction(()=>!document.querySelector('#hoverCardPreview')?.hidden,null,{timeout:3500});
+    console.log('PASS enlarged card hover preview appears');
+
+    const cardBox=await page.locator('#cards .kbs-variant-card').nth(2).locator('img').boundingBox();
+    const pocketBox=await page.locator('#grid [data-pocket="0"]').boundingBox();
+    assert.ok(cardBox&&pocketBox,'Card and target binder pocket must be visible');
+    await page.mouse.move(cardBox.x+cardBox.width/2,cardBox.y+cardBox.height/2);
+    await page.mouse.down();
+    await page.mouse.move(pocketBox.x+pocketBox.width/2,pocketBox.y+pocketBox.height/2,{steps:10});
+    await page.mouse.up();
+    await page.waitForFunction(()=>state.pockets[0]?.kind==='card',null,{timeout:5000});
+    console.log('PASS pointer-drag card is placed into a binder pocket');
+
+
+
     await page.fill('#subject','');
     await page.evaluate(()=>{
       const el=document.querySelector('#setFilter');el.value='auditset';
@@ -175,6 +192,20 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
     assert.equal(await allPrint.locator('#doPrint').count(),1);
     await allPrint.close();
     console.log('PASS all-pages print opens synchronously and contains 6 tiles');
+
+    // Page changes must round-trip the saved contents of both pages.
+    const pageIntegrity=await page.evaluate(async()=>{
+      const first=activePageId;
+      await loadPageIntoEditor('audit-second-page',{closeLibrary:false});
+      const secondGood=state.pockets[0]?.id==='audit-second';
+      await loadPageIntoEditor(first,{closeLibrary:false});
+      const firstGood=state.pockets[0]?.id==='audit-art';
+      return {secondGood,firstGood};
+    });
+    assert.deepEqual(pageIntegrity,{secondGood:true,firstGood:true});
+    console.log('PASS saved binder pages round-trip without losing artwork');
+
+
 
     if(errors.length)throw new Error('Browser JavaScript exceptions: '+JSON.stringify(errors));
     console.log('PASS no uncaught browser exceptions');
