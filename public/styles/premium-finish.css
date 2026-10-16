@@ -42,3 +42,27 @@
   .kbs-variants-v2 .kbs-variant-card{transition:none!important}
   .kbs-variants-v2 #cardsViewport{scroll-behavior:auto!important}
 }
+
+/* Reserve proper width for grouped actions at laptop/tablet breakpoints.
+   Prevent Print inserts and Tile buttons from collapsing to vertical letters. */
+@media (min-width:761px) and (max-width:1199px){
+  .controls.command-deck{
+    display:grid!important;
+    grid-template-columns:repeat(12,minmax(0,1fr))!important;
+    gap:8px!important;
+    align-items:end!important;
+  }
+  .controls.command-deck>label:first-child{grid-column:span 9!important}
+  .controls.command-deck>label:nth-child(2){grid-column:span 3!important}
+  .controls.command-deck>#openBinders{grid-column:span 3!important}
+  .controls.command-deck>.print-control{grid-column:span 4!important}
+  .controls.command-deck>.tile-print-split{grid-column:span 3!important}
+  .controls.command-deck>#clear{grid-column:span 2!important}
+  .controls.command-deck>.tile-print-split .btn{font-size:12px!important;padding:9px 7px!important}
+  .controls.command-deck>.print-control #print{font-size:12px!important;white-space:normal!important}
+}
+/* A closed transformed drawer should not maintain a visible compositor/shadow
+   layer that could paint over a tall mobile binder screenshot or its pockets. */
+.feature-drawer:not(.open){visibility:hidden!important}
+.feature-drawer.open{visibility:visible!important}
+.feature-drawer:not(.open) .feature-drawer-shell{box-shadow:none!important}
