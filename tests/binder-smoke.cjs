@@ -89,6 +89,11 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
     console.log('SEARCH_DIAG',JSON.stringify(await page.evaluate(()=>({
       query:document.querySelector('#subject')?.value,
       selectedSet:document.querySelector('#setFilter')?.value,
+      selectedArtist:document.querySelector('#artistFilter')?.value,
+      tcgFilters:globalThis.KBSMultiTCGFilters?.state||null,
+      firstCard:masterCards[0],
+      rawLocal:masterCards.filter(c=>String(c.nameLower||c.name).toLowerCase().includes('auditmon')).length,
+      localMatchFn:String(localMasterMatches).slice(0,750),
       master:masterCards.length,
       hasFullEnglish:masterCards.filter(c=>c?.game==='pokemon').length,
       local:localMasterMatches().length,
