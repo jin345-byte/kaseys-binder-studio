@@ -34,8 +34,11 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
   const browser=await chromium.launch({headless:true});
   const context=await browser.newContext({viewport:{width:1600,height:1000},acceptDownloads:true});
   const page=await context.newPage();
-  const errors=[];
+  const errors=[],consoleErrors=[],failedRequests=[];
   page.on('pageerror',e=>errors.push(String(e.message)));
+  page.on('console',m=>{if(m.type()==='error')consoleErrors.push(m.text())});
+  page.on('requestfailed',req=>failedRequests.push(req.url()+': '+(req.failure()?.errorText||'')));
+
   try{
     await page.route(/^https:\/\/api\.pokemontcg\.io\/v2\/cards/,async route=>{
       const u=new URL(route.request().url()),q=(u.searchParams.get('q')||'').toLowerCase(),number=Number(u.searchParams.get('page')||'1');
@@ -46,7 +49,21 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
     });
     await page.route(/^https?:\/\/(?!127\.0\.0\.1)(?!api\.pokemontcg\.io)/,route=>route.fulfill({status:200,contentType:'application/json',body:'{}'}));
     await page.goto(origin,{waitUntil:'domcontentloaded',timeout:30000});
-    await page.waitForFunction(()=>Boolean(globalThis.KBSCardVariantsV2?.installed&&globalThis.KBSArtworkLShapes?.installed&&typeof renderGrid==='function'),{timeout:30000});
+    try{
+      await page.waitForFunction(()=>Boolean(globalThis.KBSCardVariantsV2?.installed&&globalThis.KBSArtworkLShapes?.installed&&typeof renderGrid==='function'),null,{timeout:12000});
+    }catch(err){
+      const diag=await page.evaluate(()=>({
+        readyState:document.readyState,
+        variants:Boolean(globalThis.KBSCardVariantsV2?.installed),
+        artwork:Boolean(globalThis.KBSArtworkLShapes?.installed),
+        renderGrid:typeof renderGrid,
+        cardCount:document.querySelectorAll('#cards').length,
+        loadedScripts:[...document.scripts].filter(x=>x.src).map(x=>x.src),
+        errorBanner:document.querySelector('#runtimeErrorText')?.textContent||''
+      }));
+      console.error('APP_BOOT_DIAG',JSON.stringify({diag,errors,consoleErrors,failedRequests},null,2));
+      throw err;
+    }
     await page.waitForTimeout(900); // Let asynchronous empty-library initialization settle.
     await page.evaluate((art)=>{
       const make=(n,i,setId)=>({
