@@ -4,7 +4,7 @@
 (function(){
   'use strict';
 
-  const PERF_VERSION='4.0.3';
+  const PERF_VERSION='4.0.4';
   const loadedGames=new Set();
   const loadingGames=new Map();
   const indexState={ready:false,building:false,version:0,sourceRef:null,sourceCount:0,needsRebuild:false,reindexScheduled:false,grams:new Map(),byId:new Map(),set:new Map(),artist:new Map(),game:new Map()};
