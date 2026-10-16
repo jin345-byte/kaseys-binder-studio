@@ -107,6 +107,18 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
     await page.waitForFunction(()=>document.querySelectorAll('#cards .kbs-variant-card').length===300,null,{timeout:12000});
     console.log('PASS 300 named card variants are visible without truncation');
 
+    // Accidental enlarged preview while scrolling was reported by the user.
+    await page.locator('#cards .kbs-variant-card').nth(0).hover();
+    await page.waitForTimeout(850);
+    const resultBox=await page.locator('#cardsViewport').boundingBox();
+    await page.mouse.move(resultBox.x+resultBox.width/2,resultBox.y+resultBox.height/2);
+    await page.mouse.wheel(0,460);
+    await page.waitForTimeout(1250);
+    assert.equal(await page.locator('#hoverCardPreview').evaluate(el=>el.hidden),true,'Scrolling re-opened enlarged preview');
+    console.log('PASS scroll suppresses accidental enlarged card preview');
+
+
+
     // Previously fragile interactions: card zoom and pointer drag/placement.
     await page.locator('#cards .kbs-variant-card').nth(2).hover();
     await page.waitForFunction(()=>!document.querySelector('#hoverCardPreview')?.hidden,null,{timeout:3500});
@@ -207,6 +219,35 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
 
 
 
+
+    // Screenshot-based geometry audit with strict horizontal overflow and
+    // overlay-collision checks; responsive snapshots are retained as artifacts.
+    fs.mkdirSync('audit-artifacts',{recursive:true});
+    for(const [width,height] of [[1600,1000],[1280,800],[1024,768],[768,900],[390,844]]){
+      await page.setViewportSize({width,height});
+      await page.waitForTimeout(260);
+      const geometry=await page.evaluate(()=>{
+        const bounds=selector=>{
+          const node=document.querySelector(selector);
+          if(!node||getComputedStyle(node).display==='none')return null;
+          const r=node.getBoundingClientRect();
+          return {x:r.left,y:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height};
+        };
+        const intersects=(a,b)=>a&&b&&Math.min(a.right,b.right)-Math.max(a.x,b.x)>20&&Math.min(a.bottom,b.bottom)-Math.max(a.y,b.y)>20;
+        const card=bounds('#cardsViewport'),grid=bounds('#grid');
+        const activeHover=!document.querySelector('#hoverCardPreview')?.hidden;
+        return {
+          width:innerWidth,scrollWidth:document.documentElement.scrollWidth,
+          card,grid,activeHover,
+          overlap:intersects(card,grid),
+          viewportOverflows:(document.querySelector('#cardsViewport')?.scrollWidth||0)>(document.querySelector('#cardsViewport')?.clientWidth||0)+10
+        };
+      });
+      if(geometry.scrollWidth>geometry.width+12||geometry.overlap||geometry.viewportOverflows||geometry.activeHover)
+        throw new Error('LAYOUT_COLLISION '+JSON.stringify(geometry));
+      await page.screenshot({path:'audit-artifacts/layout-'+width+'x'+height+'.png',fullPage:true});
+      console.log('PASS responsive geometry '+width+'x'+height);
+    }
     if(errors.length)throw new Error('Browser JavaScript exceptions: '+JSON.stringify(errors));
     console.log('PASS no uncaught browser exceptions');
   }finally{
