@@ -216,6 +216,8 @@ const KBSCatalogLab=(()=>{
           if(live.length){
             await upsertMasterRows(live).catch(console.warn);
             if(!stillCurrent())return;
+            // Cached trigram indexes must include newly fetched printings.
+            globalThis.KBSModules?.search?.rebuild?.(masterCards);
             // New sets/artist names need to appear in the filter pickers.
             rebuildUnifiedFilters();
           }
