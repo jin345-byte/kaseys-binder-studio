@@ -114,6 +114,9 @@
     }
   }
 
+  // app.js bound onclick before L-shaped artwork installed its tile printer.
+  // Delegate at click time so L pieces print 3 tiles, never a 2x2 fourth corner.
+  currentBtn.onclick=()=>cardTilePrint();
   currentBtn.title='Print artwork card tiles from the current binder page';
   allBtn.title='Print artwork card tiles from every page in the active binder';
   allBtn.addEventListener('click',printAllBinderTiles);
