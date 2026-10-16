@@ -1,0 +1,41 @@
+name: Binder Studio Browser Regression
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chromium-smoke:
+    name: Chromium binder workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install headless Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Exercise isolated binder workflows
+        run: node tests/binder-smoke.cjs
+      - name: Fresh browser prebuilt-catalog regression
+        run: node tests/prebuilt-catalog-smoke.cjs
+      - name: Read-only published website smoke
+        if: always()
+        continue-on-error: true
+        run: node tests/production-readonly.cjs
+      - name: Upload guest website screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binder-studio-guest-smoke
+          path: audit-artifacts/
+          if-no-files-found: ignore

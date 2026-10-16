@@ -1,0 +1,44 @@
+/* Binder Studio professional finish — scoped to stable, non-geometric details.
+   Do not introduce global scale transforms or alter binder pocket sizing. */
+:root{--kbs-finish-ease:cubic-bezier(.2,.75,.3,1)}
+.kbs-variants-v2{container-type:inline-size}
+.kbs-variants-v2 #cardsViewport{
+  scrollbar-width:thin!important;
+  scrollbar-color:color-mix(in srgb,var(--accent) 42%,var(--surface2)) transparent!important;
+}
+.kbs-variants-v2 #cardsViewport::-webkit-scrollbar{width:8px}
+.kbs-variants-v2 #cardsViewport::-webkit-scrollbar-track{background:transparent}
+.kbs-variants-v2 #cardsViewport::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--accent) 30%,var(--surface2));border-radius:999px}
+.kbs-variants-v2 .kbs-variant-card{
+  border-color:color-mix(in srgb,var(--line) 88%,var(--accent) 12%)!important;
+  transition:border-color .16s var(--kbs-finish-ease),background-color .16s var(--kbs-finish-ease),box-shadow .16s var(--kbs-finish-ease)!important;
+}
+.kbs-variants-v2 .kbs-variant-card:hover,.kbs-variants-v2 .kbs-variant-card:focus-within{
+  border-color:color-mix(in srgb,var(--accent) 62%,var(--line))!important;
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 17%,transparent)!important;
+}
+.kbs-variants-v2 .kbs-variant-info{opacity:.72!important}
+.kbs-variants-v2 .kbs-variant-card:hover .kbs-variant-info,.kbs-variants-v2 .kbs-variant-card:focus-within .kbs-variant-info{opacity:1!important}
+.kbs-variants-v2 .kbs-variants-head small{font-size:11px!important;line-height:1.5!important}
+.kbs-variants-v2 .kbs-variant-pick{outline-offset:-3px}
+.kbs-variants-v2 #cardsViewport:focus-visible,
+.kbs-variants-v2 .kbs-variant-pick:focus-visible,
+.kbs-variants-v2 select:focus-visible,
+.kbs-variants-v2 input:focus-visible,
+.kbs-variants-v2 button:focus-visible{
+  outline:2px solid color-mix(in srgb,var(--accent) 78%,white)!important;
+  outline-offset:2px!important;
+}
+.kbs-variants-v2 .kbs-variant-card img.image-unavailable{opacity:.35!important}
+@container (max-width:580px){
+  .kbs-variants-v2 #cards{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:9px!important}
+  .kbs-variants-v2 .kbs-variant-card{min-height:225px!important;height:225px!important}
+}
+@container (max-width:405px){
+  .kbs-variants-v2 #cards{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .kbs-variants-v2 .kbs-variant-card{min-height:220px!important;height:220px!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .kbs-variants-v2 .kbs-variant-card{transition:none!important}
+  .kbs-variants-v2 #cardsViewport{scroll-behavior:auto!important}
+}

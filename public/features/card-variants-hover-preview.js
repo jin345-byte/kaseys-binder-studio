@@ -1,107 +1,122 @@
-/* Matching Card Variants v2 — enlarged hover preview.
-   Read-only companion to the isolated card browser; never touches search, scroll,
-   selection, placement, or drag state. */
+/* Matching Card Variants: intentional, scroll-safe hover card preview.
+   Never opens when scrolling carries a result beneath a stationary pointer. */
 (()=>{
   'use strict';
-
   if(globalThis.KBSCardVariantsHoverPreview?.installed)return;
-
   const pane=document.querySelector('.variant-pane');
+  const viewport=document.getElementById('cardsViewport');
   const preview=document.getElementById('hoverCardPreview');
-  if(!pane||!preview)return;
+  if(!pane||!viewport||!preview)return;
 
-  const style=document.createElement('style');
-  style.id='kbsCardVariantsHoverPreviewStyle';
-  style.textContent=`
-    #hoverCardPreview.kbs-variant-hover-open{position:fixed!important;z-index:2147483645!important;display:grid!important;grid-template-rows:auto auto!important;width:min(320px,32vw)!important;max-width:320px!important;pointer-events:none!important;padding:8px!important;border-radius:16px!important;background:color-mix(in srgb,var(--surface) 94%,transparent)!important;border:1px solid color-mix(in srgb,var(--accent) 38%,var(--line))!important;box-shadow:0 22px 60px rgba(0,0,0,.46)!important;backdrop-filter:blur(16px)!important}
-    #hoverCardPreview.kbs-variant-hover-open img{display:block!important;width:100%!important;height:auto!important;max-height:70vh!important;object-fit:contain!important;border-radius:11px!important;background:#0001!important}
-    #hoverCardPreview .kbs-variant-hover-meta{display:grid!important;gap:2px!important;padding:8px 4px 2px!important;min-width:0!important}
-    #hoverCardPreview .kbs-variant-hover-meta strong{font-size:13px!important;line-height:1.2!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
-    #hoverCardPreview .kbs-variant-hover-meta small{color:var(--muted)!important;font-size:10px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
-    @media(max-width:900px){#hoverCardPreview{display:none!important}}
-  `;
-  document.head.appendChild(style);
-
-  let activeId='';
-  let showTimer=0;
-  let lastX=0,lastY=0;
-
-  const stableId=card=>String(card?.id||card?.sourceKey||`${card?.setId||''}:${card?.localId||''}:${card?.name||''}`);
-  const cardById=id=>{
+  const stableId=c=>String(c?.id||c?.sourceKey||[c?.setId,c?.localId,c?.name].join(':'));
+  const cardFor=id=>{
     const current=typeof cards!=='undefined'&&Array.isArray(cards)?cards:[];
     const master=typeof masterCards!=='undefined'&&Array.isArray(masterCards)?masterCards:[];
-    return current.find(card=>stableId(card)===String(id))||master.find(card=>stableId(card)===String(id))||null;
+    return current.find(c=>stableId(c)===id)||master.find(c=>stableId(c)===id)||null;
   };
-  const imageFor=card=>card?.imageHigh||card?.images?.large||card?.imageLarge||card?.image||card?.imageLow||card?.images?.small||card?.imageSmall||card?.imageFallbacks?.[0]||'';
+  const candidates=card=>[
+    card?.imageHigh,card?.images?.large,card?.imageLarge,
+    card?.image,card?.imageLow,card?.images?.small,
+    card?.imageSmall,...(Array.isArray(card?.imageFallbacks)?card.imageFallbacks:[])
+  ].filter(Boolean).filter((src,i,a)=>a.indexOf(src)===i);
+
+  let timer=0,activeId='',candidateId='',lastX=0,lastY=0;
+  let blockUntil=0,mustMoveAfterScroll=false;
+  let pointerStartX=0,pointerStartY=0,watchIndex=0;
 
   function hide(){
-    clearTimeout(showTimer);showTimer=0;activeId='';
+    clearTimeout(timer);timer=0;
+    activeId='';candidateId='';
     preview.hidden=true;
     preview.classList.remove('kbs-variant-hover-open');
     preview.replaceChildren();
   }
-
+  function suspend(){
+    hide();
+    blockUntil=performance.now()+900;
+    mustMoveAfterScroll=true;
+  }
+  function eligible(e){
+    return e.pointerType==='mouse'&&e.buttons===0&&
+      window.matchMedia('(hover:hover) and (pointer:fine)').matches&&
+      !e.target.closest('.kbs-variant-info')&&
+      !document.querySelector('.kbs-variant-dragging');
+  }
   function position(x,y){
     if(preview.hidden)return;
-    const gap=18;
-    const rect=preview.getBoundingClientRect();
-    const vw=document.documentElement.clientWidth;
-    const vh=document.documentElement.clientHeight;
-    let left=x+gap,top=y-Math.min(90,rect.height*.22);
-    if(left+rect.width+12>vw)left=x-rect.width-gap;
-    left=Math.max(12,Math.min(left,vw-rect.width-12));
-    top=Math.max(12,Math.min(top,vh-rect.height-12));
-    preview.style.left=`${left}px`;
-    preview.style.top=`${top}px`;
+    const r=preview.getBoundingClientRect(),vw=document.documentElement.clientWidth,vh=document.documentElement.clientHeight;
+    const gap=16;
+    // Favor the results pane rather than obscuring the binder/canvas.
+    const paneRight=pane.getBoundingClientRect().right;
+    let left=x+gap;
+    if(left+r.width+10>Math.min(paneRight,vw))left=x-r.width-gap;
+    left=Math.max(10,Math.min(left,vw-r.width-10));
+    let top=y-Math.min(60,r.height*.18);
+    top=Math.max(10,Math.min(top,vh-r.height-10));
+    preview.style.left=left+'px';preview.style.top=top+'px';
   }
-
   function show(id,x,y){
-    const card=cardById(id);if(!card)return hide();
-    const src=imageFor(card);if(!src)return hide();
-    activeId=id;
+    if(performance.now()<blockUntil||mustMoveAfterScroll||candidateId!==id)return;
+    const card=cardFor(id),sources=candidates(card);
+    if(!card||!sources.length)return hide();
     const img=document.createElement('img');
-    img.src=src;img.alt=card.name||'Card preview';img.draggable=false;
-    img.onerror=()=>hide();
+    img.draggable=false;
+    img.alt=card.name||'Card preview';
+    const index=++watchIndex;
+    let imageIndex=0;
+    img.onerror=()=>{
+      if(index!==watchIndex)return;
+      imageIndex++;
+      if(imageIndex<sources.length)img.src=sources[imageIndex];
+      else hide(); // Never show a large broken-image placeholder.
+    };
+    // Decode/source changes are asynchronous, so stale preview images are ignored.
     const meta=document.createElement('div');meta.className='kbs-variant-hover-meta';
     const name=document.createElement('strong');name.textContent=card.name||'Card';
     const detail=document.createElement('small');
-    detail.textContent=[card.setName||card.setId||'',card.localId?`#${card.localId}`:''].filter(Boolean).join(' · ');
-    meta.append(name,detail);preview.replaceChildren(img,meta);
-    preview.hidden=false;preview.classList.add('kbs-variant-hover-open');
-    requestAnimationFrame(()=>position(x,y));
+    detail.textContent=[card.setName||card.setId||'',card.localId?'#'+card.localId:''].filter(Boolean).join(' · ');
+    meta.append(name,detail);
+    preview.replaceChildren(img,meta);
+    activeId=id;preview.hidden=false;preview.classList.add('kbs-variant-hover-open');
+    img.src=sources[0];
+    requestAnimationFrame(()=>{if(activeId===id)position(x,y)});
   }
-
-  function schedule(id,x,y){
-    clearTimeout(showTimer);lastX=x;lastY=y;
-    if(id===activeId&&!preview.hidden){position(x,y);return;}
-    showTimer=setTimeout(()=>show(id,lastX,lastY),180);
+  function queue(e,card){
+    if(!eligible(e))return;
+    const id=card.dataset.id;
+    if(!id)return;
+    if(id===activeId&&!preview.hidden){position(e.clientX,e.clientY);return}
+    clearTimeout(timer);candidateId=id;
+    lastX=e.clientX;lastY=e.clientY;
+    const x=lastX,y=lastY;
+    const dwell=Math.max(650,Math.ceil(blockUntil-performance.now())+250);
+    timer=setTimeout(()=>{timer=0;show(id,x,y)},dwell);
   }
-
-  pane.addEventListener('pointerover',event=>{
-    if(event.pointerType==='touch')return;
-    const card=event.target.closest?.('.kbs-variant-card');
-    if(!card||!pane.contains(card)||event.target.closest('.kbs-variant-info'))return;
-    schedule(card.dataset.id,event.clientX,event.clientY);
+  // A change in which card is under the pointer is not evidence of intentional
+  // hover: scrolling triggers pointerover/out without actual mouse movement.
+  pane.addEventListener('pointermove',e=>{
+    if(!eligible(e)){hide();return}
+    const card=e.target.closest('.kbs-variant-card');
+    if(!card||!pane.contains(card)){hide();return}
+    const moved=Math.hypot(e.clientX-pointerStartX,e.clientY-pointerStartY);
+    if(mustMoveAfterScroll){
+      if(moved<10)return; // Re-arm only after real mouse movement.
+      mustMoveAfterScroll=false;
+    }
+    pointerStartX=e.clientX;pointerStartY=e.clientY;
+    queue(e,card);
   });
-  pane.addEventListener('pointermove',event=>{
-    if(event.pointerType==='touch')return;
-    lastX=event.clientX;lastY=event.clientY;
-    const card=event.target.closest?.('.kbs-variant-card');
-    if(!card){hide();return;}
-    if(card.dataset.id===activeId&&!preview.hidden)position(event.clientX,event.clientY);
+  pane.addEventListener('pointerout',e=>{
+    const card=e.target.closest?.('.kbs-variant-card');
+    if(card&&!card.contains(e.relatedTarget))hide();
   });
-  pane.addEventListener('pointerout',event=>{
-    const card=event.target.closest?.('.kbs-variant-card');
-    if(!card)return;
-    if(card.contains(event.relatedTarget))return;
-    hide();
-  });
-
-  document.addEventListener('pointerdown',event=>{
-    if(event.target.closest?.('.kbs-variant-card'))hide();
-  },true);
-  document.addEventListener('scroll',hide,true);
+  viewport.addEventListener('wheel',suspend,{passive:true,capture:true});
+  document.addEventListener('scroll',suspend,true);
+  document.addEventListener('pointerdown',hide,true);
+  document.addEventListener('pointercancel',hide,true);
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')hide()});
   window.addEventListener('blur',hide);
-
-  globalThis.KBSCardVariantsHoverPreview={installed:true,version:'1.1.0',hide};
+  // Scrolling from keyboard/touchpad should not trigger a preview on stop.
+  viewport.addEventListener('keydown',e=>{if(['ArrowDown','ArrowUp','PageDown','PageUp','Home','End',' '].includes(e.key))suspend()});
+  globalThis.KBSCardVariantsHoverPreview={installed:true,version:'2.0.0',hide,suspend};
 })();

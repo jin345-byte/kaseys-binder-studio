@@ -55,6 +55,35 @@
     await new Promise((res,rej)=>{const tx=db.transaction(['cards','meta'],'readwrite'),cards=tx.objectStore('cards'),meta=tx.objectStore('meta');cards.clear();rows.forEach(x=>cards.put(x));meta.put({key:'build:pocket',count:rows.length,completed:true,prebuilt:true,version,updatedAt:Date.now(),setErrors:0});tx.oncomplete=res;tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error);});
     db.close();
   }
+
+  function exposeCatalogForSearch(pokemon,unionArena){
+    // Building IndexedDB from 27k cards is slow on fresh installs. Make the
+    // fully downloaded catalog searchable immediately rather than showing an
+    // empty card browser for the whole disk-write operation.
+    if(typeof masterCards==='undefined'||typeof masterCardIndex==='undefined')return;
+    const byId=new Map();
+    for(const card of [...pokemon,...unionArena,...masterCards]){
+      if(!card?.id)continue;
+      if(!byId.has(card.id))byId.set(card.id,typeof withSearchKeys==='function'?withSearchKeys(card):card);
+    }
+    masterCards=[...byId.values()];
+    masterCardIndex=new Map(masterCards.map((c,i)=>[c.id,i]));
+    masterReady=true;
+    globalThis.KBSCatalogCards=masterCards;
+    const sets=new Map();
+    for(const c of masterCards)if(c?.setId&&!sets.has(c.setId))sets.set(c.setId,c.setName||c.setId);
+    masterSetOptions=[...sets].map(([id,name])=>({id,name})).sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
+    if(typeof renderSetFilter==='function')renderSetFilter();
+    if(typeof loadArtists==='function')Promise.resolve(loadArtists()).catch(console.warn);
+    globalThis.KBSModules?.search?.rebuild?.(masterCards);
+    globalThis.KBSMultiTCGFilters?.refresh?.();
+    const q=document.querySelector('#subject')?.value.trim()||'';
+    const set=document.querySelector('#setFilter')?.value||'';
+    if((q.length>=2||set)&&typeof runCardSearch==='function')
+      Promise.resolve(runCardSearch()).catch(e=>console.warn('Initial catalog search deferred',e));
+    document.dispatchEvent(new CustomEvent('kbs:catalog-ready',{detail:{count:masterCards.length}}));
+  }
+
   async function fetchJson(url){const r=await fetch(url,{cache:'no-store',headers:{Accept:'application/json'}});if(!r.ok)throw new Error(`Catalog HTTP ${r.status}`);return r.json();}
   async function boot(){
     try{
@@ -90,7 +119,8 @@
       const pocket=all.filter(x=>x?.catalog==='pocket'||x?.game==='pokemon-pocket');
       const unionArena=all.filter(x=>x?.catalog==='union-arena'||x?.game==='union-arena');
       if(pokemon.length<15000||pocket.length<500||unionArena.length<6000)throw new Error(`Catalog data looked incomplete (Pokémon ${pokemon.length}, Pocket ${pocket.length}, Union Arena ${unionArena.length})`);
-      progress(manifest.chunks.length,manifest.chunks.length,'Installing multi-TCG card library…');
+      exposeCatalogForSearch(pokemon,unionArena);
+      progress(manifest.chunks.length,manifest.chunks.length,'Cards ready to search · saving offline library…');
       await Promise.all([replaceMaster([...pokemon,...unionArena],manifest.version),replacePocket(pocket,manifest.version)]);
       localStorage.setItem(VERSION_KEY,manifest.version);
       progress(1,1,`Unified Library Ready · ${all.length.toLocaleString()} cards`,true);

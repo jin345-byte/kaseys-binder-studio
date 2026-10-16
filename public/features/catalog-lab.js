@@ -164,58 +164,81 @@ const KBSCatalogLab=(()=>{
   };
 
   const coreRunCardSearch=runCardSearch;
+  let unifiedSearchSequence=0;
+  let unifiedSearchController=null;
+
+  async function refreshedNameMatches(name,artist,signal){
+    const first=await fetchPokemonNameMatches(name,{page:1,signal});
+    const rows=[...first.rows];
+    const pageSize=Math.max(1,Number(first.pageSize)||250);
+    const totalPages=Math.min(50,Math.ceil((Number(first.totalCount)||rows.length)/pageSize));
+    // Fetch every returned page (up to the API safety limit) rather than only
+    // the first 250 printings. Requests are bounded to avoid API bursts.
+    for(let start=2;start<=totalPages;start+=3){
+      if(signal.aborted)throw new DOMException('Superseded search','AbortError');
+      const indices=Array.from({length:Math.min(3,totalPages-start+1)},(_,i)=>start+i);
+      const pages=await Promise.all(indices.map(page=>fetchPokemonNameMatches(name,{page,signal})));
+      for(const result of pages)rows.push(...result.rows);
+    }
+    const query=normText(name),filter=normText(artist);
+    return rows.filter(c=>normText(c.name||'').includes(query)&&(!filter||normText(c.illustrator||c.artist||'')===filter));
+  }
+
   runCardSearch=async function(){
+    const sequence=++unifiedSearchSequence;
+    unifiedSearchController?.abort();
+    const controller=new AbortController();
+    unifiedSearchController=controller;
     const name=document.querySelector('#subject')?.value.trim()||'';
     const setId=document.querySelector('#setFilter')?.value||'';
     const artist=document.querySelector('#artistFilter')?.value||'';
-    const hasFullEnglish=pokemonCards().length>5000;
     const localMatches=()=>localMasterMatches().map(c=>({...c}));
+    const stillCurrent=()=>sequence===unifiedSearchSequence&&!controller.signal.aborted&&(document.querySelector('#subject')?.value.trim()||'')===name&&(document.querySelector('#setFilter')?.value||'')===setId&&(document.querySelector('#artistFilter')?.value||'')===artist;
 
-    // Full-set browsing must never be truncated. Later production wrappers may
-    // add set-specific supplements, but this layer preserves every local row.
+    // Sets, including Pocket and Union Arena, must not be capped by a
+    // generic pagination constant. Production's set supplement runs later.
     if(setId){
       cards=localMatches();
       renderCards();
-      const h=document.querySelector('#masterLibraryHealth');
-      if(h)h.textContent=`${masterCards.length.toLocaleString()} unified cards · ${cards.length.toLocaleString()} in selected set`;
       return;
     }
 
-    if(hasFullEnglish){
+    if(pokemonCards().length>5000){
       const local=localMatches();
-
-      // Specific name searches return every cached printing and then merge fresh
-      // English TCG results so a stale prebuilt catalog cannot hide new cards.
       if(name.length>=2){
-        let live=[];
-        try{
-          const result=await fetchPokemonNameMatches(name,{page:1,signal:activeSearchController?.signal||null});
-          live=Array.isArray(result?.rows)?result.rows:[];
-          if(artist){
-            const a=normText(artist);
-            live=live.filter(c=>normText(c.illustrator||c.artist||'')===a);
-          }
-          if(live.length)await upsertMasterRows(live).catch(console.warn);
-        }catch(e){
-          if(e?.name!=='AbortError')console.warn('Live card refresh failed; using complete local matches',e);
-        }
-        cards=mergeUniqueRows(local,live);
+        // Render cached cards immediately and let a network failure fall back
+        // gracefully. Older requests must never overwrite a newer query.
+        cards=local;
         renderCards();
-        const h=document.querySelector('#masterLibraryHealth');
-        if(h)h.textContent=`${masterCards.length.toLocaleString()} unified cards · ${cards.length.toLocaleString()} matching printings`;
+        try{
+          const live=await refreshedNameMatches(name,artist,controller.signal);
+          if(!stillCurrent())return;
+          if(live.length){
+            await upsertMasterRows(live).catch(console.warn);
+            if(!stillCurrent())return;
+            // Cached trigram indexes must include newly fetched printings.
+            globalThis.KBSModules?.search?.rebuild?.(masterCards);
+            // New sets/artist names need to appear in the filter pickers.
+            rebuildUnifiedFilters();
+          }
+          cards=mergeUniqueRows(local,live);
+          renderCards();
+        }catch(e){
+          if(e?.name!=='AbortError')console.warn('Live card refresh failed; keeping local cards',e);
+        }
         return;
       }
 
-      // Artist-only and unfiltered browsing can be enormous. Keep the UI guard
-      // here, but never apply it to real name or set searches.
-      cards=local.slice(0,MASTER_PAGE_SIZE);
+      // Artist is an intentional filter: show all its local matches.
+      // Only a completely unfiltered browse needs a limited initial batch.
+      cards=artist?local:local.slice(0,MASTER_PAGE_SIZE);
       renderCards();
-      const h=document.querySelector('#masterLibraryHealth');
-      if(h)h.textContent=`${masterCards.length.toLocaleString()} unified cards · ${cards.length.toLocaleString()} shown`;
       return;
     }
 
+    // First-install fallback, while the prebuilt catalog is still loading.
     await coreRunCardSearch.apply(this,arguments);
+    if(!stillCurrent())return;
     if(pocketCards.length&&(name.length>=2||artist)){
       const pocketMatches=localMasterMatches().filter(c=>c.catalog==='pocket');
       cards=mergeUniqueRows(cards,pocketMatches);
@@ -223,7 +246,7 @@ const KBSCatalogLab=(()=>{
     }
   };
 
-  const coreBuildMasterLibrary=buildMasterLibrary;
+    const coreBuildMasterLibrary=buildMasterLibrary;
   buildMasterLibrary=async function(){
     await coreBuildMasterLibrary();
     try{await buildPocket();}
