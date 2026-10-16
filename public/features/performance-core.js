@@ -7,7 +7,7 @@
   const PERF_VERSION='4.0.3';
   const loadedGames=new Set();
   const loadingGames=new Map();
-  const indexState={ready:false,building:false,version:0,grams:new Map(),byId:new Map(),set:new Map(),artist:new Map(),game:new Map()};
+  const indexState={ready:false,building:false,version:0,sourceRef:null,sourceCount:0,needsRebuild:false,reindexScheduled:false,grams:new Map(),byId:new Map(),set:new Map(),artist:new Map(),game:new Map()};
   let virtualLimit=60;
   let lastVirtualSignature='';
   let virtualObserver=null;
@@ -36,7 +36,7 @@
 
   function getMasterRows(){return typeof masterCards!=='undefined'&&Array.isArray(masterCards)?masterCards:[]}
   function rebuildSearchIndex(rows=getMasterRows()){
-    if(indexState.building)return;
+    if(indexState.building){indexState.needsRebuild=true;return;}
     indexState.building=true;indexState.ready=false;
     indexState.grams.clear();indexState.byId.clear();indexState.set.clear();indexState.artist.clear();indexState.game.clear();
     const source=Array.isArray(rows)?rows.slice():[];
@@ -53,8 +53,16 @@
         for(const g of grams(blob))addMap(indexState.grams,g,c.id);
       }
       if(at<source.length){idle(step);return;}
+      indexState.sourceRef=rows;
+      indexState.sourceCount=source.length;
       indexState.ready=true;indexState.building=false;indexState.version++;
       window.dispatchEvent(new CustomEvent('kbs:search-index-ready',{detail:{count:indexState.byId.size,version:indexState.version}}));
+      // A catalog refresh may have arrived during asynchronous index building.
+      // Never finalize the old snapshot as the active search index.
+      if(indexState.needsRebuild||getMasterRows()!==rows||getMasterRows().length!==source.length){
+        indexState.needsRebuild=false;
+        idle(()=>rebuildSearchIndex(getMasterRows()));
+      }
     };
     idle(step);
   }
@@ -62,6 +70,16 @@
   function indexedCandidates(query){
     const q=normalize(query);
     if(!indexState.ready||q.length<3)return null;
+    const rows=getMasterRows();
+    if(indexState.sourceRef!==rows||indexState.sourceCount!==rows.length){
+      // Fall back to the complete master array while we rebuild a stale index.
+      // A missing trigram in an old index must never mean a missing card.
+      if(!indexState.reindexScheduled){
+        indexState.reindexScheduled=true;
+        idle(()=>{indexState.reindexScheduled=false;rebuildSearchIndex(getMasterRows())});
+      }
+      return null;
+    }
     const qs=grams(q);if(!qs.length)return null;
     let ids=null;
     for(const g of qs){
