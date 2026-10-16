@@ -82,14 +82,15 @@
     requestAnimationFrame(()=>{if(activeId===id)position(x,y)});
   }
   function queue(e,card){
-    if(!eligible(e)||performance.now()<blockUntil)return;
+    if(!eligible(e))return;
     const id=card.dataset.id;
     if(!id)return;
     if(id===activeId&&!preview.hidden){position(e.clientX,e.clientY);return}
     clearTimeout(timer);candidateId=id;
     lastX=e.clientX;lastY=e.clientY;
     const x=lastX,y=lastY;
-    timer=setTimeout(()=>{timer=0;show(id,x,y)},650);
+    const dwell=Math.max(650,Math.ceil(blockUntil-performance.now())+250);
+    timer=setTimeout(()=>{timer=0;show(id,x,y)},dwell);
   }
   // A change in which card is under the pointer is not evidence of intentional
   // hover: scrolling triggers pointerover/out without actual mouse movement.
