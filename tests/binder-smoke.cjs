@@ -249,6 +249,19 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
       });
       if(geometry.scrollWidth>geometry.width+12||geometry.overlap||geometry.viewportOverflows||geometry.activeHover)
         throw new Error('LAYOUT_COLLISION '+JSON.stringify(geometry));
+      if(width===1024){
+        const controls=await page.evaluate(()=>[...document.querySelectorAll('.controls.command-deck > .print-control, .controls.command-deck > .tile-print-split, .controls.command-deck > button')].filter(e=>e.getBoundingClientRect().width>0).map(e=>{
+          const r=e.getBoundingClientRect();return{id:e.id||e.className,width:Math.round(r.width),height:Math.round(r.height)};
+        }));
+        const cramped=controls.filter(x=>x.width<95||x.height>85);
+        if(cramped.length)throw new Error('TABLET_CONTROLS_CRAMPED '+JSON.stringify(cramped));
+        console.log('PASS tablet controls are not clipped or excessively wrapped');
+      }
+      if(width===390){
+        const closed=await page.locator('#cardDetailsDrawer').evaluate(e=>!e.classList.contains('open')&&getComputedStyle(e).visibility==='hidden');
+        assert.equal(closed,true,'Closed card drawer still paints over mobile binder');
+        console.log('PASS closed drawer does not overlap mobile binder');
+      }
       await page.screenshot({path:'audit-artifacts/layout-'+width+'x'+height+'.png',fullPage:true});
       console.log('PASS responsive geometry '+width+'x'+height);
     }

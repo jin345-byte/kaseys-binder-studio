@@ -31,6 +31,8 @@ const listen=()=>new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const browser=await chromium.launch({headless:true});
   const page=await browser.newPage({viewport:{width:1500,height:1000}});
   const errs=[];
+  let navigations=0;
+  page.on('framenavigated',frame=>{if(frame===page.mainFrame())navigations++});
   page.on('pageerror',e=>errs.push(e.message));
   try{
     await page.route(/\/catalog\/manifest\.json/,r=>r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(manifest)}));
@@ -53,6 +55,11 @@ const listen=()=>new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
     assert.equal(status.visible,80);
     assert.ok(status.cards>=21250);
     console.log('PASS first-install catalog immediately searchable',JSON.stringify(status));
+    await page.waitForFunction(()=>localStorage.getItem('kbsPrebuiltCatalogVersion')==='fixture-2026-10-16',null,{timeout:95000});
+    await page.waitForTimeout(500);
+    assert.equal(navigations,1,'Offline catalog installation unexpectedly reloaded the editor');
+    assert.equal(await page.locator('#cards .kbs-variant-card').count(),80,'Results disappeared after background catalog save');
+    console.log('PASS first-install offline cache completes without reloading or losing search');
     if(errs.length)throw new Error('Uncaught errors in first-install bootstrap: '+errs.join('; '));
   }finally{
     await browser.close();
