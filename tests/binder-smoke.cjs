@@ -271,32 +271,43 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
         const within=(child,parent)=>child&&parent&&child.y>=parent.y-2&&child.bottom<=parent.bottom+2&&child.x>=parent.x-2&&child.right<=parent.right+2;
         if(!within(panels.viewport,panels.pane)||!within(panels.pane,panels.library)||!within(panels.nav,panels.heading)||panels.heading.bottom>panels.selected.y+2)
           throw new Error('PANEL_BOUNDARY_COLLISION '+JSON.stringify(panels));
-        const lastVisible=await page.locator('#editorPageNumbers').evaluate(el=>{
-          el.scrollTop=el.scrollHeight;
-          const last=el.querySelector('.page-number:last-child');
-          const a=last?.getBoundingClientRect(),b=el.getBoundingClientRect();
-          return !!a&&a.bottom<=b.bottom+2&&a.top>=b.top-2;
-        });
-        assert.ok(lastVisible,'Last binder page must be reachable within scrollable page rail');
-        const bubbles=await page.evaluate(()=>{
+        const pager=await page.evaluate(()=>{
           const nav=document.querySelector('#editorPageNav');
           const list=document.querySelector('#editorPageNumbers');
-          const first=list?.querySelector('.page-number');
-          const arrow=document.querySelector('#editorPrev');
-          const bound=el=>{const r=el.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height}};
-          const rect=bound(first),track=bound(list),frame=bound(nav),prev=bound(arrow);
-          // A real page chip must be wholly contained in the scroll track:
-          // previous theme overrides enlarged them beyond the narrow rail.
-          return {rect,track,frame,prev,font:getComputedStyle(first).fontSize,
-            chips:[...list.children].length,scrollbar:getComputedStyle(list).scrollbarWidth};
+          const heading=document.querySelector('.binder-heading-module');
+          const buttons=[...list.querySelectorAll('.page-number')];
+          const box=el=>{const r=el.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height}};
+          const area=box(list),headingBox=box(heading);
+          const chips=buttons.map(box);
+          return {
+            mode:getComputedStyle(list).display,
+            columns:new Set(chips.map(r=>Math.round(r.x))).size,
+            rows:new Set(chips.map(r=>Math.round(r.y))).size,
+            scrollHeight:list.scrollHeight,
+            clientHeight:list.clientHeight,
+            nav:box(nav),area,heading:headingBox,chips,
+            prev:getComputedStyle(document.querySelector('#editorPrev')).display,
+            next:getComputedStyle(document.querySelector('#editorNext')).display
+          };
         });
-        if(bubbles.rect.width>29||bubbles.rect.height>29||
-           bubbles.rect.x<bubbles.track.x-1||bubbles.rect.right>bubbles.track.right+1||
-           bubbles.prev.width>31||bubbles.prev.height>31||
-           bubbles.frame.right>bubbles.track.right+5){
-          throw new Error('PAGE_BUBBLES_CROPPED '+JSON.stringify(bubbles));
+        const numbersVisible=pager.chips.every(r=>r.x>=pager.area.x-2&&r.right<=pager.area.right+2&&r.y>=pager.area.y-2&&r.bottom<=pager.area.bottom+2);
+        if(pager.mode!=='grid'||pager.columns<3||(pager.area.width<400&&pager.rows<2)||
+           !numbersVisible||pager.chips.some(r=>r.width>32||r.height>32)||pager.scrollHeight>pager.clientHeight+3||
+           pager.prev!=='none'||pager.next!=='none'||
+           pager.heading.bottom>panels.selected.y+2)
+          throw new Error('FULL_PAGE_GRID_CLIPPED '+JSON.stringify(pager));
+        console.log('PASS all page numbers form a visible left-to-right grid at '+width+'px');
+        if(width===1680){
+          const last=page.locator('#editorPageNumbers .page-number').last();
+          const lastId=await last.getAttribute('data-editor-page');
+          await last.click();
+          await page.waitForFunction(id=>activePageId===id,lastId,{timeout:6500});
+          const first=page.locator('#editorPageNumbers .page-number').first();
+          const firstId=await first.getAttribute('data-editor-page');
+          await first.click();
+          await page.waitForFunction(id=>activePageId===id,firstId,{timeout:6500});
+          console.log('PASS first and last page numbers navigate directly');
         }
-        console.log('PASS compact page bubbles fit fully in rail at '+width+'px');
 
         console.log('PASS card panel and page navigation stay within their modules at '+width+'px');
         if(width>=1101){
