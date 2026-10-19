@@ -1043,7 +1043,44 @@ async function deleteActiveBinder(){const binders=await dbAll('binders');if(bind
 async function openViewer(pageId){const page=await dbGet('pages',pageId);if(!page)return;const palette=await binderPalette(page.binderId,page);viewerPages=(await pagesForBinder(page.binderId)).map(p=>({...p,state:withBinderColors(cloneEditorState(p.state||defaults),palette)}));viewerIndex=Math.max(0,viewerPages.findIndex(p=>p.id===pageId));const b=await dbGet('binders',page.binderId);document.querySelector('#viewerTitle').textContent=b?.name||'Binder';document.querySelector('#binderViewer').classList.add('open');document.querySelector('#binderViewer').setAttribute('aria-hidden','false');renderViewer()}
 function closeViewer(){document.querySelector('#binderViewer').classList.remove('open');document.querySelector('#binderViewer').setAttribute('aria-hidden','true')}
 function fullViewerMarkup(page){const s=page.state||defaults,d=s.layout==='2x2'?{columns:2,total:4}:s.layout==='4x3'?{columns:4,total:12}:{columns:3,total:9},occupied=new Map();for(let i=0;i<d.total;i++){const item=s.pockets?.[i];if(!item||occupied.has(i))continue;let [cs,rs]=item.kind==='art'?String(item.size||'1x1').split('x').map(Number):[1,1];cs=cs||1;rs=rs||1;const c=i%d.columns,r=Math.floor(i/d.columns);if(c+cs>d.columns){cs=1;rs=1}for(let y=0;y<rs;y++)for(let x=0;x<cs;x++)occupied.set(i+y*d.columns+x,i)}let html='';for(let i=0;i<d.total;i++){if(occupied.has(i)&&occupied.get(i)!==i)continue;const item=s.pockets?.[i];let [cs,rs]=item?.kind==='art'?String(item.size||'1x1').split('x').map(Number):[1,1];cs=cs||1;rs=rs||1;const col=i%d.columns+1,row=Math.floor(i/d.columns)+1,im=item&&(item.imageHigh||item.imageLow||item.image),pos=item?.kind==='art'?`object-position:${Number.isFinite(item.cropX)?item.cropX:50}% ${Number.isFinite(item.cropY)?item.cropY:50}%`:'';html+=`<span class="pocket ${item?'filled':''} ${item?.kind||''}" style="--sc:${cs};--sr:${rs};grid-column:${col}/span ${cs};grid-row:${row}/span ${rs}">${im?`<span class="sleeve"><img src="${esc(im)}" style="${pos}"></span>`:''}</span>`}return `<div class="grid l${esc(s.layout||'3x3')}" style="--binder:${esc(s.binderColor||defaults.binderColor)};--page:${esc(s.pageColor||defaults.pageColor)};--sleeve:${esc(s.sleeveColor||defaults.sleeveColor)}">${html}</div>`}
-function renderViewer(){const p=viewerPages[viewerIndex];if(!p)return;document.querySelector('#viewerCounter').textContent=`${p.title||`Page ${viewerIndex+1}`} · ${viewerIndex+1} of ${viewerPages.length}`;document.querySelector('#viewerPage').innerHTML=fullViewerMarkup(p);document.querySelector('#viewerPrev').disabled=viewerIndex<=0;document.querySelector('#viewerNext').disabled=viewerIndex>=viewerPages.length-1;const nums=document.querySelector('#viewerPageNumbers');nums.innerHTML=viewerPages.map((pg,i)=>`<button type="button" class="page-number ${i===viewerIndex?'active':''}" data-viewer-page="${i}" aria-current="${i===viewerIndex?'page':'false'}">${i+1}</button>`).join('');nums.querySelectorAll('[data-viewer-page]').forEach(b=>b.onclick=()=>{viewerIndex=Number(b.dataset.viewerPage);renderViewer()})}
+/* Physical binder reading order: first page stands alone; later pages
+   face each other in pairs (2+3, 4+5, ...). */
+function viewerSpreadStart(index){return index<=0?0:1+Math.floor((index-1)/2)*2}
+function viewerSpreadIndices(index=viewerIndex){
+  const start=viewerSpreadStart(index);
+  return (start===0?[0]:[start,start+1]).filter(i=>i<viewerPages.length);
+}
+function selectViewerPage(index){
+  if(!Number.isInteger(index)||index<0||index>=viewerPages.length)return;
+  viewerIndex=index;
+  renderViewer();
+}
+function turnViewerSpread(direction){
+  const start=viewerSpreadStart(viewerIndex);
+  const next=direction<0?(start<=1?0:start-2):(start===0?1:start+2);
+  if(next>=0&&next<viewerPages.length)selectViewerPage(next);
+}
+function renderViewer(){
+  const page=viewerPages[viewerIndex];if(!page)return;
+  const pages=viewerSpreadIndices(),start=pages[0];
+  const label=pages.length===1?`Page ${start+1} of ${viewerPages.length}`:`Pages ${start+1}–${pages[1]+1} of ${viewerPages.length}`;
+  const container=document.querySelector('#viewerPage');
+  document.querySelector('#viewerCounter').textContent=label;
+  container.classList.toggle('viewer-page--spread',pages.length===2);
+  container.classList.toggle('viewer-page--single',pages.length===1);
+  container.dataset.viewerSpreadStart=String(start);
+  container.innerHTML=`<div class="viewer-spread ${pages.length===1?'viewer-spread--single':'viewer-spread--pair'}" role="group" aria-label="${esc(label)}">${pages.map(i=>{
+    const item=viewerPages[i],name=item.title||`Page ${i+1}`;
+    return `<section class="viewer-sheet ${i===viewerIndex?'viewer-sheet--selected':''}" data-viewer-sheet="${i}" aria-label="${esc(name)}"><button class="viewer-sheet-select" type="button" data-viewer-select="${i}" aria-pressed="${i===viewerIndex?'true':'false'}">Page ${i+1} · ${esc(name)}</button>${fullViewerMarkup(item)}</section>`;
+  }).join('')}</div>`;
+  container.querySelectorAll('[data-viewer-select]').forEach(button=>button.onclick=()=>selectViewerPage(Number(button.dataset.viewerSelect)));
+  document.querySelector('#viewerPrev').disabled=start===0;
+  document.querySelector('#viewerNext').disabled=(start===0?1:start+2)>=viewerPages.length;
+  document.querySelector('#viewerEdit').textContent=`Edit page ${viewerIndex+1}`;
+  const numbers=document.querySelector('#viewerPageNumbers');
+  numbers.innerHTML=viewerPages.map((item,i)=>`<button type="button" class="page-number ${i===viewerIndex?'active':''} ${pages.includes(i)?'in-spread':''}" data-viewer-page="${i}" aria-current="${i===viewerIndex?'page':'false'}" title="${esc(item.title||`Page ${i+1}`)}">${i+1}</button>`).join('');
+  numbers.querySelectorAll('[data-viewer-page]').forEach(button=>button.onclick=()=>selectViewerPage(Number(button.dataset.viewerPage)));
+}
 
 /* Binder layer wiring is deliberately isolated from the editor wiring above. */
 document.querySelector('#openBinders').onclick=openBinderLibrary;
@@ -1053,8 +1090,8 @@ document.querySelector('#newBinder').onclick=()=>createBinder().catch(e=>{consol
 document.querySelector('#renameBinder').onclick=()=>renameActiveBinder().catch(console.error);
 document.querySelector('#deleteBinder').onclick=()=>deleteActiveBinder().catch(console.error);
 document.querySelector('#closeViewer').onclick=closeViewer;
-document.querySelector('#viewerPrev').onclick=()=>{if(viewerIndex>0){viewerIndex--;renderViewer()}};
-document.querySelector('#viewerNext').onclick=()=>{if(viewerIndex<viewerPages.length-1){viewerIndex++;renderViewer()}};
+document.querySelector('#viewerPrev').onclick=()=>turnViewerSpread(-1);
+document.querySelector('#viewerNext').onclick=()=>turnViewerSpread(1);
 document.querySelector('#viewerEdit').onclick=()=>{const p=viewerPages[viewerIndex];if(p){closeViewer();loadPageIntoEditor(p.id)}};
 document.querySelector('#binderModal').addEventListener('click',e=>{if(e.target.id==='binderModal')closeBinderLibrary()});
 document.querySelector('#binderViewer').addEventListener('click',e=>{if(e.target.id==='binderViewer')closeViewer()});
