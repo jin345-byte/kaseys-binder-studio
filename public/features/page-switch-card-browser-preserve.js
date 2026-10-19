@@ -146,7 +146,7 @@
       activeBinderId=page.binderId;
       activePageId=page.id;
       persistActiveIds();
-      state=cloneEditorState(page.state||defaults);
+      state=withBinderColors(cloneEditorState(page.state||defaults),await binderPalette(page.binderId,page));
       try{localStorage.setItem('michiStandaloneState',JSON.stringify(state))}catch{}
       binderLoading=false;
 
