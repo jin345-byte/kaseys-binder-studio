@@ -1,0 +1,117 @@
+/* Binder Studio — shared interaction design contract, October 2026.
+   Normalize appearance without changing grid geometry, data hooks, themes,
+   selected font, page-number bubbles, pocket remove icons or card image tiles.
+   Load after legacy/theme styles; selectors intentionally win legacy IDs. */
+body[data-theme]{
+  --kbs-action-radius:12px;
+  --kbs-action-font:13px;
+  --kbs-action-weight:700;
+  --kbs-action-line:1.25;
+  --kbs-action-height:42px;
+  --kbs-action-pad-y:9px;
+  --kbs-action-pad-x:12px;
+  --kbs-compact-height:36px;
+  --kbs-compact-font:12px;
+}
+
+/* Shared action appearance. A named ID in :is() deliberately beats old
+   per-button !important rules; visuals still inherit theme colors. */
+body[data-theme] .app :is(
+  #searchBtn,#openBinders,#guidedTourLaunch,#previewBinder,#print,
+  #printTiles,#printTilesAll,#clear,#clearArtist,#addUrl,
+  #versionLink,#cloudAccountBtn,#artSearchSubmit,#autoArtworkLoadMore,
+  .btn,.version-link,.library-browser-tab,.art-search-submit,
+  .auto-artwork-more,.auto-art-add,.artlink,.include-cards,.theme-button,
+  .cloud-account-btn,.kbs-tools-launch,
+  .binder-toolbar > button,.viewer-nav > button,.page-card-actions button
+):not(:is(
+  .page-number,.page-arrow,.modal-close,.feature-close,.build-info-close,
+  .kbs-variant-pick,.auto-art-pick,.kbs-variant-info,.card-info,
+  .kbs-universal-result,.remove-art,.mini
+)){
+  box-sizing:border-box!important;
+  border-radius:var(--kbs-action-radius)!important;
+  font-family:var(--kbs-font-family,system-ui,sans-serif)!important;
+  font-size:var(--kbs-action-font)!important;
+  font-weight:var(--kbs-action-weight)!important;
+  line-height:var(--kbs-action-line)!important;
+  letter-spacing:normal!important;
+  min-height:var(--kbs-action-height)!important;
+  padding:var(--kbs-action-pad-y) var(--kbs-action-pad-x)!important;
+  text-transform:none!important;
+  text-align:center;
+  overflow-wrap:normal;
+}
+
+/* Standardize the Cards / Artwork tabs rather than treating them as
+   oversized pills. Their active state, colors and width remain unchanged. */
+body[data-theme] .app .library-browser-tab{
+  border-radius:var(--kbs-action-radius)!important;
+  font:var(--kbs-action-weight) var(--kbs-action-font)/var(--kbs-action-line) var(--kbs-font-family,system-ui,sans-serif)!important;
+  min-height:var(--kbs-action-height)!important;
+  padding:8px 12px!important;
+}
+
+/* Small action slots share the same shape and font family with a deliberate
+   compact scale; don't enlarge artwork cards, scroll containers or trays. */
+body[data-theme] .app :is(
+  #artSearchSubmit,#autoArtworkLoadMore,.art-search-submit,
+  .auto-artwork-more,.auto-art-add,.page-card-actions button
+){
+  border-radius:var(--kbs-action-radius)!important;
+  font-family:var(--kbs-font-family,system-ui,sans-serif)!important;
+  font-size:var(--kbs-compact-font)!important;
+  font-weight:var(--kbs-action-weight)!important;
+  line-height:var(--kbs-action-line)!important;
+  min-height:var(--kbs-compact-height)!important;
+  height:auto!important;
+  padding:7px 10px!important;
+}
+
+/* The print Cards toggle is visually indistinguishable in shape and type
+   from the neighboring Print inserts action without losing checked state. */
+body[data-theme] .app .print-control > .include-cards,
+body[data-theme] .app .print-control > .include-cards span{
+  border-radius:var(--kbs-action-radius)!important;
+  font-family:var(--kbs-font-family,system-ui,sans-serif)!important;
+  font-size:var(--kbs-action-font)!important;
+  font-weight:var(--kbs-action-weight)!important;
+  line-height:var(--kbs-action-line)!important;
+}
+
+/* Selects, text fields and search input: common typography/corners.
+   Never restyle color swatches, checkboxes, upload inputs or sliders. */
+body[data-theme] .app :is(
+  #subject,#layout,#artSearchQuery,#artUrl,#newArtSize,
+  #setFilter,#artistFilter,#fullThemeSelect,#kbsUniversalInput,
+  input:not([type="color"]):not([type="checkbox"]):not([type="file"]):not([type="range"]):not([type="radio"]),
+  select,textarea
+){
+  box-sizing:border-box!important;
+  border-radius:var(--kbs-action-radius)!important;
+  font-family:var(--kbs-font-family,system-ui,sans-serif)!important;
+  font-size:var(--kbs-action-font)!important;
+  font-weight:500!important;
+  line-height:var(--kbs-action-line)!important;
+}
+
+/* User-selected fonts must also reach icon/auxiliary controls, but their
+   distinctive footprint is functional and must not be resized. */
+body[data-theme] .app :is(
+  .page-number,.page-arrow,.modal-close,.feature-close,
+  .build-info-close,.card-info,.kbs-variant-info,.remove-art,.mini
+){
+  font-family:var(--kbs-font-family,system-ui,sans-serif)!important;
+}
+
+/* Explicit page-number bubble exception to the action rectangle rule. */
+body:not(.mobile-lab-enabled)[data-theme] .canvas-side-controls
+  #editorPageNumbers > .page-number{
+  border-radius:50%!important;
+}
+
+/* Keep the design density usable at narrow widths without changing any
+   control's role or imposing a layout width. */
+@media(max-width:760px){
+  body[data-theme]{--kbs-action-height:44px;}
+}
