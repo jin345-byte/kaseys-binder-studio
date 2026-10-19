@@ -514,6 +514,7 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
     await page.locator('#viewerPage .viewer-sheet-select[data-viewer-select="4"]').click();
     assert.equal((await viewerState()).chosen,4,'Selecting visible sheet did not select editing target');
     await page.locator('#viewerEdit').click();
+    await page.waitForFunction(()=>activePageId==='audit-preview-page-4',null,{timeout:8000});
     const editedPage=await page.evaluate(()=>activePageId);
     assert.equal(editedPage,'audit-preview-page-4','Edit must open selected page 5, not adjacent facing page');
     await page.evaluate(async()=>{const pages=await pagesForBinder(activeBinderId);await loadPageIntoEditor(pages[0].id,{closeLibrary:false})});
