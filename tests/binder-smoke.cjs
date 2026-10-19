@@ -107,6 +107,68 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
     await page.waitForFunction(()=>document.querySelectorAll('#cards .kbs-variant-card').length===300,null,{timeout:12000});
     console.log('PASS 300 named card variants are visible without truncation');
 
+    // Cards and Artwork are mutually exclusive grid panels, not two stacked
+    // panels with the inactive card browser still reserving half the height.
+    // Test after V2 adds its stronger display:grid class; keep results in DOM.
+    for(const [tabWidth,tabHeight] of [[1600,1000],[1024,768],[390,844]]){
+      await page.setViewportSize({width:tabWidth,height:tabHeight});
+      await page.locator('#libraryArtworkTab').click();
+      const artworkView=await page.evaluate(()=>{
+        const library=document.querySelector('.workspace > .library.panel');
+        const cards=document.querySelector('.variant-pane');
+        const artwork=document.querySelector('.artwork-pane');
+        const tabs=document.querySelector('#libraryBrowserTabs');
+        const visible=el=>getComputedStyle(el).display!=='none'&&el.getClientRects().length>0;
+        const a=artwork.getBoundingClientRect();
+        const l=library.getBoundingClientRect();
+        const t=tabs.getBoundingClientRect();
+        return {
+          tab:library.dataset.libraryTab,
+          cardsVisible:visible(cards),artworkVisible:visible(artwork),
+          cardsDisplay:getComputedStyle(cards).display,
+          artworkHeight:a.height,libraryBottom:l.bottom,artworkTop:a.top,
+          artworkBottom:a.bottom,tabsBottom:t.bottom,
+          cardsSelected:document.querySelector('#libraryCardsTab').getAttribute('aria-selected'),
+          artworkSelected:document.querySelector('#libraryArtworkTab').getAttribute('aria-selected'),
+          preservedCards:document.querySelectorAll('#cards .kbs-variant-card').length
+        };
+      });
+      assert.equal(artworkView.tab,'artwork');
+      assert.equal(artworkView.cardsDisplay,'none','Inactive Cards pane must have display:none at '+tabWidth+'px');
+      assert.equal(artworkView.cardsVisible,false,'Inactive Cards pane still reserves space at '+tabWidth+'px');
+      assert.equal(artworkView.artworkVisible,true,'Artwork must remain visible at '+tabWidth+'px');
+      assert.ok(artworkView.artworkHeight>100,'Artwork pane collapsed at '+tabWidth+'px');
+      assert.equal(artworkView.cardsSelected,'false');
+      assert.equal(artworkView.artworkSelected,'true');
+      assert.equal(artworkView.preservedCards,300,'Tab switch unexpectedly rebuilt the card results');
+      if(tabWidth>=901){
+        assert.ok(artworkView.artworkTop>=artworkView.tabsBottom-3,'Artwork overlaps tab buttons');
+        assert.ok(artworkView.artworkBottom<=artworkView.libraryBottom+3,'Artwork exceeds library height');
+      }
+
+      await page.locator('#libraryCardsTab').click();
+      const cardsView=await page.evaluate(()=>{
+        const library=document.querySelector('.workspace > .library.panel');
+        const cards=document.querySelector('.variant-pane');
+        const artwork=document.querySelector('.artwork-pane');
+        return {
+          tab:library.dataset.libraryTab,
+          cardsVisible:getComputedStyle(cards).display!=='none'&&cards.getClientRects().length>0,
+          artworkDisplay:getComputedStyle(artwork).display,
+          artworkVisible:getComputedStyle(artwork).display!=='none'&&artwork.getClientRects().length>0,
+          preservedCards:document.querySelectorAll('#cards .kbs-variant-card').length
+        };
+      });
+      assert.equal(cardsView.tab,'cards');
+      assert.equal(cardsView.cardsVisible,true,'Cards must be visible after switching back');
+      assert.equal(cardsView.artworkDisplay,'none','Inactive Artwork pane should not reserve space');
+      assert.equal(cardsView.artworkVisible,false);
+      assert.equal(cardsView.preservedCards,300,'Card results lost after returning from Artwork');
+      console.log('PASS Cards / Artwork panes occupy one grid slot at '+tabWidth+'px');
+    }
+    await page.setViewportSize({width:1600,height:1000});
+
+
     // Accidental enlarged preview while scrolling was reported by the user.
     await page.locator('#cards .kbs-variant-card').nth(0).hover();
     await page.waitForTimeout(850);
