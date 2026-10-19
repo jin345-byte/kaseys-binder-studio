@@ -425,7 +425,7 @@ body.mobile-lab-enabled .canvas .canvas-side-controls>.mobile-page-actions{
   }
   body:not(.mobile-lab-enabled) .canvas-side-controls > .binder-heading-module #editorPageNumbers{
     display:grid!important;
-    grid-template-columns:repeat(auto-fit,minmax(28px,1fr))!important;
+    grid-template-columns:repeat(auto-fill,30px)!important;
     grid-auto-flow:row!important;
     grid-auto-rows:30px!important;
     justify-content:stretch!important;
@@ -448,16 +448,16 @@ body.mobile-lab-enabled .canvas .canvas-side-controls>.mobile-page-actions{
     box-sizing:border-box!important;
     display:grid!important;
     place-items:center!important;
-    width:100%!important;
-    min-width:0!important;
-    max-width:none!important;
+    width:30px!important;
+    min-width:30px!important;
+    max-width:30px!important;
     height:30px!important;
     min-height:30px!important;
     max-height:30px!important;
     margin:0!important;
     padding:0!important;
     flex:none!important;
-    border-radius:10px!important;
+    border-radius:50%!important;
     font-size:11px!important;
     line-height:1!important;
     box-shadow:none!important;
