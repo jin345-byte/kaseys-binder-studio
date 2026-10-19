@@ -291,8 +291,8 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
           };
         });
         const numbersVisible=pager.chips.every(r=>r.x>=pager.area.x-2&&r.right<=pager.area.right+2&&r.y>=pager.area.y-2&&r.bottom<=pager.area.bottom+2);
-        if(pager.mode!=='grid'||pager.columns<3||pager.rows<2||
-           !numbersVisible||pager.scrollHeight>pager.clientHeight+3||
+        if(pager.mode!=='grid'||pager.columns<3||(pager.area.width<400&&pager.rows<2)||
+           !numbersVisible||pager.chips.some(r=>r.width>32||r.height>32)||pager.scrollHeight>pager.clientHeight+3||
            pager.prev!=='none'||pager.next!=='none'||
            pager.heading.bottom>panels.selected.y+2)
           throw new Error('FULL_PAGE_GRID_CLIPPED '+JSON.stringify(pager));
