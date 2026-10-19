@@ -279,6 +279,21 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
         });
         assert.ok(lastVisible,'Last binder page must be reachable within scrollable page rail');
         console.log('PASS card panel and page navigation stay within their modules at '+width+'px');
+        if(width>=1101){
+          const sidebar=await page.evaluate(()=>{
+            const el=document.querySelector('.canvas-side-controls');
+            const children=[...el.children].filter(x=>getComputedStyle(x).display!=='none');
+            const last=children[children.length-1];
+            const scrollable=el.scrollHeight>el.clientHeight+3;
+            el.scrollTop=el.scrollHeight;
+            const r=el.getBoundingClientRect(),b=last?.getBoundingClientRect();
+            return {scrollable,scrollTop:el.scrollTop,clientHeight:el.clientHeight,scrollHeight:el.scrollHeight,lastBottom:b?.bottom??0,bottom:r.bottom,overflow:getComputedStyle(el).overflowY};
+          });
+          if(sidebar.scrollable&&(sidebar.scrollTop<=0||sidebar.lastBottom>sidebar.bottom+4))
+            throw new Error('SIDEBAR_CONTROLS_UNREACHABLE '+JSON.stringify(sidebar));
+          console.log('PASS appearance controls remain reachable at '+width+'px');
+        }
+
       }
       if(width===1024){
         const controls=await page.evaluate(()=>[...document.querySelectorAll('.controls.command-deck > .print-control, .controls.command-deck > .tile-print-split, .controls.command-deck > button')].filter(e=>e.getBoundingClientRect().width>0).map(e=>{
