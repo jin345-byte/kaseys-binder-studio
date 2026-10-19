@@ -53,11 +53,13 @@ body[data-theme] .app .library-browser-tab{
 }
 
 /* Small action slots share the same shape and font family with a deliberate
-   compact scale; don't enlarge artwork cards, scroll containers or trays. */
+   compact scale; don't enlarge artwork cards, scroll containers or trays.
+   The extra :not() specificity keeps the compact 12px text above the earlier
+   generic !important action rule while leaving real action states intact. */
 body[data-theme] .app :is(
   #artSearchSubmit,#autoArtworkLoadMore,.art-search-submit,
   .auto-artwork-more,.auto-art-add,.page-card-actions button
-){
+):not(.kbs-standard-action-size){
   border-radius:var(--kbs-action-radius)!important;
   font-family:var(--kbs-font-family,system-ui,sans-serif)!important;
   font-size:var(--kbs-compact-font)!important;
