@@ -1071,7 +1071,8 @@ function renderViewer(){
   container.dataset.viewerSpreadStart=String(start);
   container.innerHTML=`<div class="viewer-spread ${pages.length===1?'viewer-spread--single':'viewer-spread--pair'}" role="group" aria-label="${esc(label)}">${pages.map(i=>{
     const item=viewerPages[i],name=item.title||`Page ${i+1}`;
-    return `<section class="viewer-sheet ${i===viewerIndex?'viewer-sheet--selected':''}" data-viewer-sheet="${i}" aria-label="${esc(name)}"><button class="viewer-sheet-select" type="button" data-viewer-select="${i}" aria-pressed="${i===viewerIndex?'true':'false'}">Page ${i+1} · ${esc(name)}</button>${fullViewerMarkup(item)}</section>`;
+    const caption=name===`Page ${i+1}`?name:`Page ${i+1} · ${name}`;
+    return `<section class="viewer-sheet ${i===viewerIndex?'viewer-sheet--selected':''}" data-viewer-sheet="${i}" aria-label="${esc(name)}"><button class="viewer-sheet-select" type="button" data-viewer-select="${i}" aria-pressed="${i===viewerIndex?'true':'false'}">${esc(caption)}</button>${fullViewerMarkup(item)}</section>`;
   }).join('')}</div>`;
   container.querySelectorAll('[data-viewer-select]').forEach(button=>button.onclick=()=>selectViewerPage(Number(button.dataset.viewerSelect)));
   document.querySelector('#viewerPrev').disabled=start===0;
