@@ -457,6 +457,69 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
     assert.equal(colorIsolation.releaseFlag,false);
     console.log('PASS binder-wide colors, independent page sleeves, previews, viewer and disabled auto matching');
 
+    // Viewer simulates a physical binder: page one alone, then facing
+    // spreads 2+3, 4+5, ending with a lone page when necessary.
+    await page.evaluate(async()=>{
+      const pages=await pagesForBinder(activeBinderId);
+      for(let i=pages.length;i<6;i++){
+        const st=cloneEditorState();st.pockets=Array(12).fill(null);
+        await dbPut('pages',{id:'audit-preview-page-'+i,binderId:activeBinderId,title:'Page '+(i+1),order:i,createdAt:Date.now()+i,updatedAt:Date.now()+i,state:st});
+      }
+      await openViewer((await pagesForBinder(activeBinderId))[0].id);
+    });
+    const viewerState=()=>page.evaluate(()=>({
+      shown:[...document.querySelectorAll('#viewerPage [data-viewer-sheet]')].map(e=>Number(e.dataset.viewerSheet)),
+      grids:document.querySelectorAll('#viewerPage .grid').length,
+      chosen:viewerIndex,
+      counter:document.querySelector('#viewerCounter').textContent,
+      prevDisabled:document.querySelector('#viewerPrev').disabled,
+      nextDisabled:document.querySelector('#viewerNext').disabled,
+      editLabel:document.querySelector('#viewerEdit').textContent,
+      activeNumbers:[...document.querySelectorAll('#viewerPageNumbers .page-number.in-spread')].map(e=>Number(e.dataset.viewerPage)),
+      boxes:[...document.querySelectorAll('#viewerPage .viewer-sheet .grid')].map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,width:r.width,height:r.height}}),
+      totalNumbers:document.querySelectorAll('#viewerPageNumbers .page-number').length
+    }));
+    let spread=await viewerState();
+    assert.deepEqual(spread.shown,[0]);
+    assert.equal(spread.grids,1);
+    assert.equal(spread.prevDisabled,true);
+    assert.equal(spread.nextDisabled,false);
+    assert.equal(spread.counter,'Page 1 of 6');
+    assert.equal(spread.totalNumbers,6);
+    await page.locator('#viewerNext').click();
+    spread=await viewerState();
+    assert.deepEqual(spread.shown,[1,2]);
+    assert.deepEqual(spread.activeNumbers,[1,2]);
+    assert.equal(spread.counter,'Pages 2–3 of 6');
+    assert.equal(spread.grids,2);
+    assert.ok(spread.boxes[0].right<=spread.boxes[1].x,'Facing sheets overlap');
+    assert.ok(spread.boxes.every(b=>b.width>100&&b.height>100),'Facing sheet became too small');
+    await page.locator('#viewerPageNumbers [data-viewer-page="2"]').click();
+    spread=await viewerState();
+    assert.deepEqual(spread.shown,[1,2],'Page-number jump should keep facing page visible');
+    assert.equal(spread.chosen,2,'Clicking page 3 must select page 3 for editing');
+    assert.equal(spread.editLabel,'Edit page 3');
+    await page.locator('#viewerNext').click();
+    spread=await viewerState();
+    assert.deepEqual(spread.shown,[3,4]);
+    assert.equal(spread.counter,'Pages 4–5 of 6');
+    await page.locator('#viewerNext').click();
+    spread=await viewerState();
+    assert.deepEqual(spread.shown,[5]);
+    assert.equal(spread.nextDisabled,true);
+    assert.equal(spread.counter,'Page 6 of 6');
+    await page.locator('#viewerPrev').click();
+    spread=await viewerState();
+    assert.deepEqual(spread.shown,[3,4]);
+    await page.locator('#viewerPage .viewer-sheet-select[data-viewer-select="4"]').click();
+    assert.equal((await viewerState()).chosen,4,'Selecting visible sheet did not select editing target');
+    await page.locator('#viewerEdit').click();
+    const editedPage=await page.evaluate(()=>activePageId);
+    assert.equal(editedPage,'audit-preview-page-4','Edit must open selected page 5, not adjacent facing page');
+    await page.evaluate(async()=>{const pages=await pagesForBinder(activeBinderId);await loadPageIntoEditor(pages[0].id,{closeLibrary:false})});
+    console.log('PASS binder preview solo first page, paired spreads, orphan last page and selected-page editing');
+
+
 
 
 
