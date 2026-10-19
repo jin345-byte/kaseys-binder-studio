@@ -125,7 +125,9 @@
       localStorage.setItem(VERSION_KEY,manifest.version);
       progress(1,1,`Unified Library Ready · ${all.length.toLocaleString()} cards`,true);
 
-      if(sessionStorage.getItem(RELOAD_KEY)!==manifest.version){sessionStorage.setItem(RELOAD_KEY,manifest.version);setTimeout(()=>location.reload(),180);}
+      // Catalog was activated directly above. Never reload a live editing or
+      // search session merely because its offline IndexedDB cache finished.
+      sessionStorage.removeItem(RELOAD_KEY);
     }catch(e){
       console.warn('Prebuilt catalog bootstrap unavailable; manual library build remains available.',e);
       progress(0,1,'Card library available · use Build Card Library if needed');

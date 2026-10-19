@@ -169,6 +169,14 @@ async function upsertMasterRows(rows,{refreshHealth=false}={}){
 async function loadMasterFromDb(){
   if(!masterDb)masterDb=await masterOpen();
   const loaded=await masterGetAll('cards');
+  // A fresh install activates the downloaded catalog immediately while its
+  // IndexedDB transaction finishes in the background. An older startup DB read
+  // can return after that activation; never replace a complete in-memory
+  // catalog with an earlier, smaller database snapshot.
+  if(masterReady&&masterCards.length>=15000&&loaded.length<masterCards.length){
+    console.info('Preserving fuller in-memory catalog while offline storage catches up');
+    return;
+  }
   masterCards=loaded.map(c=>{
     try{return withSearchKeys(c)}
     catch{return {...c,nameLower:String(c?.name||'').toLowerCase(),illustratorLower:String(c?.illustrator||'').toLowerCase(),namePrefix:String(c?.name||'').toLowerCase().slice(0,3)}}

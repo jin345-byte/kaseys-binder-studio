@@ -42,3 +42,191 @@
   .kbs-variants-v2 .kbs-variant-card{transition:none!important}
   .kbs-variants-v2 #cardsViewport{scroll-behavior:auto!important}
 }
+
+/* Reserve proper width for grouped actions at laptop/tablet breakpoints.
+   Prevent Print inserts and Tile buttons from collapsing to vertical letters. */
+@media (min-width:761px) and (max-width:1199px){
+  .controls.command-deck{
+    display:grid!important;
+    grid-template-columns:repeat(12,minmax(0,1fr))!important;
+    gap:8px!important;
+    align-items:end!important;
+  }
+  .controls.command-deck>label:first-child{grid-column:1/span 9!important;grid-row:1!important}
+  .controls.command-deck>label:nth-child(2){grid-column:10/span 3!important;grid-row:1!important}
+  .controls.command-deck>#openBinders{grid-column:1/span 4!important;grid-row:2!important}
+  .controls.command-deck>button:not(#openBinders):not(#clear){grid-column:span 4!important;grid-row:2!important}
+  .controls.command-deck>.print-control{grid-column:1/span 5!important;grid-row:3!important}
+  .controls.command-deck>.tile-print-split{grid-column:6/span 5!important;grid-row:3!important}
+  .controls.command-deck>#clear{grid-column:11/span 2!important;grid-row:3!important}
+  .controls.command-deck>.tile-print-split .btn{font-size:12px!important;padding:9px 7px!important}
+  .controls.command-deck>.print-control #print{font-size:12px!important;white-space:normal!important}
+}
+/* A closed transformed drawer should not maintain a visible compositor/shadow
+   layer that could paint over a tall mobile binder screenshot or its pockets. */
+.feature-drawer:not(.open){visibility:hidden!important}
+.feature-drawer.open{visibility:visible!important}
+.feature-drawer:not(.open) .feature-drawer-shell{box-shadow:none!important}
+
+/* Layout ownership — October QA: each viewport stays within its panel.
+   Two library tracks: browser tabs + active library pane. Legacy four/seven
+   row grids and fixed 470px card-viewport minimums caused visible collisions. */
+@media(min-width:901px){
+  .workspace > .library.panel{
+    display:grid!important;
+    grid-template-rows:auto minmax(0,1fr)!important;
+    grid-auto-rows:minmax(0,1fr)!important;
+    min-height:680px!important;
+    min-width:0!important;
+    overflow:hidden!important;
+    align-content:stretch!important;
+  }
+  .workspace > .library.panel > .variant-pane.kbs-variants-v2,
+  .workspace > .library.panel > .artwork-pane{
+    min-width:0!important;
+    min-height:0!important;
+    height:100%!important;
+    max-height:100%!important;
+    box-sizing:border-box!important;
+    overflow:hidden!important;
+  }
+  .workspace > .library.panel > .variant-pane.kbs-variants-v2{
+    display:grid!important;
+    grid-template-rows:auto auto minmax(0,1fr)!important;
+    align-content:stretch!important;
+  }
+  .workspace > .library.panel > .variant-pane.kbs-variants-v2 #cardsViewport{
+    height:auto!important;
+    min-height:0!important;
+    max-height:100%!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    overscroll-behavior:contain!important;
+  }
+}
+@media(max-width:900px){
+  .workspace > .library.panel > .variant-pane.kbs-variants-v2 #cardsViewport{
+    height:clamp(360px,55dvh,600px)!important;
+    min-height:0!important;
+    max-height:600px!important;
+    overflow-y:auto!important;
+  }
+}
+/* Heading and page rail reserve a fixed, honest amount of space.
+   Page numbers scroll within the rail; nothing paints across the next module. */
+@media(min-width:761px){
+  .canvas-side-controls > .binder-heading-module{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 44px!important;
+    grid-template-rows:minmax(0,1fr)!important;
+    align-items:start!important;
+    height:286px!important;
+    min-height:286px!important;
+    max-height:286px!important;
+    overflow:hidden!important;
+    gap:8px!important;
+  }
+  .canvas-side-controls > .binder-heading-module .canvashead{
+    grid-column:1!important;
+    grid-row:1!important;
+    min-width:0!important;
+    max-width:100%!important;
+    overflow:hidden!important;
+  }
+  .canvas-side-controls > .binder-heading-module .editor-page-nav{
+    position:static!important;
+    grid-column:2!important;
+    grid-row:1!important;
+    display:grid!important;
+    grid-template-columns:40px!important;
+    grid-template-rows:36px minmax(0,1fr) 36px!important;
+    align-items:stretch!important;
+    justify-items:center!important;
+    width:40px!important;
+    min-width:40px!important;
+    max-width:40px!important;
+    height:264px!important;
+    min-height:0!important;
+    max-height:264px!important;
+    margin:0!important;
+    padding:0!important;
+    gap:5px!important;
+    overflow:hidden!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    border:0!important;
+  }
+  .canvas-side-controls > .binder-heading-module .page-numbers{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    flex-wrap:nowrap!important;
+    width:40px!important;
+    min-width:0!important;
+    min-height:0!important;
+    max-height:none!important;
+    height:auto!important;
+    padding:1px 1px 2px!important;
+    gap:5px!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    scrollbar-width:thin!important;
+    overscroll-behavior:contain!important;
+    scroll-padding-block:6px!important;
+  }
+  .canvas-side-controls > .binder-heading-module .page-numbers .page-number{
+    flex:0 0 34px!important;
+    width:34px!important;
+    min-width:34px!important;
+    max-width:34px!important;
+    height:34px!important;
+    min-height:34px!important;
+    max-height:34px!important;
+    padding:0!important;
+    font-size:12px!important;
+    line-height:1!important;
+  }
+  .canvas-side-controls > .binder-heading-module .page-arrow{
+    width:36px!important;
+    min-width:36px!important;
+    max-width:36px!important;
+    height:36px!important;
+    min-height:36px!important;
+    max-height:36px!important;
+    margin:0!important;
+    padding:0!important;
+  }
+  .canvas-side-controls > .selected-module{
+    position:relative!important;
+    min-height:0!important;
+    margin-top:0!important;
+  }
+}
+/* Restore compact horizontal navigation on actual phones / Mobile Preview. */
+@media(max-width:760px){
+  .canvas-side-controls > .binder-heading-module{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+}
+
+/* Intentional scrolling for a tall appearance sidebar. No controls become
+   inaccessible simply because the binder is shorter than the sidebar. */
+@media(min-width:1101px){
+  .canvas .canvas-side-controls{
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    overscroll-behavior-y:contain!important;
+    scrollbar-width:thin!important;
+    scrollbar-color:color-mix(in srgb,var(--accent) 44%,var(--line)) transparent!important;
+    padding-bottom:16px!important;
+  }
+  .canvas .canvas-side-controls::-webkit-scrollbar{width:7px}
+  .canvas .canvas-side-controls::-webkit-scrollbar-thumb{
+    background:color-mix(in srgb,var(--accent) 45%,var(--line));
+    border-radius:99px;
+  }
+}
