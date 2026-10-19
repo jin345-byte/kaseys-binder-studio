@@ -157,11 +157,13 @@ body[data-theme="jolteon"] .grid::before{background-image:linear-gradient(60deg,
 @keyframes pageExit{to{opacity:.18;transform:translateX(-10px) scale(.992)}}
 @keyframes pageEnter{from{opacity:.15;transform:translateX(12px) scale(.992)}to{opacity:1;transform:none}}
 
-/* Search autocomplete */
-.searchrow{position:relative}
-.search-suggestions{
+/* Search autocomplete: keep the menu attached to its search row, not
+   positioned against the page, and above the library panel beneath it. */
+.controls.command-deck{position:relative;z-index:100;overflow:visible!important}
+.searchrow{position:relative;z-index:2}
+.searchrow>.search-suggestions{
   position:absolute;z-index:5000;top:calc(100% + 5px);left:0;right:76px;
-  max-height:280px;overflow:auto;padding:6px;border:1px solid var(--line);border-radius:15px;
+  max-height:min(280px,45dvh);overflow:auto;padding:6px;border:1px solid var(--line);border-radius:15px;
   background:color-mix(in srgb,var(--surface) 96%,transparent);backdrop-filter:blur(20px);
   box-shadow:0 16px 44px rgba(0,0,0,.20);
 }

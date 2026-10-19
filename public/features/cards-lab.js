@@ -79,19 +79,52 @@ const KBSCardLab=(()=>{
   document.querySelector('#cardDetailsDrawer')?.addEventListener('click',e=>{if(e.target.id==='cardDetailsDrawer')closeDetails();});
 
   const input=document.querySelector('#subject'),suggestions=document.querySelector('#searchSuggestions');let activeSuggestion=-1;
+  function showSuggestions(show){
+    if(!suggestions)return;
+    suggestions.hidden=!show;
+    input?.setAttribute('aria-expanded',show?'true':'false');
+  }
+  function hideSuggestions(){
+    clearTimeout(renderSuggestions.t);
+    activeSuggestion=-1;
+    showSuggestions(false);
+  }
   function activePool(){const extra=globalThis.KBSCatalogCards||[];return extra.length?extra:masterCards;}
   function renderSuggestions(){
-    const q=normText(input?.value||'');if(!input||!suggestions||q.length<2){suggestions.hidden=true;return}
+    const q=normText(input?.value||'');
+    if(!input||!suggestions||document.activeElement!==input||q.length<2){hideSuggestions();return;}
     const pool=activePool(),seen=new Set(),rows=[];
     for(const c of pool){const n=normText(c?.name||'');if(!n.startsWith(q)||seen.has(n))continue;seen.add(n);rows.push(c);if(rows.length>=8)break;}
-    if(!rows.length){suggestions.hidden=true;return}
+    if(!rows.length){hideSuggestions();return;}
     activeSuggestion=-1;
     suggestions.innerHTML=rows.map((c,i)=>`<button type="button" class="search-suggestion" data-suggestion="${esc(c.name)}" data-si="${i}"><strong>${esc(c.name)}</strong><small>${esc(c.setName||'')}</small></button>`).join('');
-    suggestions.hidden=false;suggestions.querySelectorAll('[data-suggestion]').forEach(b=>b.onclick=()=>{input.value=b.dataset.suggestion;suggestions.hidden=true;search();});
+    showSuggestions(true);
+    suggestions.querySelectorAll('[data-suggestion]').forEach(b=>b.onclick=()=>{input.value=b.dataset.suggestion;hideSuggestions();search();});
   }
   input?.addEventListener('input',()=>{clearTimeout(renderSuggestions.t);renderSuggestions.t=setTimeout(renderSuggestions,80);});
-  input?.addEventListener('keydown',e=>{if(suggestions.hidden)return;const opts=[...suggestions.querySelectorAll('.search-suggestion')];if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();activeSuggestion=(activeSuggestion+(e.key==='ArrowDown'?1:-1)+opts.length)%opts.length;opts.forEach((x,i)=>x.classList.toggle('active',i===activeSuggestion));}else if(e.key==='Enter'&&activeSuggestion>=0){e.preventDefault();opts[activeSuggestion].click();}else if(e.key==='Escape'){suggestions.hidden=true;}});
-  document.addEventListener('pointerdown',e=>{if(!e.target.closest?.('.searchrow'))suggestions.hidden=true;});
+  input?.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){hideSuggestions();return;}
+    if(e.key==='Enter'){
+      if(!suggestions?.hidden&&activeSuggestion>=0){
+        const opts=[...suggestions.querySelectorAll('.search-suggestion')];
+        e.preventDefault();
+        opts[activeSuggestion]?.click();
+      }else hideSuggestions();
+      return;
+    }
+    if(suggestions?.hidden)return;
+    const opts=[...suggestions.querySelectorAll('.search-suggestion')];
+    if(!opts.length)return;
+    if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+      e.preventDefault();
+      activeSuggestion=(activeSuggestion+(e.key==='ArrowDown'?1:-1)+opts.length)%opts.length;
+      opts.forEach((x,i)=>x.classList.toggle('active',i===activeSuggestion));
+    }
+  });
+  document.querySelector('#searchBtn')?.addEventListener('click',hideSuggestions);
+  document.addEventListener('pointerdown',e=>{if(!e.target.closest?.('.searchrow'))hideSuggestions();});
+  document.addEventListener('focusin',e=>{if(!e.target.closest?.('.searchrow'))hideSuggestions();});
+  addEventListener('scroll',hideSuggestions,{passive:true});
 
   // Pocket sets intentionally share the normal Set dropdown, but do not have English TCG set-symbol URLs.
   function updateSetSymbol(){
