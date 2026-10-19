@@ -224,10 +224,24 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
 
 
 
+    // Reproduce reported 4-pocket layout with 10 saved pages: the vertical
+    // page rail used to collide with Selected/Theme below it.
+    await page.evaluate(async()=>{
+      state.layout='2x2';renderGrid();
+      const existing=await pagesForBinder(activeBinderId);
+      for(let i=existing.length;i<11;i++){
+        const st=cloneEditorState();
+        st.layout='2x2';
+        await dbPut('pages',{id:'audit-extra-page-'+i,binderId:activeBinderId,title:'Page '+(i+1),order:i,createdAt:Date.now()+i,updatedAt:Date.now()+i,state:st});
+      }
+      await renderEditorPageNav();
+    });
+    await page.waitForFunction(()=>document.querySelectorAll('#editorPageNumbers .page-number').length>=10,null,{timeout:6000});
+
     // Screenshot-based geometry audit with strict horizontal overflow and
     // overlay-collision checks; responsive snapshots are retained as artifacts.
     fs.mkdirSync('audit-artifacts',{recursive:true});
-    for(const [width,height] of [[1600,1000],[1280,800],[1024,768],[768,900],[390,844]]){
+    for(const [width,height] of [[1680,900],[1600,1000],[1280,800],[1024,768],[768,900],[390,844]]){
       await page.setViewportSize({width,height});
       await page.waitForTimeout(260);
       const geometry=await page.evaluate(()=>{
@@ -249,6 +263,23 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
       });
       if(geometry.scrollWidth>geometry.width+12||geometry.overlap||geometry.viewportOverflows||geometry.activeHover)
         throw new Error('LAYOUT_COLLISION '+JSON.stringify(geometry));
+      if(width>=901){
+        const panels=await page.evaluate(()=>{
+          const box=sel=>{const el=document.querySelector(sel),r=el?.getBoundingClientRect();return r?{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height}:null};
+          return {library:box('.workspace>.library'),pane:box('.variant-pane'),viewport:box('#cardsViewport'),heading:box('.binder-heading-module'),nav:box('#editorPageNav'),numbers:box('#editorPageNumbers'),selected:box('#selected'),buttons:document.querySelectorAll('#editorPageNumbers .page-number').length};
+        });
+        const within=(child,parent)=>child&&parent&&child.y>=parent.y-2&&child.bottom<=parent.bottom+2&&child.x>=parent.x-2&&child.right<=parent.right+2;
+        if(!within(panels.viewport,panels.pane)||!within(panels.pane,panels.library)||!within(panels.nav,panels.heading)||panels.heading.bottom>panels.selected.y+2)
+          throw new Error('PANEL_BOUNDARY_COLLISION '+JSON.stringify(panels));
+        const lastVisible=await page.locator('#editorPageNumbers').evaluate(el=>{
+          el.scrollTop=el.scrollHeight;
+          const last=el.querySelector('.page-number:last-child');
+          const a=last?.getBoundingClientRect(),b=el.getBoundingClientRect();
+          return !!a&&a.bottom<=b.bottom+2&&a.top>=b.top-2;
+        });
+        assert.ok(lastVisible,'Last binder page must be reachable within scrollable page rail');
+        console.log('PASS card panel and page navigation stay within their modules at '+width+'px');
+      }
       if(width===1024){
         const controls=await page.evaluate(()=>[...document.querySelectorAll('.controls.command-deck > .print-control, .controls.command-deck > .tile-print-split, .controls.command-deck > button')].filter(e=>e.getBoundingClientRect().width>0).map(e=>{
           const r=e.getBoundingClientRect();return{id:e.id||e.className,width:Math.round(r.width),height:Math.round(r.height)};
