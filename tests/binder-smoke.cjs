@@ -107,6 +107,66 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
     await page.waitForFunction(()=>document.querySelectorAll('#cards .kbs-variant-card').length===300,null,{timeout:12000});
     console.log('PASS 300 named card variants are visible without truncation');
 
+    // Unified styling contract: only action buttons share button radius/type.
+    // Bubble pagination, upload controls, card images and color swatches retain
+    // their purposeful geometry. Run at both desktop and tablet widths.
+    for(const [width,height] of [[1600,1000],[1024,768]]){
+      await page.setViewportSize({width,height});
+      const ui=await page.evaluate(()=>{
+        const actions=[
+          '#searchBtn','#openBinders','#guidedTourLaunch','#print',
+          '#printTiles','#printTilesAll','#clear','#clearArtist',
+          '#libraryCardsTab','#libraryArtworkTab','#addUrl',
+          '.artadd .upload','#artSearchSubmit','#autoArtworkLoadMore',
+          '#versionLink'
+        ];
+        const compact=new Set(['#artSearchSubmit','#autoArtworkLoadMore']);
+        const sampled=actions.map(selector=>{
+          const el=document.querySelector(selector);
+          if(!el)return {selector,missing:true};
+          const s=getComputedStyle(el);
+          return {selector,radius:s.borderRadius,fontSize:s.fontSize,
+            fontWeight:s.fontWeight,fontFamily:s.fontFamily,
+            minHeight:s.minHeight,compact:compact.has(selector)};
+        });
+        const inputSample=['#subject','#layout','#artSearchQuery','#artUrl','#newArtSize']
+          .map(selector=>{const el=document.querySelector(selector),s=el&&getComputedStyle(el);
+            return {selector,radius:s?.borderRadius||null,fontSize:s?.fontSize||null};});
+        const bubble=document.querySelector('#editorPageNumbers .page-number');
+        return {sampled,inputSample,bubbleRadius:bubble&&getComputedStyle(bubble).borderRadius,
+          styleSheet:!!document.querySelector('#kbsControlDesignSystemStyle'),
+          rootFont:getComputedStyle(document.body).fontFamily};
+      });
+      assert.equal(ui.styleSheet,true,'Unified control stylesheet was not loaded');
+      for(const item of ui.sampled){
+        assert.ok(!item.missing,'Missing expected action: '+item.selector);
+        assert.equal(item.radius,'12px','Mixed button corner radius at '+width+': '+JSON.stringify(item));
+        assert.equal(item.fontSize,item.compact?'12px':'13px','Mixed action font size at '+width+': '+JSON.stringify(item));
+        assert.equal(item.fontWeight,'700','Mixed action weight at '+width+': '+JSON.stringify(item));
+        assert.equal(item.fontFamily,ui.rootFont,'Action did not inherit selected UI font at '+width+': '+JSON.stringify(item));
+      }
+      for(const item of ui.inputSample){
+        assert.equal(item.radius,'12px','Field corner mismatch at '+width+': '+JSON.stringify(item));
+        assert.equal(item.fontSize,'13px','Field font size mismatch at '+width+': '+JSON.stringify(item));
+      }
+      assert.equal(ui.bubbleRadius,'50%','Page numbers must remain circular');
+      console.log('PASS unified action/field typography and shape at '+width+'px');
+    }
+    await page.evaluate(()=>{
+      document.body.dataset.kbsFont='georgia';
+    });
+    const fontChoice=await page.evaluate(()=>({
+      custom:getComputedStyle(document.querySelector('#searchBtn')).fontFamily,
+      tab:getComputedStyle(document.querySelector('#libraryCardsTab')).fontFamily,
+      input:getComputedStyle(document.querySelector('#subject')).fontFamily
+    }));
+    assert.ok(Object.values(fontChoice).every(value=>value.toLowerCase().includes('georgia')),
+      'Selected typeface does not consistently reach controls: '+JSON.stringify(fontChoice));
+    await page.evaluate(()=>{document.body.dataset.kbsFont='system';});
+    console.log('PASS selected font propagates across buttons, tabs and inputs');
+    await page.setViewportSize({width:1600,height:1000});
+
+
     // Previously the suggestions div was attached to <body> even though its
     // absolute positioning assumes it lives inside the search row. That
     // caused an enormous persistent strip across the bottom of the editor.
