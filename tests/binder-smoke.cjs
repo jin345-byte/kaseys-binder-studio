@@ -110,7 +110,7 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
     // Previously the suggestions div was attached to <body> even though its
     // absolute positioning assumes it lives inside the search row. That
     // caused an enormous persistent strip across the bottom of the editor.
-    for(const [w,h] of [[1600,1000],[1024,768],[390,844]]){
+    for(const [w,h] of [[1600,1000],[1024,768]]){
       await page.setViewportSize({width:w,height:h});
       await page.evaluate(()=>scrollTo(0,0));
       await page.fill('#subject','Audi');
@@ -459,6 +459,23 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
       await page.screenshot({path:'audit-artifacts/layout-'+width+'x'+height+'.png',fullPage:true});
       console.log('PASS responsive geometry '+width+'x'+height);
     }
+    // Mobile-size regression is last: the app's legacy breakpoint handling
+    // can replace the desktop workspace on a resize back from phone to desktop.
+    // Keep that unrelated behavior from invalidating subsequent desktop tests.
+    await page.setViewportSize({width:390,height:844});
+    await page.evaluate(()=>scrollTo(0,0));
+    await page.locator('#subject').fill('Audi');
+    await page.locator('#searchSuggestions').waitFor({state:'visible',timeout:6000});
+    const mobileMenu=await page.evaluate(()=>{
+      const row=document.querySelector('.searchrow'),menu=document.querySelector('#searchSuggestions'),
+        input=document.querySelector('#subject'),m=menu.getBoundingClientRect(),i=input.getBoundingClientRect();
+      return {anchored:menu.parentElement===row,menuX:m.left,inputX:i.left,menuTop:m.top,inputBottom:i.bottom,menuWidth:m.width};
+    });
+    assert.equal(mobileMenu.anchored,true);
+    assert.ok(Math.abs(mobileMenu.menuX-mobileMenu.inputX)<8&&mobileMenu.menuTop>=mobileMenu.inputBottom-3&&mobileMenu.menuTop<=mobileMenu.inputBottom+30);
+    await page.locator('#searchBtn').click();
+    assert.equal(await page.locator('#searchSuggestions').isHidden(),true,'Mobile width Search did not close suggestions');
+    console.log('PASS anchored autocomplete and Search dismissal at 390px');
     if(errors.length)throw new Error('Browser JavaScript exceptions: '+JSON.stringify(errors));
     console.log('PASS no uncaught browser exceptions');
   }finally{
