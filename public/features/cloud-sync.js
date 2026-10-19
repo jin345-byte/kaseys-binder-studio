@@ -152,6 +152,8 @@
 
   async function applySnapshot(snapshot){
     validateSnapshot(snapshot);await waitBinder();
+    if(typeof flushSharedColorWrite==='function')await flushSharedColorWrite();
+    if(typeof sharedBinderColors!=='undefined')sharedBinderColors.clear();
     binderLoading=true;
     try{
       await new Promise((resolve,reject)=>{
@@ -166,7 +168,7 @@
       activePageId=(snapshot.activePageId&&snapshot.pages.some(p=>p.id===snapshot.activePageId))?snapshot.activePageId:(snapshot.pages.find(p=>p.binderId===activeBinderId)?.id||'');
       persistActiveIds();
       const page=snapshot.pages.find(p=>p.id===activePageId);
-      state=cloneEditorState(page?.state||snapshot.editorState||defaults);
+      state=withBinderColors(cloneEditorState(page?.state||snapshot.editorState||defaults),await binderPalette(activeBinderId,page));
       try{localStorage.setItem('michiStandaloneState',JSON.stringify(state))}catch(e){console.warn('Could not update standalone state after cloud restore',e)}
     }finally{binderLoading=false}
     if(typeof rerenderEditor==='function')rerenderEditor();
