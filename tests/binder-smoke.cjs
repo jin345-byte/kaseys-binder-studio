@@ -48,6 +48,11 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
       await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({data,totalCount,page:number,pageSize:250})});
     });
     await page.route(/^https?:\/\/(?!127\.0\.0\.1)(?!api\.pokemontcg\.io)/,route=>route.fulfill({status:200,contentType:'application/json',body:'{}'}));
+    // Existing users can have stale visual preferences saved from the picker era.
+    await page.addInitScript(()=>{
+      localStorage.setItem('kbsThemePreference','lavender');
+      localStorage.setItem('kbsFontChoice','georgia');
+    });
     await page.goto(origin,{waitUntil:'domcontentloaded',timeout:30000});
     try{
       await page.waitForFunction(()=>Boolean(globalThis.KBSCardVariantsV2?.installed&&globalThis.KBSArtworkLShapes?.installed&&typeof renderGrid==='function'),null,{timeout:12000});
@@ -152,18 +157,50 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
       assert.equal(ui.bubbleRadius,'50%','Page numbers must remain circular');
       console.log('PASS unified action/field typography and shape at '+width+'px');
     }
-    await page.evaluate(()=>{
+    await page.waitForFunction(()=>Boolean(globalThis.KBSFullThemes&&globalThis.KBSTypography),null,{timeout:10000});
+    const fixedAppearance=await page.evaluate(()=>{
+      const before={binder:state.binderColor,page:state.pageColor,sleeve:state.sleeveColor};
+      const loaded={theme:document.body.dataset.theme,font:document.body.dataset.kbsFont};
+      // Older choices, even explicit calls to the old theme/font API, cannot
+      // change the fixed look or overwrite independently selected colors.
+      KBSFullThemes.apply('lavender',{persist:false,applyPalette:true});
+      KBSTypography.apply('georgia',{persist:false});
+      const after={binder:state.binderColor,page:state.pageColor,sleeve:state.sleeveColor};
       document.body.dataset.kbsFont='georgia';
+      const typefaces=['#searchBtn','#libraryCardsTab','#subject']
+        .map(selector=>getComputedStyle(document.querySelector(selector)).fontFamily.toLowerCase());
+      document.body.dataset.kbsFont='system';
+      return {
+        loaded,theme:document.body.dataset.theme,font:document.body.dataset.kbsFont,
+        selectedTheme:KBSFullThemes.current,
+        selectedFont:KBSTypography.current(),
+        themeOptions:KBSFullThemes.list().map(x=>x.id),
+        fontOptions:KBSTypography.list().map(x=>x.id),
+        themeControl:!!document.querySelector('#fullThemeSelect,.full-theme-control'),
+        fontControl:!!document.querySelector('#kbsFontSelect,.font-choice-control'),
+        storedTheme:localStorage.getItem('kbsThemePreference'),
+        storedFont:localStorage.getItem('kbsFontChoice'),
+        before,after,typefaces,
+        manualColors:['binderColor','pageColor','sleeveColor']
+          .every(id=>document.getElementById(id)?.type==='color')
+      };
     });
-    const fontChoice=await page.evaluate(()=>({
-      custom:getComputedStyle(document.querySelector('#searchBtn')).fontFamily,
-      tab:getComputedStyle(document.querySelector('#libraryCardsTab')).fontFamily,
-      input:getComputedStyle(document.querySelector('#subject')).fontFamily
-    }));
-    assert.ok(Object.values(fontChoice).every(value=>value.toLowerCase().includes('georgia')),
-      'Selected typeface does not consistently reach controls: '+JSON.stringify(fontChoice));
-    await page.evaluate(()=>{document.body.dataset.kbsFont='system';});
-    console.log('PASS selected font propagates across buttons, tabs and inputs');
+    assert.deepEqual(fixedAppearance.loaded,{theme:'cyberpunk',font:'system'});
+    assert.equal(fixedAppearance.theme,'cyberpunk');
+    assert.equal(fixedAppearance.font,'system');
+    assert.equal(fixedAppearance.selectedTheme,'cyberpunk');
+    assert.equal(fixedAppearance.selectedFont,'system');
+    assert.deepEqual(fixedAppearance.themeOptions,['cyberpunk']);
+    assert.deepEqual(fixedAppearance.fontOptions,['system']);
+    assert.equal(fixedAppearance.themeControl,false,'Theme selector should not be rendered');
+    assert.equal(fixedAppearance.fontControl,false,'Font selector should not be rendered');
+    assert.equal(fixedAppearance.storedTheme,'cyberpunk');
+    assert.equal(fixedAppearance.storedFont,'system');
+    assert.deepEqual(fixedAppearance.after,fixedAppearance.before,'Fixed theme must not overwrite manual binder/page/sleeve colors');
+    assert.ok(fixedAppearance.typefaces.every(x=>x.includes('system-ui')),
+      'System Sans did not remain fixed on all controls: '+JSON.stringify(fixedAppearance.typefaces));
+    assert.equal(fixedAppearance.manualColors,true,'Manual color pickers must remain available');
+    console.log('PASS Cyberpunk/System Sans fixed across legacy preferences, UI, API and manual colors');
     await page.setViewportSize({width:1600,height:1000});
 
 

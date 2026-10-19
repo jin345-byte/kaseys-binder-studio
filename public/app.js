@@ -1,6 +1,6 @@
 
 const SIZES=[['1x1','1 slot · 7 × 9.5cm'],['2x1','2 horizontal · 14 × 9.5cm'],['1x2','2 vertical · 7 × 19cm'],['3x1','3 horizontal · 21 × 9.5cm'],['2x2','4 slots · 14 × 19cm'],['3x3','9 slots · 21 × 28.5cm']];
-const defaults={subject:'',layout:'3x3',theme:'jolteon',binderColor:'#111827',pageColor:'#080b12',sleeveColor:'#334155',pockets:Array(12).fill(null),artworks:[]};
+const defaults={subject:'',layout:'3x3',theme:'cyberpunk',binderColor:'#111827',pageColor:'#080b12',sleeveColor:'#334155',pockets:Array(12).fill(null),artworks:[]};
 let state=load(),cards=[],selected=null,drag=null;
 const MASTER_DB_NAME='kaseyMasterCardIndex',MASTER_DB_VERSION=6,MASTER_PAGE_SIZE=150;
 let masterDb=null,masterCards=[],masterCardIndex=new Map(),masterReady=false,masterSyncing=false,masterSetOptions=[];
@@ -82,11 +82,11 @@ async function binderPalette(binderId,page=null){
 const isMobile=()=>window.matchMedia('(max-width:768px)').matches;
 function setMobileView(view){if(!isMobile()){document.body.classList.remove('mobile-view-library','mobile-view-canvas');return}document.body.classList.toggle('mobile-view-library',view==='library');document.body.classList.toggle('mobile-view-canvas',view==='canvas');document.querySelector('#tabLibrary')?.classList.toggle('active',view==='library');document.querySelector('#tabCanvas')?.classList.toggle('active',view==='canvas');requestAnimationFrame(()=>window.scrollTo({top:Math.max(0,document.querySelector('#mobileTabs')?.offsetTop-6||0),behavior:'smooth'}))}
 
-function load(){try{const x=JSON.parse(localStorage.getItem('michiStandaloneState')||'{}');return {...defaults,...x,pockets:Array.from({length:12},(_,i)=>x.pockets?.[i]||null),artworks:Array.isArray(x.artworks)?x.artworks:[]}}catch{return structuredClone(defaults)}}
+function load(){try{const x=JSON.parse(localStorage.getItem('michiStandaloneState')||'{}');return {...defaults,...x,theme:'cyberpunk',pockets:Array.from({length:12},(_,i)=>x.pockets?.[i]||null),artworks:Array.isArray(x.artworks)?x.artworks:[]}}catch{return structuredClone(defaults)}}
 
 const THEMES=new Set(['jolteon']);
 function applyTheme(theme,{persist=true}={}){
-  const next='jolteon';
+  const next='cyberpunk';
   state.theme=next;
   document.body.classList.remove('theme-switching');
   void document.body.offsetWidth;
@@ -94,8 +94,8 @@ function applyTheme(theme,{persist=true}={}){
   document.body.classList.add('theme-switching');
   clearTimeout(applyTheme._timer);
   applyTheme._timer=setTimeout(()=>document.body.classList.remove('theme-switching'),520);
-  const colors={jolteon:'#111820'};
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content',colors.jolteon);
+  const colors={cyberpunk:'#0d1020'};
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content',colors.cyberpunk);
   if(persist)save();
 }
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -992,7 +992,7 @@ function printPage(){
   if(!p)return toast('Allow pop-ups once to open the print sheet');
   renderPrintPageToWindow(p);
 }
-function init(){applyTheme('jolteon',{persist:false});document.querySelector('#subject').value=state.subject;document.querySelector('#layout').value=state.layout;document.querySelector('#binderColor').value=state.binderColor;document.querySelector('#pageColor').value=state.pageColor;document.querySelector('#sleeveColor').value=state.sleeveColor;renderHeader();renderCards();renderArts();renderSelected();renderGrid();if(state.subject.length>=2)search()}
+function init(){applyTheme('cyberpunk',{persist:false});document.querySelector('#subject').value=state.subject;document.querySelector('#layout').value=state.layout;document.querySelector('#binderColor').value=state.binderColor;document.querySelector('#pageColor').value=state.pageColor;document.querySelector('#sleeveColor').value=state.sleeveColor;renderHeader();renderCards();renderArts();renderSelected();renderGrid();if(state.subject.length>=2)search()}
 document.querySelector('#tabLibrary').onclick=()=>setMobileView('library');document.querySelector('#tabCanvas').onclick=()=>setMobileView('canvas');window.addEventListener('resize',()=>{if(!isMobile())setMobileView('desktop')});if(isMobile())setMobileView('library');
 document.querySelector('#artPokemonLink').onclick=openPokemonArtwork;document.querySelector('#searchBtn').onclick=search;
 document.querySelector('#syncMasterLibrary').onclick=()=>buildMasterLibrary();
@@ -1004,7 +1004,7 @@ document.querySelector('#clearArtist').onclick=()=>{document.querySelector('#art
    Important: this layer snapshots/restores the existing editor state. It does not replace
    placement, artwork, printing, search, or rendering logic. */
 
-function cloneEditorState(src=state){return JSON.parse(JSON.stringify({...defaults,...src,pockets:Array.from({length:12},(_,i)=>src.pockets?.[i]||null),artworks:Array.isArray(src.artworks)?src.artworks:[]}))}
+function cloneEditorState(src=state){return JSON.parse(JSON.stringify({...defaults,...src,theme:'cyberpunk',pockets:Array.from({length:12},(_,i)=>src.pockets?.[i]||null),artworks:Array.isArray(src.artworks)?src.artworks:[]}))}
 function blankPageState(){const s=cloneEditorState();s.pockets=Array(12).fill(null);s.sleeveColor=defaults.sleeveColor;return s}
 function id(prefix){return prefix+'-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9)}
 function dbOpen(){return new Promise((resolve,reject)=>{const req=indexedDB.open(BINDER_DB_NAME,BINDER_DB_VERSION);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains('binders'))db.createObjectStore('binders',{keyPath:'id'});if(!db.objectStoreNames.contains('pages')){const ps=db.createObjectStore('pages',{keyPath:'id'});ps.createIndex('binderId','binderId',{unique:false})}};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
