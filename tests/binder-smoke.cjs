@@ -398,6 +398,66 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
     assert.deepEqual(pageIntegrity,{secondGood:true,firstGood:true});
     console.log('PASS saved binder pages round-trip without losing artwork');
 
+    // Binder/page palette is shared by all pages in one binder. A page's
+    // sleeve color remains independent and survives ordinary/partial switches.
+    // The first-card palette loader (including manual Rematch button) is off.
+    const colorIsolation=await page.evaluate(async()=>{
+      const firstId=activePageId,secondId='audit-second-page';
+      const originalSecondSleeve=(await dbGet('pages',secondId)).state.sleeveColor;
+      const setColor=(id,value)=>{
+        const input=document.getElementById(id);
+        input.value=value;
+        input.dispatchEvent(new Event('input',{bubbles:true}));
+      };
+      setColor('binderColor','#234567');
+      setColor('pageColor','#345678');
+      setColor('sleeveColor','#abcdef');
+      await flushSharedColorWrite();
+      await saveActivePageSnapshot();
+      const binder=await dbGet('binders',activeBinderId);
+      const firstSnapshot=await dbGet('pages',firstId);
+      await loadPageIntoEditor(secondId,{closeLibrary:false});
+      const secondColors={binder:state.binderColor,page:state.pageColor,sleeve:state.sleeveColor};
+      setColor('sleeveColor','#cba987');
+      await saveActivePageSnapshot();
+      await loadPageIntoEditor(firstId,{closeLibrary:false});
+      const firstColors={binder:state.binderColor,page:state.pageColor,sleeve:state.sleeveColor};
+      const secondSnapshot=await dbGet('pages',secondId);
+      const preview=previewMarkup(secondSnapshot,binder);
+      await openViewer(secondId);
+      const viewer=document.querySelector('#viewerPage .grid');
+      const viewerColors={
+        binder:viewer?.style.getPropertyValue('--binder'),
+        page:viewer?.style.getPropertyValue('--page'),
+        sleeve:viewer?.style.getPropertyValue('--sleeve')
+      };
+      closeViewer();
+      return {
+        sharedBinder:binder.binderColor,sharedPage:binder.pageColor,version:binder.sharedColorsVersion,originalSecondSleeve,
+        firstColors,secondColors,firstStoredSleeve:firstSnapshot.state.sleeveColor,
+        secondStoredSleeve:secondSnapshot.state.sleeveColor,viewerColors,
+        previewColors:preview.includes('--mini-binder:#234567')&&preview.includes('--mini-page:#345678')&&preview.includes('--mini-sleeve:#cba987'),
+        autoPaletteLoaded:!!document.querySelector('script[src*="first-card-auto-theme"]'),
+        autoMatchButton:!!document.querySelector('#rematchColors'),
+        releaseFlag:globalThis.KBSReleaseBuild?.lazy?.firstCardAutoTheme
+      };
+    });
+    assert.equal(colorIsolation.sharedBinder,'#234567');
+    assert.equal(colorIsolation.sharedPage,'#345678');
+    assert.equal(colorIsolation.version,1);
+    assert.deepEqual(colorIsolation.firstColors,{binder:'#234567',page:'#345678',sleeve:'#abcdef'});
+    assert.deepEqual(colorIsolation.secondColors,{binder:'#234567',page:'#345678',sleeve:colorIsolation.originalSecondSleeve});
+    assert.notEqual(colorIsolation.originalSecondSleeve,colorIsolation.firstStoredSleeve,'Sleeves must not bleed between pages');
+    assert.equal(colorIsolation.firstStoredSleeve,'#abcdef');
+    assert.equal(colorIsolation.secondStoredSleeve,'#cba987');
+    assert.deepEqual(colorIsolation.viewerColors,{binder:'#234567',page:'#345678',sleeve:'#cba987'});
+    assert.equal(colorIsolation.previewColors,true);
+    assert.equal(colorIsolation.autoPaletteLoaded,false);
+    assert.equal(colorIsolation.autoMatchButton,false);
+    assert.equal(colorIsolation.releaseFlag,false);
+    console.log('PASS binder-wide colors, independent page sleeves, previews, viewer and disabled auto matching');
+
+
 
 
 

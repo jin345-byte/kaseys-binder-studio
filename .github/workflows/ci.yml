@@ -78,7 +78,7 @@ jobs:
           const fs = require('fs');
           const html = fs.readFileSync('public/index.html', 'utf8');
           const loader = fs.readFileSync('public/features/production-v405.js', 'utf8');
-          const theme = fs.readFileSync('public/features/first-card-auto-theme.js', 'utf8');
+          const editor = fs.readFileSync('public/app.js', 'utf8');
           const requirements = [
             ['index #grid', html.includes('id="grid"')],
             ['index binderColor', html.includes('id="binderColor"')],
@@ -86,9 +86,10 @@ jobs:
             ['index sleeveColor', html.includes('id="sleeveColor"')],
             ['production API routing', html.includes('features/api-routing.js')],
             ['production polish', html.includes('features/production-polish.js')],
-            ['first-card theme loader', loader.includes('features/first-card-auto-theme.js')],
-            ['rematch feature', theme.includes('rematchColors')],
-            ['theme save path', theme.includes("typeof save==='function'")],
+            ['automatic card-palette matching disabled', !loader.includes("loadScript('features/first-card-auto-theme.js") && loader.includes('firstCardAutoTheme:false')],
+            ['manual binder, page, and sleeve color pickers', editor.includes("['binderColor','pageColor','sleeveColor'].forEach")],
+            ['binder-level palette persistence', editor.includes('sharedColorsVersion:1') && editor.includes('scheduleSharedColorWrite')],
+            ['per-page sleeve controls', editor.includes('s.sleeveColor=defaults.sleeveColor')],
           ];
           const failed = requirements.filter(([, ok]) => !ok);
           if (failed.length) {
