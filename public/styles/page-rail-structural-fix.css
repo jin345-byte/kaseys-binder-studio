@@ -363,3 +363,93 @@ body.mobile-lab-enabled .canvas .canvas-side-controls>.mobile-page-actions{
   width:100%!important;
   min-width:0!important;
 }
+
+/* Compact desktop page bubbles — v1.4.
+   Theme button minimums previously enlarged each 34px chip inside a 40px rail,
+   leaving cropped circles and an overlapping scrollbar. Keep the rail's own
+   geometry consistent and scroll the numbers without consuming chip width.
+   Phone and forced Mobile Preview retain their horizontal pager. */
+@media (min-width:761px) {
+  body:not(.mobile-lab-enabled) .canvas-side-controls > .binder-heading-module {
+    grid-template-columns:minmax(0,1fr) 38px!important;
+    column-gap:7px!important;
+  }
+  body:not(.mobile-lab-enabled) .canvas-side-controls > .binder-heading-module #editorPageNav {
+    display:grid!important;
+    grid-template-columns:34px!important;
+    grid-template-rows:30px minmax(0,1fr) 30px!important;
+    width:34px!important;
+    min-width:34px!important;
+    max-width:34px!important;
+    height:246px!important;
+    max-height:246px!important;
+    gap:5px!important;
+    place-items:center!important;
+    overflow:hidden!important;
+    box-sizing:border-box!important;
+  }
+  body:not(.mobile-lab-enabled) .canvas-side-controls > .binder-heading-module #editorPageNumbers {
+    display:flex!important;
+    flex-direction:column!important;
+    flex-wrap:nowrap!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    width:34px!important;
+    min-width:34px!important;
+    max-width:34px!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:none!important;
+    padding:2px 0!important;
+    margin:0!important;
+    gap:5px!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    scrollbar-width:none!important;
+    overscroll-behavior-y:contain!important;
+    scroll-padding-block:4px!important;
+    box-sizing:border-box!important;
+  }
+  body:not(.mobile-lab-enabled) #editorPageNumbers::-webkit-scrollbar{
+    display:none!important;
+    width:0!important;
+  }
+  body:not(.mobile-lab-enabled) .canvas-side-controls > .binder-heading-module #editorPageNumbers > .page-number {
+    box-sizing:border-box!important;
+    flex:0 0 27px!important;
+    display:grid!important;
+    place-items:center!important;
+    width:27px!important;
+    min-width:27px!important;
+    max-width:27px!important;
+    height:27px!important;
+    min-height:27px!important;
+    max-height:27px!important;
+    margin:0!important;
+    padding:0!important;
+    border-radius:50%!important;
+    font-size:11px!important;
+    line-height:1!important;
+    box-shadow:none!important;
+    transform:none!important;
+  }
+  body:not(.mobile-lab-enabled) .canvas-side-controls > .binder-heading-module #editorPrev,
+  body:not(.mobile-lab-enabled) .canvas-side-controls > .binder-heading-module #editorNext {
+    box-sizing:border-box!important;
+    display:grid!important;
+    place-items:center!important;
+    width:29px!important;
+    min-width:29px!important;
+    max-width:29px!important;
+    height:29px!important;
+    min-height:29px!important;
+    max-height:29px!important;
+    margin:0!important;
+    padding:0!important;
+    border-radius:10px!important;
+    font-size:16px!important;
+    line-height:1!important;
+    transform:none!important;
+    box-shadow:none!important;
+  }
+}

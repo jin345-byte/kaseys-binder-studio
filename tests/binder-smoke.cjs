@@ -278,6 +278,26 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
           return !!a&&a.bottom<=b.bottom+2&&a.top>=b.top-2;
         });
         assert.ok(lastVisible,'Last binder page must be reachable within scrollable page rail');
+        const bubbles=await page.evaluate(()=>{
+          const nav=document.querySelector('#editorPageNav');
+          const list=document.querySelector('#editorPageNumbers');
+          const first=list?.querySelector('.page-number');
+          const arrow=document.querySelector('#editorPrev');
+          const bound=el=>{const r=el.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height}};
+          const rect=bound(first),track=bound(list),frame=bound(nav),prev=bound(arrow);
+          // A real page chip must be wholly contained in the scroll track:
+          // previous theme overrides enlarged them beyond the narrow rail.
+          return {rect,track,frame,prev,font:getComputedStyle(first).fontSize,
+            chips:[...list.children].length,scrollbar:getComputedStyle(list).scrollbarWidth};
+        });
+        if(bubbles.rect.width>29||bubbles.rect.height>29||
+           bubbles.rect.x<bubbles.track.x-1||bubbles.rect.right>bubbles.track.right+1||
+           bubbles.prev.width>31||bubbles.prev.height>31||
+           bubbles.frame.right>bubbles.track.right+5){
+          throw new Error('PAGE_BUBBLES_CROPPED '+JSON.stringify(bubbles));
+        }
+        console.log('PASS compact page bubbles fit fully in rail at '+width+'px');
+
         console.log('PASS card panel and page navigation stay within their modules at '+width+'px');
         if(width>=1101){
           const sidebar=await page.evaluate(()=>{
