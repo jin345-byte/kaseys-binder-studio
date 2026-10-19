@@ -1,0 +1,165 @@
+/* Binder Studio — full-width, left-to-right page picker.
+   Scoped to the live editor; the binder viewer navigation remains unchanged. */
+
+/* Remove the narrow right rail and give the page picker its own full-width row. */
+body .canvas .canvas-side-controls,
+body.mobile-lab-enabled .canvas .canvas-side-controls {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-auto-flow: row !important;
+  align-items: start !important;
+  justify-items: stretch !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  gap: 8px !important;
+}
+
+body .canvas .canvas-side-controls > .binder-heading-module,
+body.mobile-lab-enabled .canvas .canvas-side-controls > .binder-heading-module {
+  grid-column: 1 / -1 !important;
+  grid-row: 1 !important;
+  display: block !important;
+  position: static !important;
+  align-self: stretch !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  padding: 8px !important;
+  margin: 0 !important;
+  border-radius: 12px !important;
+  overflow: visible !important;
+}
+
+body .canvas .binder-heading-module .canvashead {
+  display: none !important;
+}
+
+body .canvas .binder-heading-module .editor-page-nav,
+body.mobile-lab-enabled .canvas .binder-heading-module .editor-page-nav {
+  display: block !important;
+  position: static !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  height: auto !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  overflow: visible !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Every existing page button remains available, so arrows are redundant. */
+body .canvas .binder-heading-module .page-arrow {
+  display: none !important;
+}
+
+body .canvas .binder-heading-module .page-numbers,
+body.mobile-lab-enabled .canvas .binder-heading-module .page-numbers {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(36px, 1fr)) !important;
+  grid-auto-flow: row !important;
+  justify-content: start !important;
+  align-items: stretch !important;
+  gap: 6px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  scroll-snap-type: none !important;
+}
+
+body .canvas .binder-heading-module .page-number,
+body.mobile-lab-enabled .canvas .binder-heading-module .page-number {
+  display: grid !important;
+  place-items: center !important;
+  flex: none !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 0 3px !important;
+  margin: 0 !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
+  font-weight: 800 !important;
+  scroll-snap-align: none !important;
+  transform: none !important;
+  animation: none !important;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease !important;
+  box-shadow: none !important;
+}
+
+body .canvas .binder-heading-module .page-number:hover {
+  transform: none !important;
+  border-color: var(--accent) !important;
+  color: var(--text) !important;
+}
+
+body .canvas .binder-heading-module .page-number.active,
+body .canvas .binder-heading-module .page-number[aria-current="page"] {
+  transform: none !important;
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface2)) !important;
+  border-color: var(--accent) !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+}
+
+body .canvas .binder-heading-module .page-number:focus-visible {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px !important;
+}
+
+/* Put the remaining controls directly below the page grid. */
+body .canvas .canvas-side-controls > .library-module {
+  grid-column: 1 !important;
+  grid-row: 2 !important;
+}
+body .canvas .canvas-side-controls > .mobile-page-actions {
+  grid-column: 1 !important;
+  grid-row: 3 !important;
+}
+body .canvas .canvas-side-controls > .selected-module {
+  grid-column: 1 !important;
+  grid-row: 4 !important;
+}
+body .canvas .canvas-side-controls > .appearance-module {
+  grid-column: 1 !important;
+  grid-row: 5 !important;
+}
+body:not(.mobile-lab-enabled) .canvas .canvas-side-controls > .mobile-page-actions {
+  display: none !important;
+}
+body:not(.mobile-lab-enabled) .canvas .canvas-side-controls > .selected-module {
+  grid-row: 3 !important;
+}
+body:not(.mobile-lab-enabled) .canvas .canvas-side-controls > .appearance-module {
+  grid-row: 4 !important;
+}
+
+@media (max-width: 600px) {
+  body .canvas .binder-heading-module .page-numbers,
+  body.mobile-lab-enabled .canvas .binder-heading-module .page-numbers {
+    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)) !important;
+    gap: 5px !important;
+  }
+  body .canvas .binder-heading-module .page-number,
+  body.mobile-lab-enabled .canvas .binder-heading-module .page-number {
+    height: 40px !important;
+    min-height: 40px !important;
+    font-size: 12px !important;
+  }
+}
