@@ -659,6 +659,20 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
     await page.locator('#searchBtn').click();
     assert.equal(await page.locator('#searchSuggestions').isHidden(),true,'Mobile width Search did not close suggestions');
     console.log('PASS anchored autocomplete and Search dismissal at 390px');
+
+    // A paired spread must remain two visible pages on a phone, stacked
+    // instead of being clipped or becoming a single-page navigation view.
+    await page.evaluate(async()=>openViewer('audit-second-page'));
+    const phoneSpread=await viewerState();
+    assert.deepEqual(phoneSpread.shown,[1,2]);
+    assert.equal(phoneSpread.grids,2);
+    assert.ok(Math.abs(phoneSpread.boxes[0].x-phoneSpread.boxes[1].x)<8,'Mobile pages should stack vertically');
+    assert.ok(phoneSpread.boxes[0].y+phoneSpread.boxes[0].height<phoneSpread.boxes[1].y,'Mobile preview sheets overlap');
+    assert.ok(phoneSpread.boxes.every(b=>b.x>=-2&&b.right<=390+2),'Mobile preview extends beyond screen');
+    await page.screenshot({path:'audit-artifacts/binder-facing-pages-mobile.png',fullPage:true});
+    await page.evaluate(()=>closeViewer());
+    console.log('PASS facing-page binder preview stacks both pages on mobile');
+
     if(errors.length)throw new Error('Browser JavaScript exceptions: '+JSON.stringify(errors));
     console.log('PASS no uncaught browser exceptions');
   }finally{
