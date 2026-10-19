@@ -230,3 +230,11 @@
     border-radius:99px;
   }
 }
+
+/* Cards and Artwork occupy the same library grid track.
+   The v2 card browser has a high-specificity display:grid override above;
+   explicitly collapse the inactive pane so it never reserves layout space. */
+.workspace > .library.panel[data-library-tab="cards"] > .artwork-pane,
+.workspace > .library.panel[data-library-tab="artwork"] > .variant-pane.kbs-variants-v2{
+  display:none!important;
+}
