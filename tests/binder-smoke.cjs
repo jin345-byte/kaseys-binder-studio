@@ -403,6 +403,7 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
     // The first-card palette loader (including manual Rematch button) is off.
     const colorIsolation=await page.evaluate(async()=>{
       const firstId=activePageId,secondId='audit-second-page';
+      const originalSecondSleeve=(await dbGet('pages',secondId)).state.sleeveColor;
       const setColor=(id,value)=>{
         const input=document.getElementById(id);
         input.value=value;
@@ -432,7 +433,7 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
       };
       closeViewer();
       return {
-        sharedBinder:binder.binderColor,sharedPage:binder.pageColor,version:binder.sharedColorsVersion,
+        sharedBinder:binder.binderColor,sharedPage:binder.pageColor,version:binder.sharedColorsVersion,originalSecondSleeve,
         firstColors,secondColors,firstStoredSleeve:firstSnapshot.state.sleeveColor,
         secondStoredSleeve:secondSnapshot.state.sleeveColor,viewerColors,
         previewColors:preview.includes('--mini-binder:#234567')&&preview.includes('--mini-page:#345678')&&preview.includes('--mini-sleeve:#cba987'),
@@ -445,7 +446,8 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
     assert.equal(colorIsolation.sharedPage,'#345678');
     assert.equal(colorIsolation.version,1);
     assert.deepEqual(colorIsolation.firstColors,{binder:'#234567',page:'#345678',sleeve:'#abcdef'});
-    assert.deepEqual(colorIsolation.secondColors,{binder:'#234567',page:'#345678',sleeve:colorIsolation.secondColors.sleeve});
+    assert.deepEqual(colorIsolation.secondColors,{binder:'#234567',page:'#345678',sleeve:colorIsolation.originalSecondSleeve});
+    assert.notEqual(colorIsolation.originalSecondSleeve,colorIsolation.firstStoredSleeve,'Sleeves must not bleed between pages');
     assert.equal(colorIsolation.firstStoredSleeve,'#abcdef');
     assert.equal(colorIsolation.secondStoredSleeve,'#cba987');
     assert.deepEqual(colorIsolation.viewerColors,{binder:'#234567',page:'#345678',sleeve:'#cba987'});
