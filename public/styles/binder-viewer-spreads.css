@@ -1,0 +1,81 @@
+/* Binder viewer reading order: Page 1 solo; then 2+3, 4+5, etc.
+   Display-only: never change the editor grid/pockets or persisted page data. */
+#viewerPage.viewer-page {
+  display:block;
+  width:100%;
+  max-width:100%;
+  min-height:0;
+  padding:clamp(6px,1.4vw,16px);
+}
+#viewerPage .viewer-spread{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:clamp(12px,2.1vw,24px);
+  align-items:start;
+  width:min(100%,1040px);
+  max-width:100%;
+  min-width:0;
+  margin:0 auto;
+  position:relative;
+}
+#viewerPage .viewer-spread--single{
+  grid-template-columns:minmax(0,470px);
+  justify-content:center;
+}
+#viewerPage .viewer-sheet{
+  display:grid;
+  grid-template-rows:auto auto;
+  gap:8px;
+  min-width:0;
+  max-width:100%;
+  width:100%;
+}
+#viewerPage .viewer-sheet-select{
+  display:block;
+  width:100%;
+  padding:7px 12px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--surface2);
+  color:var(--muted);
+  font:700 12px/1.35 var(--kbs-font-family,system-ui,sans-serif);
+  text-align:center;
+  cursor:pointer;
+}
+#viewerPage .viewer-sheet-select:hover,
+#viewerPage .viewer-sheet--selected .viewer-sheet-select{
+  border-color:var(--accent);
+  color:var(--text);
+  background:color-mix(in srgb,var(--accent) 12%,var(--surface2));
+}
+#viewerPage .viewer-sheet .grid{
+  display:grid;
+  width:100%!important;
+  max-width:100%!important;
+  margin:0;
+  pointer-events:none;
+}
+#viewerPage .viewer-spread--pair::before{
+  content:"";
+  position:absolute;
+  top:42px;
+  bottom:12px;
+  left:50%;
+  width:2px;
+  background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--accent) 30%,var(--line)),transparent);
+  transform:translateX(-50%);
+  pointer-events:none;
+}
+#viewerPageNumbers .page-number.in-spread:not(.active){
+  border-color:color-mix(in srgb,var(--accent) 48%,var(--line));
+  color:var(--text);
+}
+@media(max-width:700px){
+  #viewerPage.viewer-page{padding:5px 2px;}
+  #viewerPage .viewer-spread--pair{
+    grid-template-columns:minmax(0,480px);
+    justify-content:center;
+    gap:18px;
+  }
+  #viewerPage .viewer-spread--pair::before{display:none;}
+}
