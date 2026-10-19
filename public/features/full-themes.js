@@ -38,7 +38,7 @@
   }
   globalThis.applyTheme=applyFullTheme;
   globalThis.KBSFullThemes={
-    list:()=>[[DEFAULT_THEME,{...THEME}]],
+    list:()=>[{id:DEFAULT_THEME,...THEME}],
     apply:applyFullTheme,
     get current(){return DEFAULT_THEME},
     defaultTheme:DEFAULT_THEME
