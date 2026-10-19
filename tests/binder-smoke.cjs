@@ -107,6 +107,61 @@ const makeApi=(name,start,count)=>Array.from({length:count},(_,i)=>({
     await page.waitForFunction(()=>document.querySelectorAll('#cards .kbs-variant-card').length===300,null,{timeout:12000});
     console.log('PASS 300 named card variants are visible without truncation');
 
+    // Previously the suggestions div was attached to <body> even though its
+    // absolute positioning assumes it lives inside the search row. That
+    // caused an enormous persistent strip across the bottom of the editor.
+    for(const [w,h] of [[1600,1000],[1024,768],[390,844]]){
+      await page.setViewportSize({width:w,height:h});
+      await page.evaluate(()=>scrollTo(0,0));
+      await page.fill('#subject','Audi');
+      await page.locator('#searchSuggestions').waitFor({state:'visible',timeout:6000});
+      const suggestionGeometry=await page.evaluate(()=>{
+        const row=document.querySelector('.searchrow'),input=document.querySelector('#subject');
+        const menu=document.querySelector('#searchSuggestions');
+        const rect=el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
+        return {
+          parent:menu.parentElement===row,menu:rect(menu),input:rect(input),
+          expanded:input.getAttribute('aria-expanded'),
+          screenWidth:innerWidth,screenHeight:innerHeight
+        };
+      });
+      assert.equal(suggestionGeometry.parent,true,'Suggestion menu must be a direct child of the search row');
+      assert.equal(suggestionGeometry.expanded,'true','Autocomplete ARIA state is not expanded');
+      assert.ok(suggestionGeometry.menu.width>100&&suggestionGeometry.menu.width<=suggestionGeometry.screenWidth,
+        'Autocomplete menu width escaped the viewport: '+JSON.stringify(suggestionGeometry));
+      assert.ok(Math.abs(suggestionGeometry.menu.left-suggestionGeometry.input.left)<8,
+        'Autocomplete menu is not anchored to the input: '+JSON.stringify(suggestionGeometry));
+      assert.ok(suggestionGeometry.menu.top>=suggestionGeometry.input.bottom-3 &&
+        suggestionGeometry.menu.top<=suggestionGeometry.input.bottom+30,
+        'Autocomplete appeared away from its input: '+JSON.stringify(suggestionGeometry));
+      await page.locator('#searchBtn').click();
+      assert.equal(await page.locator('#searchSuggestions').isHidden(),true,
+        'Clicking Search should dismiss suggestions at '+w+'px');
+      assert.equal(await page.locator('#subject').getAttribute('aria-expanded'),'false');
+      console.log('PASS anchored autocomplete and Search dismissal at '+w+'px');
+    }
+    await page.setViewportSize({width:1600,height:1000});
+    await page.fill('#subject','Audi');
+    await page.locator('#searchSuggestions').waitFor({state:'visible'});
+    await page.locator('#subject').press('Enter');
+    assert.equal(await page.locator('#searchSuggestions').isHidden(),true,'Enter did not dismiss suggestions');
+    await page.fill('#subject','Audi');
+    await page.locator('#searchSuggestions').waitFor({state:'visible'});
+    await page.locator('#subject').press('Escape');
+    assert.equal(await page.locator('#searchSuggestions').isHidden(),true,'Escape did not dismiss suggestions');
+    await page.fill('#subject','Audi');
+    await page.locator('#searchSuggestions').waitFor({state:'visible'});
+    await page.locator('#libraryCardsTab').click();
+    assert.equal(await page.locator('#searchSuggestions').isHidden(),true,'Leaving the search field did not dismiss suggestions');
+    await page.fill('#subject','Audi');
+    await page.locator('#searchSuggestions').waitFor({state:'visible'});
+    await page.locator('#searchSuggestions [data-suggestion]').first().click();
+    assert.equal(await page.locator('#subject').inputValue(),'Auditmon');
+    assert.equal(await page.locator('#searchSuggestions').isHidden(),true,'Selecting a suggestion did not close the menu');
+    await page.waitForFunction(()=>document.querySelectorAll('#cards .kbs-variant-card').length===300,null,{timeout:12000});
+    console.log('PASS autocomplete dismissal by Enter, Escape, outside focus and suggestion selection');
+
+
     // Cards and Artwork are mutually exclusive grid panels, not two stacked
     // panels with the inactive card browser still reserving half the height.
     // Test after V2 adds its stronger display:grid class; keep results in DOM.
